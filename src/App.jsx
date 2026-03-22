@@ -3287,7 +3287,7 @@ export default function App(){
             });
             setBookingsState(processed);
           }
-          if(saved.notices?.length)   setNoticesState(saved.notices);
+          if(Array.isArray(saved.notices))   setNoticesState(saved.notices);
           if(saved.specialSchedules?.length) setSpecialSchedulesState(saved.specialSchedules);
           if(saved.closures?.length)  setClosuresState(saved.closures);
           // 자동로그인 확인
