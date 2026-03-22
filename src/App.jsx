@@ -1554,7 +1554,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
             <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
               <span style={{fontSize:24,flexShrink:0}}>🍀</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>🍀오픈클래스</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>오픈클래스</div>
                 <div style={{fontSize:12,color:"#3a6a3a",marginTop:2}}>{special.label}</div>
                 {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:3}}>{special.feeNote}</div>}
                 <div style={{fontSize:11,color:"#a08030",marginTop:3}}>오픈클래스 — 횟수 차감 없이 참여 가능해요</div>
@@ -1566,7 +1566,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
             <div style={{background:"linear-gradient(135deg,#f0f0ff,#e8e8fc)",border:"1.5px solid #a0a0e0",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
               <span style={{fontSize:24,flexShrink:0}}>⚡️</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#3050b0"}}>⚡️집중수련</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#3050b0"}}>집중수련</div>
                 <div style={{fontSize:12,color:"#4a4a9a",marginTop:2}}>{special.label}</div>
                 {special.feeNote&&<div style={{fontSize:12,color:"#5a5ab0",marginTop:3}}>{special.feeNote}</div>}
                 {special.dailyNote&&<div style={{fontSize:12,color:"#4a4a8a",marginTop:4,whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
@@ -2051,7 +2051,8 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
     if((newSp.type==="special"||newSp.type==="open")&&newSp.dailyNote!=null){
       const typePrefix=newSp.type==="open"?"🍀오픈클래스":"⚡️집중수련";
       const noticeId=Math.max(...(notices||[]).map(n=>n.id),0)+1;
-      const noticeContent=newSp.dailyNote?`${typePrefix}\n${newSp.dailyNote}`:typePrefix;
+      const noticeContent=newSp.dailyNote?`${typePrefix}
+${newSp.dailyNote}`:typePrefix;
       setNotices(p=>[{id:noticeId,title:`📢 ${fmt(newSp.date)} ${label} 공지`,content:noticeContent,pinned:true,createdAt:TODAY_STR},...(p||[])]);
     }
     if(newSp.type==="regular"&&newSp.dailyNote!=null&&newSp.dailyNote!==""){
@@ -2451,7 +2452,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                 {[
                   {v:"regular", label:"정규",    icon:"📅"},
                   {v:"special", label:"집중",    icon:"⚡"},
-                  {v:"open",    label:"오픈클래스",icon:"🎉"},
+                  {v:"open",    label:"오픈클래스",icon:"🍀"},
                 ].map(t=>{
                   const hasClosure=closures.some(cl=>cl.date===newSp.date&&!cl.timeSlot);
                   // 휴강 있거나, 다른 유형 등록됐으면 잠금
