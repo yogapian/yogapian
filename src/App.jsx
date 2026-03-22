@@ -1311,7 +1311,7 @@ function NoticeBoard({notices}){
           </div>
           {expanded===n.id&&(
             <div style={{marginTop:8,borderTop:"1px solid #f0ece4",paddingTop:8}}>
-              {n.content&&<div style={{fontSize:13,color:"#5a5a5a",lineHeight:1.7}}>{n.content}</div>}
+              {n.content&&<div style={{fontSize:13,color:"#5a5a5a",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{n.content}</div>}
               {n.imageUrl&&<img src={n.imageUrl} alt="공지 이미지" style={{width:"100%",borderRadius:8,maxHeight:320,objectFit:"contain",background:"#f7f4ef"}}/>}
             </div>
           )}
@@ -1746,7 +1746,7 @@ function NoticeManager({notices,setNotices,onClose}){
                   {n.pinned&&<span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:5,padding:"1px 6px",fontWeight:700}}>📌 고정</span>}
                   <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e",flex:1}}>{n.title}</span>
                 </div>
-                <div style={{fontSize:12,color:"#7a6e60",marginBottom:8,lineHeight:1.5}}>{n.content}</div>
+                <div style={{fontSize:12,color:"#7a6e60",marginBottom:8,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{n.content}</div>
                 <div style={{display:"flex",gap:6}}>
                   <button onClick={()=>openEdit(n)} style={{...S.editBtn,fontSize:11,padding:"4px 10px"}}>수정</button>
                   <button onClick={()=>setNotices(p=>p.filter(x=>x.id!==n.id))} style={{...S.delBtn,fontSize:11,padding:"4px 10px"}}>삭제</button>
