@@ -902,13 +902,13 @@ const INIT_BOOKINGS=[
   {id:1201,date:"2026-02-20",memberId:14,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1202,date:"2026-02-20",memberId:12,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1203,date:"2026-02-20",memberId:13,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
-  {id:1204,date:"2026-02-22",memberId:6,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
-  {id:1205,date:"2026-02-22",memberId:15,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
-  {id:1206,date:"2026-02-22",memberId:14,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
-  {id:1207,date:"2026-02-22",memberId:4,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
-  {id:1208,date:"2026-02-22",memberId:3,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
-  {id:1209,date:"2026-02-22",memberId:23,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
-  {id:1210,date:"2026-02-22",memberId:25,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1204,date:"2026-02-22",memberId:6,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1205,date:"2026-02-22",memberId:15,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1206,date:"2026-02-22",memberId:14,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1207,date:"2026-02-22",memberId:4,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1208,date:"2026-02-22",memberId:3,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1209,date:"2026-02-22",memberId:23,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1210,date:"2026-02-22",memberId:25,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1211,date:"2026-02-23",memberId:6,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1212,date:"2026-02-23",memberId:55,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1213,date:"2026-02-23",memberId:25,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
@@ -955,8 +955,8 @@ const INIT_BOOKINGS=[
   {id:1254,date:"2026-02-27",memberId:20,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1255,date:"2026-03-02",memberId:25,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1256,date:"2026-03-02",memberId:24,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
-  {id:1257,date:"2026-03-02",memberId:15,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
-  {id:1258,date:"2026-03-02",memberId:14,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1257,date:"2026-03-02",memberId:15,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1258,date:"2026-03-02",memberId:14,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1259,date:"2026-03-02",memberId:7,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1260,date:"2026-03-02",memberId:5,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1261,date:"2026-03-02",memberId:19,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
@@ -1085,8 +1085,8 @@ const INIT_BOOKINGS=[
 ];
 
 const INIT_SPECIAL=[
-  {id:1,date:"2026-02-22",label:"2월 보강",activeSlots:["evening"],customTimes:{evening:"19:30"}},
-  {id:2,date:"2026-03-02",label:"삼일절 대체 특별수업",activeSlots:["dawn","morning","evening"],customTimes:{dawn:"06:30",morning:"08:30",evening:"19:30"}},
+  {id:1,date:"2026-02-22",label:"2월 보강",activeSlots:["morning"],customTimes:{morning:"10:00"}},
+  {id:2,date:"2026-03-02",label:"삼일절 대체 특별수업",activeSlots:["morning","evening"],customTimes:{morning:"10:00",evening:"17:00"}},
 ];
 
 const INIT_CLOSURES=[
