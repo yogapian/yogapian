@@ -36,7 +36,7 @@ const KR_HOLIDAYS={
 function isHoliday(dateStr){ return !!KR_HOLIDAYS[dateStr]; }
 function holidayName(dateStr){ return KR_HOLIDAYS[dateStr]||""; }
 function toDateStr(y,m,d){ return`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
-const LOGO_B64="/logo.png";
+const LOGO_B64="/icon.png";
 // 오늘 날짜를 항상 실제 현재 날짜로 동적 계산
 const _now=new Date();
 const TODAY_STR=`${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
