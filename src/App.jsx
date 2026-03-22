@@ -3033,7 +3033,7 @@ export default function App(){
 }
 
 const S={
-  page:{minHeight:"100vh",background:"#f5f3ef",fontFamily:FONT,padding:"16px 12px 80px",maxWidth:980,margin:"0 auto"},
+  page:{minHeight:"100vh",background:"#f5f3ef",fontFamily:FONT,padding:"max(16px, env(safe-area-inset-top)) 12px 80px",maxWidth:980,margin:"0 auto"},
   header:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18,gap:8},
   logoRow:{display:"flex",alignItems:"center",gap:7,marginBottom:3},
   studioName:{fontSize:21,fontWeight:700,color:"#1e2e1e"},
