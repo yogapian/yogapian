@@ -11,10 +11,11 @@ const useClosures = () => useContext(ClosuresContext);
 const SLOT_LIMIT = 10;
 const SCHEDULE = {0:[],1:["dawn","morning","lunch","evening"],2:["lunch","evening"],3:["dawn","morning","lunch","evening"],4:["lunch","evening"],5:["dawn","morning","evening"],6:[]};
 const TIME_SLOTS = [
-  {key:"dawn",   label:"새벽",time:"06:30",color:"#3d5494",bg:"#edf0f8",icon:"🌙"},
-  {key:"morning",label:"오전",time:"08:30",color:"#3d6e45",bg:"#eaf4ea",icon:"🌤️"},
-  {key:"lunch",  label:"점심",time:"11:50",color:"#8a5510",bg:"#fdf3e3",icon:"☀️"},
-  {key:"evening",label:"저녁",time:"19:30",color:"#5c3070",bg:"#f2edf8",icon:"🌛"},
+  {key:"dawn",      label:"새벽",time:"06:30",color:"#3d5494",bg:"#edf0f8",icon:"🌙"},
+  {key:"morning",   label:"오전",time:"08:30",color:"#3d6e45",bg:"#eaf4ea",icon:"🌤️"},
+  {key:"lunch",     label:"점심",time:"11:50",color:"#8a5510",bg:"#fdf3e3",icon:"☀️"},
+  {key:"afternoon", label:"오후",time:"14:00",color:"#6a5494",bg:"#f0edf8",icon:"🌞"},
+  {key:"evening",   label:"저녁",time:"19:30",color:"#5c3070",bg:"#f2edf8",icon:"🌛"},
 ];
 const DOW_KO=["일","월","화","수","목","금","토"];
 const FONT="'Malgun Gothic','맑은 고딕',-apple-system,sans-serif";
@@ -27,11 +28,12 @@ const KR_HOLIDAYS={
   "2025-08-15":"광복절","2025-10-03":"개천절","2025-10-05":"추석연휴",
   "2025-10-06":"추석","2025-10-07":"추석연휴","2025-10-08":"대체공휴일",
   "2025-10-09":"한글날","2025-12-25":"크리스마스",
-  "2026-01-01":"신정","2026-01-28":"설날연휴","2026-01-29":"설날","2026-01-30":"설날연휴",
+  "2025-12-31":"연말 무료수업",
+  "2026-01-01":"신년 무료수업","2026-02-15":"설날연휴","2026-02-16":"설날","2026-02-17":"설날연휴","2026-02-18":"설날연휴",
   "2026-03-01":"삼일절","2026-03-02":"대체공휴일","2026-05-05":"어린이날","2026-05-24":"부처님오신날",
-  "2026-06-06":"현충일","2026-08-15":"광복절",
-  "2026-09-24":"추석연휴","2026-09-25":"추석","2026-09-26":"추석연휴",
-  "2026-10-03":"개천절","2026-10-09":"한글날","2026-12-25":"크리스마스",
+  "2026-06-06":"현충일","2026-06-08":"대체공휴일","2026-08-15":"광복절","2026-08-17":"대체공휴일",
+  "2026-09-24":"추석연휴","2026-09-25":"추석","2026-09-26":"추석연휴","2026-09-28":"대체공휴일",
+  "2026-10-03":"개천절","2026-10-05":"대체공휴일","2026-10-09":"한글날","2026-12-25":"크리스마스",
 };
 function isHoliday(dateStr){ return !!KR_HOLIDAYS[dateStr]; }
 function holidayName(dateStr){ return KR_HOLIDAYS[dateStr]||""; }
@@ -1085,16 +1087,17 @@ const INIT_BOOKINGS=[
 ];
 
 const INIT_SPECIAL=[
-  {id:1,date:"2026-02-22",label:"2월 보강",activeSlots:["morning"],customTimes:{morning:"10:00"}},
-  {id:2,date:"2026-03-02",label:"삼일절 대체 특별수업",activeSlots:["morning","evening"],customTimes:{morning:"10:00",evening:"17:00"}},
+  {id:1,date:"2025-12-31",label:"연말 무료수업 🎉",type:"open",feeNote:"무료 참여 가능합니다 🎊",activeSlots:["morning","evening"],customTimes:{morning:"10:00",evening:"17:00"}},
+  {id:2,date:"2026-01-01",label:"신년 무료수업 🎊",type:"open",feeNote:"무료 참여 가능합니다 🎉",activeSlots:["morning","evening"],customTimes:{morning:"10:00",evening:"17:00"}},
+  {id:3,date:"2026-02-18",label:"설날 집중수업",type:"special",feeNote:"",activeSlots:["dawn","morning","lunch","evening"],customTimes:{dawn:"06:30",morning:"08:30",lunch:"11:50",evening:"19:30"}},
+  {id:4,date:"2026-02-22",label:"2월 보강",type:"special",feeNote:"",activeSlots:["morning"],customTimes:{morning:"10:00"}},
+  {id:4,date:"2026-03-02",label:"삼일절 집중수업",type:"special",feeNote:"",activeSlots:["morning","evening"],customTimes:{morning:"10:00",evening:"17:00"}},
 ];
 
 const INIT_CLOSURES=[
-  {id:1,date:"2026-01-01",timeSlot:null,reason:"신정",closureType:"regular",extensionOverride:0},
   {id:2,date:"2026-01-30",timeSlot:null,reason:"1월 휴강",closureType:"regular",extensionOverride:0},
-  {id:3,date:"2026-02-16",timeSlot:null,reason:"설날",closureType:"regular",extensionOverride:0},
-  {id:4,date:"2026-02-17",timeSlot:null,reason:"설날",closureType:"regular",extensionOverride:0},
-  {id:5,date:"2026-03-25",timeSlot:"dawn",reason:"새벽 수업 강사 사정",closureType:"special",extensionOverride:0},
+  {id:8,date:"2026-02-16",timeSlot:null,reason:"설날",closureType:"regular",extensionOverride:0},
+  {id:9,date:"2026-02-17",timeSlot:null,reason:"설날연휴",closureType:"regular",extensionOverride:0},
   {id:6,date:"2026-03-30",timeSlot:null,reason:"3월 휴강",closureType:"regular",extensionOverride:0},
   {id:7,date:"2026-03-31",timeSlot:null,reason:"3월 휴강",closureType:"regular",extensionOverride:0},
 ];
@@ -1131,16 +1134,17 @@ function CalendarPicker({value,onChange,onClose,closures=[],specialSchedules=[]}
           const fullClosure=closures.find(cl=>cl.date===ds&&!cl.timeSlot);
           const partialClosure=closures.find(cl=>cl.date===ds&&cl.timeSlot);
           const special=specialSchedules.find(s=>s.date===ds);
-          // 주말인데 특별수업 = 보강
-          const isMakeup=special&&(dow===0||dow===6);
-          const isSpecialWeekday=special&&dow!==0&&dow!==6;
+          const spType=special?.type||"special";
+          const isOpen=special&&spType==="open";
+          const isRegular=special&&spType==="regular";
+          const isSpecialDay=special&&spType==="special";
+          // 정규인데 시간 변경 있는지 체크
+          const defaultTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"14:00",evening:"19:30"};
+          const hasTimeChange=isRegular&&special?.activeSlots?.some(k=>special.customTimes?.[k]&&special.customTimes[k]!==defaultTimes[k]);
 
-          // 배경색 결정
+          // 배경색 (오늘/선택만)
           let bg="transparent";
           if(sel2) bg="#4a6a4a";
-          else if(fullClosure) bg="#fdf0f0";
-          else if(isMakeup) bg="#f0f8f0";
-          else if(isSpecialWeekday) bg="#f0f4ff";
           else if(tod) bg="#eef5ee";
 
           // 날짜 색상
@@ -1152,13 +1156,15 @@ function CalendarPicker({value,onChange,onClose,closures=[],specialSchedules=[]}
 
           const textDecor=fullClosure&&!sel2?"line-through":"none";
 
-          // 인디케이터
+          // 인디케이터 - 글씨만
           let ind=null;
           if(!sel2){
-            if(fullClosure) ind=<div style={{fontSize:8,background:"#fde0e0",color:"#c97474",borderRadius:3,padding:"1px 3px",fontWeight:700,lineHeight:1.2,marginTop:1}}>휴강</div>;
-            else if(partialClosure){const slabel={dawn:"새벽",morning:"오전",lunch:"점심",evening:"저녁"}[partialClosure.timeSlot]||partialClosure.timeSlot;ind=<div style={{fontSize:8,background:"#fdf0d8",color:"#9a6020",borderRadius:3,padding:"1px 3px",fontWeight:700,lineHeight:1.2,marginTop:1}}>{slabel}✕</div>;}
-            else if(isMakeup) ind=<div style={{fontSize:8,background:"#d8f0e0",color:"#2e6e44",borderRadius:3,padding:"1px 3px",fontWeight:700,lineHeight:1.2,marginTop:1}}>보강</div>;
-            else if(isSpecialWeekday) ind=<div style={{fontSize:8,background:"#dce8ff",color:"#3050b0",borderRadius:3,padding:"1px 3px",fontWeight:700,lineHeight:1.2,marginTop:1}}>특별</div>;
+            if(fullClosure) ind=<div style={{fontSize:8,color:"#a83030",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#fde8e8",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>휴강</div>;
+            else if(partialClosure){const slabel={dawn:"새벽",morning:"오전",lunch:"점심",afternoon:"오후",evening:"저녁"}[partialClosure.timeSlot]||partialClosure.timeSlot;ind=<div style={{fontSize:8,color:"#9a5a10",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#fdf0d8",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>{slabel}✕</div>;}
+            else if(isOpen) ind=<div style={{fontSize:8,color:"#1a6e4a",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#d8f5ec",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>오픈</div>;
+            else if(isRegular&&hasTimeChange) ind=<div style={{fontSize:8,color:"#c97474",fontWeight:700,lineHeight:1.2,marginTop:1,marginTop:1}}>변경❗</div>;
+            else if(isRegular&&special?.dailyNote) ind=<div style={{fontSize:8,color:"#c97474",fontWeight:700,lineHeight:1.2,marginTop:1}}>📌</div>;
+            else if(isSpecialDay) ind=<div style={{fontSize:8,color:"#5a3a9a",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#ede8fa",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>집중</div>;
             else if(holiday&&!fullClosure) ind=<div style={{fontSize:7,color:"#e05050",lineHeight:1.2,marginTop:1,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{holidayName(ds).slice(0,3)}</div>;
           }
 
@@ -1457,9 +1463,13 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
   const special=specialSchedules.find(s=>s.date===selDate);
   const isWeekend=dow===0||dow===6;
   const isSpecial=!!special;
+  const isOpen=special?.type==="open";
+  const isRegular=special?.type==="regular";
   const isFuture=selDate>=TODAY_STR;
   const dayClosure=closures.find(cl=>cl.date===selDate&&!cl.timeSlot);
   const getSlotClosure=k=>closures.find(cl=>cl.date===selDate&&cl.timeSlot===k);
+  const defaultTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
+  const hasTimeChange=isRegular&&special?.activeSlots?.some(k=>special.customTimes?.[k]&&special.customTimes[k]!==defaultTimes[k]);
 
   const getSlots=()=>{
     if(isSpecial)return TIME_SLOTS.filter(s=>special.activeSlots.includes(s.key)).map(s=>({...s,time:special.customTimes?.[s.key]||s.time}));
@@ -1488,12 +1498,12 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
     const nid=Math.max(...bookings.map(b=>b.id),0)+1;
     const bStatus=isWaiting?"waiting":"attended";
     setBookings(p=>[...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:bStatus,cancelNote:"",cancelledBy:""}]);
-    if(!isWaiting) setMembers(p=>p.map(m=>m.id===member.id?{...m,used:m.used+1}:m));
+    if(!isWaiting&&!isOpen) setMembers(p=>p.map(m=>m.id===member.id?{...m,used:m.used+1}:m));
   }
 
   function cancelBooking(bId){
     setBookings(p=>p.map(b=>b.id===bId?{...b,status:"cancelled",cancelledBy:"member"}:b));
-    setMembers(p=>p.map(m=>m.id===member.id?{...m,used:Math.max(0,m.used-1)}:m));
+    if(!isOpen) setMembers(p=>p.map(m=>m.id===member.id?{...m,used:Math.max(0,m.used-1)}:m));
     setConfirmCancel(null);
   }
 
@@ -1524,15 +1534,36 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
           </div>
 
           {!isFuture&&<div style={{textAlign:"center",padding:"20px 0",color:"#b0a090",fontSize:13}}>과거 날짜는 예약할 수 없어요.</div>}
-          {isFuture&&!isSpecial&&isWeekend&&<div style={{textAlign:"center",padding:"28px 0",color:"#b0a090"}}><div style={{fontSize:32,marginBottom:8}}>🌿</div><div style={{fontSize:14}}>이 날은 수업이 없습니다.</div></div>}
+          {isFuture&&isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"28px 0",color:"#b0a090"}}><div style={{fontSize:32,marginBottom:8}}>🌿</div><div style={{fontSize:14}}>이 날은 수업이 없습니다.</div></div>}
+          {isFuture&&isRegular&&(hasTimeChange||special?.dailyNote)&&(
+            <div style={{background:"#fff5f5",border:"1.5px solid #f0b0b0",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
+              <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+                <span style={{fontSize:18,flexShrink:0}}>🔔</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#c97474",marginBottom:4}}>오늘의 공지</div>
+                  {special.dailyNote&&<div style={{fontSize:12,color:"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+                </div>
+              </div>
+            </div>
+          )}
+          {isFuture&&isOpen&&(
+            <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+              <span style={{fontSize:24,flexShrink:0}}>🎉</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>{special.label}</div>
+                {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:3}}>{special.feeNote}</div>}
+                <div style={{fontSize:11,color:"#a08030",marginTop:3}}>오픈클래스 — 횟수 차감 없이 참여 가능해요</div>
+              </div>
+            </div>
+          )}
           {isFuture&&dayClosure&&<div style={{background:"#fff3f0",border:"1px solid #f0b0a0",borderRadius:10,padding:"12px 14px",marginBottom:12,display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:20}}>🔕</span><div><div style={{fontSize:13,fontWeight:700,color:"#8e3030"}}>전체 휴강</div><div style={{fontSize:12,color:"#9a5a50",marginTop:2}}>{dayClosure.reason}</div></div></div>}
 
           {isFuture&&!dayClosure&&slots.filter(slot=>{
             if(selDate!==TODAY_STR) return true;
             const now=new Date(); // 매번 실시간으로 현재 시간 가져오기
             // 수업 시작 시간 기준 - 시작 후에는 예약 불가
-            const slotHours={"dawn":6,"morning":8,"lunch":11,"evening":19};
-            const slotMins={"dawn":30,"morning":30,"lunch":50,"evening":30};
+            const slotHours={"dawn":6,"morning":8,"lunch":11,"afternoon":14,"evening":19};
+            const slotMins={"dawn":30,"morning":30,"lunch":50,"afternoon":0,"evening":30};
             const h=slotHours[slot.key]||0,m=slotMins[slot.key]||0;
             const nowTotalMins=now.getHours()*60+now.getMinutes();
             const slotTotalMins=h*60+m;
@@ -1551,7 +1582,13 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <span style={{fontSize:20}}>{slot.icon}</span>
                     <div>
-                      <div style={{fontSize:15,fontWeight:700,color:slClosure?"#8e3030":slot.color}}>{slot.label} <span style={{fontSize:13,opacity:.8}}>{slot.time}</span></div>
+                      <div style={{fontSize:15,fontWeight:700,color:slClosure?"#8e3030":slot.color}}>{slot.label} {(()=>{
+                        const defT={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"}[slot.key];
+                        const isChg=isRegular&&defT&&slot.time!==defT;
+                        return isChg
+                          ? <span style={{fontSize:13,opacity:.9}}><span style={{textDecoration:"line-through",color:"#b0a0a0",fontWeight:400}}>{defT}</span> → <span style={{color:"#c97474"}}>{slot.time}</span></span>
+                          : <span style={{fontSize:13,opacity:.8}}>{slot.time}</span>;
+                      })()}</div>
                       <div style={{fontSize:12,color:slClosure?"#9a5a50":remaining<=2&&!myB?"#c97474":slot.color}}>
                         {slClosure?`🔕 ${slClosure.reason}`:myB&&myB.status==="waiting"?`대기 ${myRank}번째 · 잔여 ${remaining}석`:myB?`예약됨 · 잔여 ${remaining}석`:isFull?`마감 · 대기 ${waitCnt}명`:`잔여 ${remaining}석`}
                       </div>
@@ -1807,7 +1844,10 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   const [addForm,setAddForm]=useState({type:"member",memberId:"",onedayName:"",walkIn:false});
   const [convertModal,setConvertModal]=useState(null);
   const [showSpecialMgr,setShowSpecialMgr]=useState(false);
-  const [newSp,setNewSp]=useState({date:TODAY_STR,label:"",activeSlots:["morning","evening"],customTimes:{dawn:"06:30",morning:"10:00",lunch:"11:50",evening:"17:00"}});
+  const INIT_SP={date:TODAY_STR,label:"",type:"regular",feeNote:"",dailyNote:"",activeSlots:[],customTimes:{dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"}};
+  const [newSp,setNewSp]=useState(INIT_SP);
+  const [originalType,setOriginalType]=useState(null);
+  const closeSpecialMgr=()=>{setShowSpecialMgr(false);setOriginalType(null);setNewSp(INIT_SP);};
   const [cancelModal,setCancelModal]=useState(null);
   const [dragId,setDragId]=useState(null);
   const [dragOver,setDragOver]=useState(null);
@@ -1819,8 +1859,12 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   const special=specialSchedules.find(s=>s.date===date);
   const isWeekend=dow===0||dow===6;
   const isSpecial=!!special;
+  const isOpen=special?.type==="open";
+  const isRegular=special?.type==="regular";
   const dayClosure=closures.find(cl=>cl.date===date&&!cl.timeSlot);
   const getSlotClosure=k=>closures.find(cl=>cl.date===date&&cl.timeSlot===k);
+  const defaultTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"14:00",evening:"19:30"};
+  const hasTimeChange=isRegular&&special?.activeSlots?.some(k=>special.customTimes?.[k]&&special.customTimes[k]!==defaultTimes[k]);
 
   const getSlots=()=>{
     if(isSpecial)return TIME_SLOTS.filter(s=>special.activeSlots.includes(s.key)).map(s=>({...s,time:special.customTimes?.[s.key]||s.time}));
@@ -1834,7 +1878,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
     const b=bookings.find(bk=>bk.id===id);
     if(!b)return;
     setBookings(p=>p.map(bk=>bk.id===id?{...bk,status:"cancelled",cancelledBy:"admin",cancelNote:note}:bk));
-    if(b.memberId) setMembers(p=>p.map(m=>m.id===b.memberId?{...m,used:Math.max(0,m.used-1)}:m));
+    if(b.memberId&&!isOpen) setMembers(p=>p.map(m=>m.id===b.memberId?{...m,used:Math.max(0,m.used-1)}:m));
     setCancelModal(null);
   }
 
@@ -1846,7 +1890,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
     } else {
       if(!addForm.memberId)return;
       setBookings(p=>[...p,{id:nid,date,memberId:+addForm.memberId,timeSlot:addModal,walkIn:addForm.walkIn,status:"attended",cancelNote:"",cancelledBy:""}]);
-      setMembers(p=>p.map(m=>m.id===+addForm.memberId?{...m,used:m.used+1}:m));
+      if(!isOpen) setMembers(p=>p.map(m=>m.id===+addForm.memberId?{...m,used:m.used+1}:m));
     }
     setAddModal(null);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});
   }
@@ -1867,7 +1911,14 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   const slotMids=k=>dayActive.filter(b=>b.timeSlot===k&&b.memberId).map(b=>b.memberId);
   const avail=k=>members.filter(m=>!slotMids(k).includes(m.id)&&getStatus(m,closures)!=="off").sort((a,b)=>a.name.localeCompare(b.name,"ko"));
 
-  function addSpecial(){if(!newSp.label||!newSp.date)return;const nid=Math.max(...specialSchedules.map(s=>s.id),0)+1;setSpecialSchedules(p=>[...p.filter(s=>s.date!==newSp.date),{...newSp,id:nid}]);setShowSpecialMgr(false);}
+  function addSpecial(){
+    if(!newSp.date)return;
+    if(newSp.type!=="regular"&&!newSp.label)return;
+    const nid=Math.max(...specialSchedules.map(s=>s.id),0)+1;
+    const label=newSp.label||(newSp.type==="regular"?"정규수업":"");
+    setSpecialSchedules(p=>[...p.filter(s=>s.date!==newSp.date),{...newSp,label,id:nid}]);
+    closeSpecialMgr();
+  }
   const toggleSp=sl=>setNewSp(f=>({...f,activeSlots:f.activeSlots.includes(sl)?f.activeSlots.filter(s=>s!==sl):[...f.activeSlots,sl]}));
 
   const attendedDay=dayActive.filter(b=>b.status==="attended").length;
@@ -1880,7 +1931,11 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
           <div style={{flex:1,position:"relative"}}>
             <div onClick={()=>setShowCal(s=>!s)} style={{background:showCal?"#eef5ee":"#fff",border:`1.5px solid ${showCal?"#4a6a4a":"#ddd"}`,borderRadius:10,padding:"10px 12px",fontSize:14,fontWeight:700,color:"#1e2e1e",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               {fmtWithDow(date)}
-              {isSpecial&&<span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:5,padding:"1px 6px",fontWeight:700}}>{special.label}</span>}
+              {date===TODAY_STR&&<span style={{fontSize:10,background:"#4a6a4a",color:"#fff",borderRadius:5,padding:"2px 6px",fontWeight:700}}>오늘</span>}
+              {dayClosure&&<span style={{fontSize:10,color:"#c97474",fontWeight:700}}>휴강</span>}
+              {isSpecial&&special.type==="open"&&<span style={{fontSize:10,color:"#9a7010",fontWeight:700}}>오픈</span>}
+              {isSpecial&&special.type==="special"&&<span style={{fontSize:10,color:"#3050b0",fontWeight:700}}>집중</span>}
+              {isSpecial&&special.type==="regular"&&(hasTimeChange||special.dailyNote)&&<span style={{fontSize:10,color:hasTimeChange?"#c97474":"#9a5a10",fontWeight:700}}>{hasTimeChange?"변경❗":"📌"}</span>}
               <span style={{fontSize:12,color:"#9a8e80"}}>▾</span>
             </div>
             {showCal&&(<><div style={{position:"fixed",inset:0,zIndex:150}} onClick={()=>setShowCal(false)}/><CalendarPicker value={date} onChange={v=>{setDate(v);setShowCal(false);}} onClose={()=>setShowCal(false)} closures={closures} specialSchedules={specialSchedules}/></>)}
@@ -1888,20 +1943,53 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
           <button style={{...S.navBtn,padding:"10px 14px",fontSize:16,minWidth:44,flexShrink:0}} onClick={()=>setDate(d=>addDays(d,1))}>→</button>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-          <button style={{...S.navBtn,fontSize:12,padding:"7px 11px",color:"#5a7a5a",fontWeight:600}} onClick={()=>setDate(TODAY_STR)}>오늘</button>
-          {slots.length>0&&<>
-            <div style={{background:"#eaf4ea",color:"#2e6e44",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:700}}>출석 {attendedDay}</div>
-          </>}
-          <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#8a5510",background:isSpecial?"#fdf3e3":"#fff"}} onClick={()=>{setNewSp(f=>({...f,date}));setShowSpecialMgr(true);}}>
-            {isSpecial?"✏️ 특별수업":"🗓️ 특별수업"}
-          </button>
-          <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#8e3030",background:dayClosure?"#fdf3e3":"#fff"}} onClick={()=>{setClosureForm({date,timeSlot:"",reason:"",closureType:"regular",extensionOverride:0});setShowClosureMgr(true);}}>
-            🔕 휴강설정
+          {slots.length>0&&<div style={{background:"#eaf4ea",color:"#2e6e44",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:700}}>출석 {attendedDay}</div>}
+          <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#8a5510",background:"#fff"}} onClick={()=>{
+            const dowSlots=SCHEDULE[new Date(date+"T00:00:00").getDay()]||[];
+            const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
+            // specialSchedules에서 직접 찾기 (special 변수보다 정확)
+            const spOnDate=specialSchedules.find(s=>s.date===date);
+            if(spOnDate){
+              setNewSp({date,type:spOnDate.type,label:spOnDate.label||"",feeNote:spOnDate.feeNote||"",dailyNote:spOnDate.dailyNote||"",activeSlots:spOnDate.activeSlots||[],customTimes:{...regularTimes,...(spOnDate.customTimes||{})}});
+              setOriginalType(spOnDate.type);
+            } else if(dowSlots.length){
+              // 정규 운영일 신규 → activeSlots는 요일 슬롯으로 세팅 (정규 기본값)
+              setNewSp({date,type:"regular",label:"",feeNote:"",dailyNote:"",activeSlots:dowSlots,customTimes:regularTimes});
+              setOriginalType("regular");
+            } else {
+              // 주말 등 비운영일 신규
+              setNewSp({date,type:"special",label:"",feeNote:"",activeSlots:[],customTimes:regularTimes});
+              setOriginalType(null);
+            }
+            setShowSpecialMgr(true);
+          }}>
+            🗓️ 수업설정
           </button>
         </div>
       </div>
 
-      {!isSpecial&&isWeekend&&<div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>🌿</div><div style={{fontSize:14,fontWeight:700}}>{DOW_KO[dow]}요일은 수업이 없습니다</div></div>}
+      {isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>🌿</div><div style={{fontSize:14,fontWeight:700}}>이 날은 수업이 없습니다.</div></div>}
+      {isRegular&&(hasTimeChange||special?.dailyNote)&&(
+        <div style={{background:"#fff5f5",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 14px",marginBottom:12}}>
+          <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+            <span style={{fontSize:16,flexShrink:0}}>🔔</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#c97474",marginBottom:4}}>오늘의 공지</div>
+              {special.dailyNote&&<div style={{fontSize:12,color:"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+            </div>
+          </div>
+        </div>
+      )}
+      {isOpen&&(
+        <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+          <span style={{fontSize:20,flexShrink:0}}>🎉</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>{special.label} — 오픈클래스</div>
+            {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:2}}>{special.feeNote}</div>}
+            <div style={{fontSize:11,color:"#a08030",marginTop:2}}>횟수 차감 없이 출석 처리됩니다</div>
+          </div>
+        </div>
+      )}
       {dayClosure&&<div style={{
           background:dayClosure.closureType==="regular"?"#fdf3e3":dayClosure.closureType==="regular_ext"?"#fef9ed":"#fff0f0",
           border:`1px solid ${dayClosure.closureType==="regular"?"#e8a44a":dayClosure.closureType==="regular_ext"?"#e8c44a":"#e8a0a0"}`,
@@ -1938,7 +2026,13 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                     <span style={{fontSize:17}}>{slot.icon}</span>
                     <div>
                       <div style={{fontSize:14,fontWeight:700,color:slot.color}}>{slot.label}</div>
-                      <div style={{fontSize:11,color:slot.color,opacity:.8}}>{slot.time}</div>
+                      <div style={{fontSize:11,color:slot.color,opacity:.8}}>{(()=>{
+                        const defT={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"}[slot.key];
+                        const isChg=isRegular&&defT&&slot.time!==defT;
+                        return isChg
+                          ? <span><span style={{textDecoration:"line-through",color:"#b0a0a0"}}>{defT}</span> → <span style={{color:"#c97474",fontWeight:700}}>{slot.time}</span></span>
+                          : slot.time;
+                      })()}</div>
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
@@ -2198,26 +2292,146 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
       {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={note=>adminCancel(cancelModal.id,note)}/>}
 
       {showSpecialMgr&&(
-        <div style={S.overlay} onClick={()=>setShowSpecialMgr(false)}>
+        <div style={S.overlay} onClick={()=>closeSpecialMgr()}>
           <div style={{...S.modal,maxWidth:400}} onClick={e=>e.stopPropagation()}>
-            <div style={S.modalHead}><span style={{fontSize:20}}>🗓️</span><div style={S.modalTitle}>특별 수업 설정</div></div>
-            <div style={S.fg}><label style={S.lbl}>날짜</label><input style={S.inp} type="date" value={newSp.date} onChange={e=>setNewSp(f=>({...f,date:e.target.value}))}/></div>
-            <div style={S.fg}><label style={S.lbl}>메모</label><input style={S.inp} value={newSp.label} onChange={e=>setNewSp(f=>({...f,label:e.target.value}))} placeholder="예: 어린이날 특별수업"/></div>
-            <div style={S.fg}><label style={S.lbl}>운영 수업</label>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                {TIME_SLOTS.map(sl=>(
-                  <div key={sl.key} style={{border:`1.5px solid ${newSp.activeSlots.includes(sl.key)?sl.color:"#e0d8cc"}`,borderRadius:10,padding:"10px",background:newSp.activeSlots.includes(sl.key)?sl.bg:"#faf8f5",cursor:"pointer"}} onClick={()=>toggleSp(sl.key)}>
-                    <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}>
-                      <span>{sl.icon}</span><span style={{fontWeight:700,color:sl.color,fontSize:13}}>{sl.label}</span>
-                      {newSp.activeSlots.includes(sl.key)&&<span style={{marginLeft:"auto",color:sl.color}}>✓</span>}
+            <div style={{...S.modalHead}}><span style={{fontSize:20}}>🗓️</span><div style={S.modalTitle}>수업 설정</div></div>
+            {/* 수업 타입 선택 */}
+            <div style={S.fg}>
+              <label style={S.lbl}>수업 유형</label>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                {[
+                  {v:"regular", label:"정규",    icon:"📅"},
+                  {v:"special", label:"집중",    icon:"⚡"},
+                  {v:"open",    label:"오픈클래스",icon:"🎉"},
+                ].map(t=>{
+                  const hasClosure=closures.some(cl=>cl.date===newSp.date&&!cl.timeSlot);
+                  // 휴강 있거나, 다른 유형 등록됐으면 잠금
+                  const locked=hasClosure||(originalType!==null&&originalType!==t.v);
+                  const selected=newSp.type===t.v;
+                  return(
+                    <div key={t.v} onClick={()=>{
+                      if(locked) return;
+                      const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
+                      // 삭제 후(originalType=null) 또는 집중/오픈: 빈 슬롯으로 시작
+                      // 정규이고 originalType="regular"인 경우만 요일 슬롯 자동 세팅
+                      const dowSlots=SCHEDULE[new Date(newSp.date+"T00:00:00").getDay()]||[];
+                      const newSlots=(t.v==="regular"&&originalType==="regular")?(dowSlots.length?dowSlots:[]):[];
+                      setNewSp(f=>({...f,type:t.v,activeSlots:newSlots,customTimes:regularTimes}));
+                    }}
+                      style={{border:`2px solid ${selected?"#4a6a4a":locked?"#ede8e0":"#e0d8cc"}`,borderRadius:10,padding:"7px 4px",textAlign:"center",cursor:locked?"not-allowed":"pointer",background:selected?"#eef5ee":locked?"#f5f2ee":"#faf8f5",opacity:locked?0.45:1}}>
+                      <div style={{fontSize:16}}>{t.icon}</div>
+                      <div style={{fontSize:11,fontWeight:700,color:selected?"#2e5c3e":"#6a6050"}}>{t.label}</div>
                     </div>
-                    {newSp.activeSlots.includes(sl.key)&&<input style={{...S.inp,padding:"5px 8px",fontSize:12}} value={newSp.customTimes[sl.key]||sl.time} onChange={e=>{e.stopPropagation();setNewSp(f=>({...f,customTimes:{...f.customTimes,[sl.key]:e.target.value}}))}} onClick={e=>e.stopPropagation()} placeholder="HH:MM"/>}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
-            {special&&<button onClick={()=>{setSpecialSchedules(p=>p.filter(s=>s.date!==special.date));setShowSpecialMgr(false);}} style={{background:"#f5eeee",color:"#c97474",border:"none",borderRadius:8,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:FONT,fontWeight:700,marginBottom:12,width:"100%"}}>🗑️ 이 날 특별수업 삭제</button>}
-            <div style={S.modalBtns}><button style={S.cancelBtn} onClick={()=>setShowSpecialMgr(false)}>취소</button><button style={{...S.saveBtn,opacity:newSp.label?1:0.5}} onClick={addSpecial} disabled={!newSp.label}>저장</button></div>
+            <div style={S.fg}><label style={S.lbl}>날짜</label><input style={S.inp} type="date" value={newSp.date} onChange={e=>{
+              const dowSlots=SCHEDULE[new Date(e.target.value+"T00:00:00").getDay()]||[];
+              const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
+              const existingOnDate=specialSchedules.find(s=>s.date===e.target.value);
+              if(existingOnDate){
+                setNewSp(f=>({...f,date:e.target.value,type:existingOnDate.type,activeSlots:existingOnDate.activeSlots||[],customTimes:{...regularTimes,...(existingOnDate.customTimes||{})},label:existingOnDate.label||"",feeNote:existingOnDate.feeNote||""}));
+                setOriginalType(existingOnDate.type);
+              } else if(dowSlots.length){
+                setNewSp(f=>({...f,date:e.target.value,type:"regular",activeSlots:dowSlots,customTimes:regularTimes,label:"",feeNote:""}));
+                setOriginalType("regular");
+              } else {
+                setNewSp(f=>({...f,date:e.target.value,type:"special",activeSlots:[],customTimes:regularTimes,label:"",feeNote:""}));
+                setOriginalType(null);
+              }
+            }}/></div>
+            <div style={S.fg}><label style={S.lbl}>메모 <span style={{fontWeight:400,color:"#9a8e80"}}>(선택)</span></label><input style={S.inp} value={newSp.label} onChange={e=>setNewSp(f=>({...f,label:e.target.value}))} placeholder={newSp.type==="open"?"예: 연말 무료수업 🎉":newSp.type==="regular"?"예: 관리자 메모":"예: 어린이날 집중수업"}/></div>
+            {/* 정규: 이 날 공지 토글 + 입력 */}
+            {newSp.type==="regular"&&(
+              <div style={S.fg}>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",userSelect:"none",marginBottom:8}} onClick={()=>setNewSp(f=>({...f,dailyNote:f.dailyNote===undefined?"":undefined}))}>
+                  <div style={{width:36,height:20,borderRadius:10,background:newSp.dailyNote!==undefined&&newSp.dailyNote!==null?"#c97474":"#ddd",position:"relative",transition:"background .2s",flexShrink:0}}>
+                    <div style={{position:"absolute",top:2,left:(newSp.dailyNote!==undefined&&newSp.dailyNote!==null)?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+                  </div>
+                  <span style={{fontSize:12,color:"#4a4a4a"}}>🔔 이 날 공지 띄우기</span>
+                </label>
+                {newSp.dailyNote!==undefined&&newSp.dailyNote!==null&&(
+                  <textarea style={{...S.inp,height:70,resize:"vertical",fontSize:12}} value={newSp.dailyNote} onChange={e=>setNewSp(f=>({...f,dailyNote:e.target.value}))} placeholder="예: 오전 수업 08:30 → 08:20 변경 / 오늘 방송 촬영 있어요 📹 / 매트 지참 부탁드려요"/>
+                )}
+              </div>
+            )}
+            {newSp.type==="open"&&(
+              <div style={S.fg}><label style={S.lbl}>비용 안내 문구 <span style={{fontWeight:400,color:"#9a8e80"}}>(선택)</span></label><input style={S.inp} value={newSp.feeNote||""} onChange={e=>setNewSp(f=>({...f,feeNote:e.target.value}))} placeholder="예: 무료 참여 / 별도 3만원 현장 결제"/></div>
+            )}
+            {/* 운영 수업 - 휴강 있으면 숨김 */}
+            {!closures.some(cl=>cl.date===newSp.date&&!cl.timeSlot)&&(
+              <div style={S.fg}>
+                <label style={S.lbl}>운영 수업</label>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {TIME_SLOTS.map(sl=>{
+                    const on=newSp.activeSlots.includes(sl.key);
+                    const defTime={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"}[sl.key]||sl.time;
+                    const curTime=newSp.customTimes[sl.key]||defTime;
+                    const isChanged=on&&newSp.type==="regular"&&defTime&&curTime!==defTime;
+                    return(
+                      <div key={sl.key} style={{border:`1.5px solid ${on?sl.color:"#e0d8cc"}`,borderRadius:10,padding:"8px 12px",background:on?sl.bg:"#faf8f5",cursor:"pointer",display:"flex",alignItems:"center",gap:8}} onClick={()=>toggleSp(sl.key)}>
+                        <span style={{fontSize:15,flexShrink:0}}>{sl.icon}</span>
+                        <div style={{fontWeight:700,color:sl.color,fontSize:13,width:28,flexShrink:0}}>{sl.label}</div>
+                        {on
+                          ? <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
+                              {isChanged&&<span style={{fontSize:11,textDecoration:"line-through",color:"#b0a0a0"}}>{defTime}</span>}
+                              <input style={{...S.inp,padding:"4px 8px",fontSize:12,flex:1,margin:0,color:isChanged?"#c97474":"inherit",fontWeight:isChanged?700:400}} value={curTime} onChange={e=>{e.stopPropagation();setNewSp(f=>({...f,customTimes:{...f.customTimes,[sl.key]:e.target.value}}));}} onClick={e=>e.stopPropagation()} placeholder="HH:MM"/>
+                            </div>
+                          : <span style={{fontSize:11,color:"#b0a090",flex:1}}>{defTime||"직접 입력"}</span>
+                        }
+                        <span style={{fontSize:12,color:on?sl.color:"#c0b8b0",flexShrink:0}}>{on?"✓":"—"}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {/* 휴강 설정 - 휴강 있을 때만: 삭제만 표시 / 없을 때: 추가 버튼 */}
+            <div style={S.fg}>
+              {closures.some(cl=>cl.date===newSp.date&&!cl.timeSlot)?(
+                <>
+                  <label style={S.lbl}>휴강 설정</label>
+                  <div style={{background:"#fff0f0",border:"1px solid #e8a0a0",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#8e3030",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span>🔕 {closures.filter(cl=>cl.date===newSp.date).map(cl=>cl.timeSlot?`${({dawn:"새벽",morning:"오전",lunch:"점심",afternoon:"오후",evening:"저녁"}[cl.timeSlot])} 휴강`:"전체 휴강").join(" · ")}</span>
+                    <button onClick={e=>{
+                      e.stopPropagation();
+                      const nc=closures.filter(cl=>cl.date!==newSp.date);
+                      setClosures(nc);
+                      setMembers(prev=>prev.map(m=>m.memberType==="3month"?{...m,endDate:calc3MonthEnd(m.startDate,nc)}:m));
+                      // 휴강 삭제 후 → 선택 없는 상태로 초기화 (직접 선택하게)
+                      const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
+                      setNewSp(f=>({...f,type:"regular",activeSlots:[],customTimes:regularTimes,label:"",feeNote:""}));
+                      setOriginalType(null);
+                    }} style={{background:"none",border:"none",color:"#c97474",cursor:"pointer",fontSize:12,fontFamily:FONT,fontWeight:700}}>삭제</button>
+                  </div>
+                </>
+              ):(
+                <>
+                  <label style={S.lbl}>휴강 설정 <span style={{fontWeight:400,color:"#9a8e80"}}>(선택)</span></label>
+                  <button onClick={e=>{e.stopPropagation();closeSpecialMgr();setClosureForm({date:newSp.date,timeSlot:"",reason:"",closureType:"regular",extensionOverride:0});setShowClosureMgr(true);}} style={{width:"100%",background:"#fff0f0",border:"1px solid #e8a0a0",borderRadius:10,padding:"12px 0",fontSize:13,fontWeight:600,color:"#8e3030",cursor:"pointer",fontFamily:FONT,textAlign:"center"}}>
+                    🔕 휴강 추가
+                  </button>
+                </>
+              )}
+            </div>
+            {/* 수업 삭제 버튼 - 휴강 없을 때만, originalType 있을 때만 */}
+            {originalType!==null&&!closures.some(cl=>cl.date===newSp.date&&!cl.timeSlot)&&(()=>{
+              const typeLabel=originalType==="open"?"오픈클래스":originalType==="regular"?"정규수업":"집중수업";
+              return(
+                <button onClick={()=>{
+                  const spOnDate=specialSchedules.find(s=>s.date===newSp.date);
+                  if(spOnDate) setSpecialSchedules(p=>p.filter(s=>s.date!==newSp.date));
+                  setOriginalType(null);
+                  // 삭제 후 → 슬롯 전부 비활성, 유형 선택 없는 상태
+                  const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
+                  setNewSp(f=>({...f,type:"regular",activeSlots:[],customTimes:regularTimes,label:"",feeNote:""}));
+                }} style={{background:"#f5eeee",color:"#c97474",border:"none",borderRadius:8,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:FONT,fontWeight:700,marginBottom:12,width:"100%"}}>
+                  🗑️ 이 날 {typeLabel} 삭제
+                </button>
+              );
+            })()}
+            <div style={S.modalBtns}><button style={S.cancelBtn} onClick={()=>closeSpecialMgr()}>취소</button><button style={{...S.saveBtn,opacity:(newSp.type==="regular"||newSp.label)?1:0.5}} onClick={addSpecial} disabled={newSp.type!=="regular"&&!newSp.label}>저장</button></div>
           </div>
         </div>
       )}
