@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, createContext, useContext } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, createContext, useContext } from "react";
 
 function debounce(fn, delay){
   let timer;
@@ -1552,11 +1552,24 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
           )}
           {isFuture&&isOpen&&(
             <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
-              <span style={{fontSize:24,flexShrink:0}}>🎉</span>
+              <span style={{fontSize:24,flexShrink:0}}>🍀</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>{special.label}</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>🍀오픈클래스</div>
+                <div style={{fontSize:12,color:"#3a6a3a",marginTop:2}}>{special.label}</div>
                 {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:3}}>{special.feeNote}</div>}
                 <div style={{fontSize:11,color:"#a08030",marginTop:3}}>오픈클래스 — 횟수 차감 없이 참여 가능해요</div>
+                {special.dailyNote&&<div style={{fontSize:12,color:"#7a5a00",marginTop:4,whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+              </div>
+            </div>
+          )}
+          {isFuture&&isSpecial&&special.type==="special"&&(
+            <div style={{background:"linear-gradient(135deg,#f0f0ff,#e8e8fc)",border:"1.5px solid #a0a0e0",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+              <span style={{fontSize:24,flexShrink:0}}>⚡️</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#3050b0"}}>⚡️집중수련</div>
+                <div style={{fontSize:12,color:"#4a4a9a",marginTop:2}}>{special.label}</div>
+                {special.feeNote&&<div style={{fontSize:12,color:"#5a5ab0",marginTop:3}}>{special.feeNote}</div>}
+                {special.dailyNote&&<div style={{fontSize:12,color:"#4a4a8a",marginTop:4,whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
               </div>
             </div>
           )}
@@ -2035,6 +2048,16 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
     const nid=Math.max(...specialSchedules.map(s=>s.id),0)+1;
     const label=newSp.label||(newSp.type==="regular"?"정규수업":"");
     setSpecialSchedules(p=>[...p.filter(s=>s.date!==newSp.date),{...newSp,label,id:nid}]);
+    if((newSp.type==="special"||newSp.type==="open")&&newSp.dailyNote!=null){
+      const typePrefix=newSp.type==="open"?"🍀오픈클래스":"⚡️집중수련";
+      const noticeId=Math.max(...(notices||[]).map(n=>n.id),0)+1;
+      const noticeContent=newSp.dailyNote?`${typePrefix}\n${newSp.dailyNote}`:typePrefix;
+      setNotices(p=>[{id:noticeId,title:`📢 ${fmt(newSp.date)} ${label} 공지`,content:noticeContent,pinned:true,createdAt:TODAY_STR},...(p||[])]);
+    }
+    if(newSp.type==="regular"&&newSp.dailyNote!=null&&newSp.dailyNote!==""){
+      const noticeId=Math.max(...(notices||[]).map(n=>n.id),0)+1;
+      setNotices(p=>[{id:noticeId,title:`📢 ${fmt(newSp.date)} 공지`,content:newSp.dailyNote,pinned:false,createdAt:TODAY_STR},...(p||[])]);
+    }
     closeSpecialMgr();
   }
   const toggleSp=sl=>setNewSp(f=>({...f,activeSlots:f.activeSlots.includes(sl)?f.activeSlots.filter(s=>s!==sl):[...f.activeSlots,sl]}));
@@ -2100,11 +2123,22 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
       )}
       {isOpen&&(
         <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
-          <span style={{fontSize:20,flexShrink:0}}>🎉</span>
+          <span style={{fontSize:20,flexShrink:0}}>🍀</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>{special.label} — 오픈클래스</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>🍀오픈클래스 — {special.label}</div>
             {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:2}}>{special.feeNote}</div>}
             <div style={{fontSize:11,color:"#a08030",marginTop:2}}>횟수 차감 없이 출석 처리됩니다</div>
+            {special.dailyNote&&<div style={{fontSize:12,color:"#7a5a00",marginTop:3,whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+          </div>
+        </div>
+      )}
+      {isSpecial&&special.type==="special"&&(
+        <div style={{background:"linear-gradient(135deg,#f0f0ff,#e8e8fc)",border:"1.5px solid #a0a0e0",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+          <span style={{fontSize:20,flexShrink:0}}>⚡️</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#3050b0"}}>⚡️집중수련 — {special.label}</div>
+            {special.feeNote&&<div style={{fontSize:12,color:"#5a5ab0",marginTop:2}}>{special.feeNote}</div>}
+            {special.dailyNote&&<div style={{fontSize:12,color:"#4a4a8a",marginTop:3,whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
           </div>
         </div>
       )}
@@ -2497,7 +2531,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                   {TIME_SLOTS.map(sl=>{
                     const on=newSp.activeSlots.includes(sl.key);
                     const defTime={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"}[sl.key]||sl.time;
-                    const curTime=newSp.customTimes[sl.key]||defTime;
+                    const curTime=newSp.customTimes[sl.key]!=null?newSp.customTimes[sl.key]:defTime;
                     const isChanged=on&&newSp.type==="regular"&&defTime&&curTime!==defTime;
                     return(
                       <div key={sl.key} style={{border:`1.5px solid ${on?sl.color:"#e0d8cc"}`,borderRadius:10,padding:"8px 12px",background:on?sl.bg:"#faf8f5",cursor:"pointer",display:"flex",alignItems:"center",gap:8}} onClick={()=>toggleSp(sl.key)}>
@@ -3246,16 +3280,16 @@ function AdminLoginPage({onLogin,onGoMember}){
   );
 }
 
-const STORE_KEY = "yogapian_v3";
+const STORE_KEY = "yogapian_v4";
 const AUTO_LOGIN_KEY = "yogapian_autologin";
-const SHARED = true;
+const SHARED = false; // false = 개인 스토리지 (배포 갱신해도 데이터 유지)
 
-async function storeSave(key, data) {
-  try { await window.storage.set(key, JSON.stringify(data), SHARED); } catch(e){ console.warn("storage save:", e); }
+async function storeSave(key, data, shared=SHARED) {
+  try { await window.storage.set(key, JSON.stringify(data), shared); } catch(e){ console.warn("storage save:", e); }
 }
-async function storeLoad(key) {
+async function storeLoad(key, shared=SHARED) {
   try {
-    const r = await window.storage.get(key, SHARED);
+    const r = await window.storage.get(key, shared);
     return r ? JSON.parse(r.value) : null;
   } catch(e){ return null; }
 }
@@ -3312,12 +3346,17 @@ export default function App(){
     []
   );
 
-  // Refs to access latest state in callbacks
-  const membersRef = useMemo(()=>({current:members}),[members]);
-  const bookingsRef = useMemo(()=>({current:bookings}),[bookings]);
-  const noticesRef = useMemo(()=>({current:notices}),[notices]);
-  const specialsRef = useMemo(()=>({current:specialSchedules}),[specialSchedules]);
-  const closuresRef = useMemo(()=>({current:closures}),[closures]);
+  // Refs to access latest state in callbacks (useRef로 항상 최신값 유지)
+  const membersRef = useRef(members);
+  const bookingsRef = useRef(bookings);
+  const noticesRef = useRef(notices);
+  const specialsRef = useRef(specialSchedules);
+  const closuresRef = useRef(closures);
+  membersRef.current = members;
+  bookingsRef.current = bookings;
+  noticesRef.current = notices;
+  specialsRef.current = specialSchedules;
+  closuresRef.current = closures;
 
   const setMembers = useCallback((updater) => {
     setMembersState(prev => {
