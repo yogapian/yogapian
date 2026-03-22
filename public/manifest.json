@@ -1,0 +1,19 @@
+{
+  "name": "요가피안 — 상암동 하타요가원",
+  "short_name": "요가피안",
+  "description": "요가를 통해 자유로워지는 시간",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0f0a",
+  "theme_color": "#0a0f0a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
