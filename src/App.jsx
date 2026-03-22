@@ -1,9 +1,12 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, createContext, useContext } from "react";
 
 function debounce(fn, delay){
   let timer;
   return (...args)=>{ clearTimeout(timer); timer=setTimeout(()=>fn(...args), delay); };
 }
+
+const ClosuresContext = createContext([]);
+const useClosures = () => useContext(ClosuresContext);
 
 const SLOT_LIMIT = 10;
 const SCHEDULE = {0:[],1:["dawn","morning","lunch","evening"],2:["lunch","evening"],3:["dawn","morning","lunch","evening"],4:["lunch","evening"],5:["dawn","morning","evening"],6:[]};
@@ -26,8 +29,32 @@ const parseLocal=s=>{if(!s)return TODAY;const[y,m,d]=s.split("-").map(Number);re
 const fmt=d=>{const dt=parseLocal(d);return`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,"0")}.${String(dt.getDate()).padStart(2,"0")}`;};
 const fmtWithDow=d=>`${fmt(d)} (${DOW_KO[parseLocal(d).getDay()]})`;
 const addDays=(s,n)=>{const d=parseLocal(s);d.setDate(d.getDate()+n);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
-const calcDL=(m)=>{const e=parseLocal(addDays(m.endDate,(m.extensionDays||0)+(m.holdingDays||0)));return Math.ceil((e-TODAY)/86400000);};
-const effEnd=(m)=>addDays(m.endDate,(m.extensionDays||0)+(m.holdingDays||0));
+// 3개월권: 휴강 반영 실제 종료일 (60평일 카운트)
+// 홀딩 중인 기간은 카운트에서 제외 (홀딩 startDate까지만 카운트 후 복귀 후 이어서)
+// 3개월권 60평일 기준 종료일 (휴강 반영, extensionDays 제외 - 순수 60평일)
+// 3개월권 휴강 연장일수: startDate~endDate 사이 전체휴강 평일수
+function getClosureExtDays(m, closures=[]) {
+  // closureType: regular=연장없음, regular_ext/special=extensionOverride만큼 연장
+  let total = 0;
+  for(const cl of closures) {
+    if(cl.timeSlot) continue; // 전체휴강만
+    if(cl.date < m.startDate || cl.date > m.endDate) continue; // 기간 밖
+    const ov = cl.extensionOverride;
+    if(!ov) continue; // 0 또는 falsy → 연장없음
+    total += ov;
+  }
+  return total;
+}
+
+const calcDL=(m, closures=[])=>{
+  const e = parseLocal(effEnd(m, closures));
+  return Math.ceil((e-TODAY)/86400000);
+};
+const effEnd=(m, closures=[])=>{
+  const closureExt = getClosureExtDays(m, closures);
+  const total = closureExt + (m.extensionDays||0) + (m.holdingDays||0);
+  return total > 0 ? addDays(m.endDate, total) : m.endDate;
+};
 function wdInMonth(y,mo){let c=0,days=new Date(y,mo+1,0).getDate();for(let d=1;d<=days;d++){const w=new Date(y,mo,d).getDay();if(w&&w!==6)c++;}return c;}
 function countWorkdays(s,e){let c=0,cur=parseLocal(s),end=parseLocal(e);while(cur<=end){const d=cur.getDay();if(d&&d!==6)c++;cur.setDate(cur.getDate()+1);}return c;}
 
@@ -67,14 +94,10 @@ function usedAsOf(memberId, targetDate, bookings, members){
   return cnt;
 }
 
-const getStatus=m=>{
-  const dl=calcDL(m);
+const getStatus=(m, closures=[])=>{
+  const dl=calcDL(m, closures);
   if(m.holding)return"hold";
-  // 종료일 지나면 무조건 OFF (#2)
   if(dl<0)return"off";
-  const rem=m.total-m.used;
-  // 잔여 0이어도 종료일 남아있으면 ON (#4) — 재등록 가능성
-  // 잔여 음수는 불가 (0으로 처리)
   return"on";
 };
 const SC={on:{label:"ON",bg:"#e8f0e8",color:"#2e6e44",dot:"#3d8a55"},off:{label:"OFF",bg:"#f5eeee",color:"#8e3030",dot:"#c97474"},hold:{label:"HOLD",bg:"#edf0f8",color:"#3d5494",dot:"#6a7fc8"}};
@@ -94,65 +117,64 @@ const INIT_NOTICES=[
 ];
 
 const INIT_MEMBERS=[
-  {id:1,gender:"F",name:"김미림",adminNickname:"",adminNote:"",phone4:"7571",firstDate:"2026-03-09",memberType:"1month",isNew:true,total:6,used:3,startDate:"2026-03-09",endDate:"2026-04-13",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-03-09",endDate:"2026-04-13",memberType:"1month",total:6,payment:""}]},
-  {id:2,gender:"F",name:"황지민",adminNickname:"",adminNote:"",phone4:"7571",firstDate:"2026-03-09",memberType:"1month",isNew:true,total:6,used:3,startDate:"2026-03-09",endDate:"2026-04-13",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-03-09",endDate:"2026-04-13",memberType:"1month",total:6,payment:""}]},
-  {id:3,gender:"M",name:"김건태",adminNickname:"",adminNote:"",phone4:"5224",firstDate:"2026-01-26",memberType:"3month",isNew:false,total:24,used:13,startDate:"2026-01-26",endDate:"2026-04-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-26",endDate:"2026-04-28",memberType:"3month",total:24,payment:"3개월,카드"}]},
-  {id:4,gender:"F",name:"최지혜",adminNickname:"",adminNote:"",phone4:"0520",firstDate:"2026-01-26",memberType:"3month",isNew:false,total:24,used:13,startDate:"2026-01-26",endDate:"2026-04-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-26",endDate:"2026-04-28",memberType:"3month",total:24,payment:"3개월,카드"}]},
+  {id:1,gender:"F",name:"김미림",adminNickname:"",adminNote:"",phone4:"7571",firstDate:"2026-03-09",memberType:"1month",isNew:true,total:6,used:3,startDate:"2026-03-09",endDate:"2026-04-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-03-09",endDate:"2026-04-28",memberType:"1month",total:6,payment:""}]},
+  {id:2,gender:"F",name:"황지민",adminNickname:"",adminNote:"",phone4:"7571",firstDate:"2026-03-09",memberType:"1month",isNew:true,total:6,used:3,startDate:"2026-03-09",endDate:"2026-04-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-03-09",endDate:"2026-04-13",memberType:"1month",total:6,payment:""}]},
+  {id:3,gender:"M",name:"김건태",adminNickname:"",adminNote:"",phone4:"5224",firstDate:"2026-01-26",memberType:"3month",isNew:false,total:24,used:13,startDate:"2026-01-26",endDate:"2026-04-26",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-26",endDate:"2026-04-26",memberType:"3month",total:24,payment:"3개월,카드"}]},
+  {id:4,gender:"F",name:"최지혜",adminNickname:"",adminNote:"",phone4:"0520",firstDate:"2026-01-26",memberType:"3month",isNew:false,total:24,used:13,startDate:"2026-01-26",endDate:"2026-04-26",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-26",endDate:"2026-04-26",memberType:"3month",total:24,payment:"3개월,카드"}]},
   {id:5,gender:"F",name:"김윤진",adminNickname:"",adminNote:"",phone4:"2272",firstDate:"2025-07-07",memberType:"3month",isNew:false,total:36,used:6,startDate:"2026-03-02",endDate:"2026-06-02",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-07-01",endDate:"2025-07-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2025-08-01",endDate:"2025-08-31",memberType:"1month",total:12,payment:"카드"},{id:3,startDate:"2025-09-01",endDate:"2025-09-30",memberType:"1month",total:12,payment:"카드"},{id:4,startDate:"2026-01-02",endDate:"2026-01-31",memberType:"1month",total:12,payment:"네이버"},{id:5,startDate:"2026-03-02",endDate:"2026-06-02",memberType:"3month",total:36,payment:"3개월,카드"}]},
-  {id:6,gender:"F",name:"김현지",adminNickname:"1호/저녁반",adminNote:"",phone4:"0425",firstDate:"2025-06-16",memberType:"1month",isNew:false,total:10,used:7,startDate:"2026-03-03",endDate:"2026-04-07",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-06-16",endDate:"2025-07-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2025-08-01",endDate:"2025-08-31",memberType:"1month",total:12,payment:"카드"},{id:3,startDate:"2025-09-01",endDate:"2025-09-30",memberType:"1month",total:8,payment:"카드"},{id:4,startDate:"2025-10-01",endDate:"2025-10-31",memberType:"1month",total:4,payment:"카드"},{id:5,startDate:"2025-11-01",endDate:"2025-11-30",memberType:"1month",total:6,payment:"카드"},{id:6,startDate:"2025-12-01",endDate:"2025-12-31",memberType:"1month",total:10,payment:"카드"},{id:7,startDate:"2026-01-02",endDate:"2026-01-31",memberType:"1month",total:10,payment:"카드"},{id:8,startDate:"2026-02-03",endDate:"2026-02-28",memberType:"1month",total:10,payment:"카드"},{id:9,startDate:"2026-03-03",endDate:"2026-04-07",memberType:"1month",total:10,payment:"카드"}]},
-  {id:7,gender:"F",name:"김현지",adminNickname:"2호/트레이너",adminNote:"",phone4:"2486",firstDate:"2026-02-02",memberType:"3month",isNew:false,total:30,used:2,startDate:"2026-03-12",endDate:"2026-06-12",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-02-02",endDate:"2026-03-09",memberType:"1month",total:12,payment:""},{id:2,startDate:"2026-03-12",endDate:"2026-06-12",memberType:"3month",total:30,payment:"카드"}]},
+  {id:6,gender:"F",name:"김현지",adminNickname:"1호/저녁반",adminNote:"",phone4:"0425",firstDate:"2025-06-16",memberType:"1month",isNew:false,total:10,used:7,startDate:"2026-03-03",endDate:"2026-03-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-06-16",endDate:"2025-07-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2025-08-01",endDate:"2025-08-31",memberType:"1month",total:12,payment:"카드"},{id:3,startDate:"2025-09-01",endDate:"2025-09-30",memberType:"1month",total:8,payment:"카드"},{id:4,startDate:"2025-10-01",endDate:"2025-10-31",memberType:"1month",total:4,payment:"카드"},{id:5,startDate:"2025-11-01",endDate:"2025-11-30",memberType:"1month",total:6,payment:"카드"},{id:6,startDate:"2025-12-01",endDate:"2025-12-31",memberType:"1month",total:10,payment:"카드"},{id:7,startDate:"2026-01-02",endDate:"2026-01-31",memberType:"1month",total:10,payment:"카드"},{id:8,startDate:"2026-02-03",endDate:"2026-02-28",memberType:"1month",total:10,payment:"카드"},{id:9,startDate:"2026-03-03",endDate:"2026-03-28",memberType:"1month",total:10,payment:"카드"}]},
+  {id:7,gender:"F",name:"김현지",adminNickname:"2호/트레이너",adminNote:"",phone4:"2486",firstDate:"2026-02-02",memberType:"3month",isNew:false,total:30,used:3,startDate:"2026-03-12",endDate:"2026-06-12",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-02-02",endDate:"2026-03-09",memberType:"1month",total:12,payment:""},{id:2,startDate:"2026-03-12",endDate:"2026-06-12",memberType:"3month",total:30,payment:"카드"}]},
   {id:8,gender:"F",name:"김현지",adminNickname:"3호/새벽반",adminNote:"",phone4:"0046",firstDate:"2026-03-13",memberType:"3month",isNew:true,total:30,used:4,startDate:"2026-03-09",endDate:"2026-06-09",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-03-09",endDate:"2026-06-09",memberType:"3month",total:30,payment:""}]},
-  {id:9,gender:"F",name:"박소연",adminNickname:"",adminNote:"",phone4:"3217",firstDate:"2025-12-15",memberType:"3month",isNew:false,total:24,used:10,startDate:"2026-02-04",endDate:"2026-05-07",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-15",endDate:"2026-01-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2026-02-04",endDate:"2026-05-07",memberType:"3month",total:24,payment:"카드"}]},
-  {id:10,gender:"F",name:"박주희",adminNickname:"",adminNote:"",phone4:"4872",firstDate:"2025-11-25",memberType:"1month",isNew:false,total:8,used:6,startDate:"2026-03-03",endDate:"2026-04-07",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-25",endDate:"2025-12-31",memberType:"1month",total:12,payment:"현금"},{id:2,startDate:"2026-01-07",endDate:"2026-01-31",memberType:"1month",total:8,payment:"네이버"},{id:3,startDate:"2026-02-02",endDate:"2026-02-28",memberType:"1month",total:7,payment:"네이버"},{id:4,startDate:"2026-03-03",endDate:"2026-04-07",memberType:"1month",total:8,payment:""}]},
-  {id:11,gender:"F",name:"손하윤",adminNickname:"",adminNote:"",phone4:"4929",firstDate:"2026-03-04",memberType:"1month",isNew:true,total:8,used:6,startDate:"2026-03-04",endDate:"2026-04-08",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-03-04",endDate:"2026-04-08",memberType:"1month",total:8,payment:""}]},
-  {id:12,gender:"M",name:"유태균",adminNickname:"",adminNote:"",phone4:"7360",firstDate:"2026-01-02",memberType:"3month",isNew:false,total:18,used:15,startDate:"2026-01-02",endDate:"2026-04-04",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-02",endDate:"2026-04-04",memberType:"3month",total:18,payment:"3개월,카드"}]},
-  {id:13,gender:"F",name:"조진선",adminNickname:"",adminNote:"",phone4:"3508",firstDate:"2025-09-08",memberType:"3month",isNew:false,total:30,used:24,startDate:"2026-01-02",endDate:"2026-04-04",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-09-08",endDate:"2025-09-30",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-10-01",endDate:"2025-10-31",memberType:"1month",total:8,payment:"카드"},{id:3,startDate:"2025-11-01",endDate:"2025-11-30",memberType:"1month",total:8,payment:"카드"},{id:4,startDate:"2025-12-01",endDate:"2025-12-31",memberType:"1month",total:12,payment:"카드"},{id:5,startDate:"2026-01-02",endDate:"2026-04-04",memberType:"3month",total:30,payment:"3개월,카드"}]},
-  {id:14,gender:"M",name:"윤상섭",adminNickname:"",adminNote:"",phone4:"6937",firstDate:"2025-12-23",memberType:"3month",isNew:false,total:36,used:19,startDate:"2026-01-27",endDate:"2026-04-29",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-23",endDate:"2026-01-26",memberType:"1month",total:12,payment:"현금"},{id:2,startDate:"2026-01-27",endDate:"2026-04-29",memberType:"3month",total:36,payment:"현금"}]},
-  {id:15,gender:"F",name:"정순주",adminNickname:"",adminNote:"",phone4:"4348",firstDate:"2025-12-23",memberType:"3month",isNew:false,total:24,used:16,startDate:"2026-01-26",endDate:"2026-04-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-23",endDate:"2026-01-25",memberType:"1month",total:13,payment:"현금"},{id:2,startDate:"2026-01-26",endDate:"2026-04-28",memberType:"3month",total:24,payment:"현금"}]},
-  {id:16,gender:"F",name:"이민지",adminNickname:"",adminNote:"",phone4:"9034",firstDate:"2026-02-20",memberType:"1month",isNew:true,total:8,used:8,startDate:"2026-02-20",endDate:"2026-03-27",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-02-20",endDate:"2026-03-27",memberType:"1month",total:8,payment:"네이버"}]},
-  {id:17,gender:"F",name:"이예인",adminNickname:"",adminNote:"",phone4:"9791",firstDate:"2025-12-10",memberType:"3month",isNew:false,total:24,used:11,startDate:"2026-01-06",endDate:"2026-04-08",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-10",endDate:"2025-12-31",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2026-01-06",endDate:"2026-04-08",memberType:"3month",total:24,payment:"3개월,카드"}]},
-  {id:18,gender:"F",name:"임선영",adminNickname:"",adminNote:"",phone4:"5863",firstDate:"2025-11-25",memberType:"3month",isNew:false,total:24,used:15,startDate:"2026-01-05",endDate:"2026-04-07",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-25",endDate:"2025-12-31",memberType:"1month",total:8,payment:"현금"},{id:2,startDate:"2026-01-05",endDate:"2026-04-07",memberType:"3month",total:24,payment:"3개월,카드"}]},
+  {id:9,gender:"F",name:"박소연",adminNickname:"",adminNote:"",phone4:"3217",firstDate:"2025-12-15",memberType:"3month",isNew:false,total:24,used:10,startDate:"2026-02-04",endDate:"2026-05-04",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-15",endDate:"2026-01-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2026-02-04",endDate:"2026-05-04",memberType:"3month",total:24,payment:"카드"}]},
+  {id:10,gender:"F",name:"박주희",adminNickname:"",adminNote:"",phone4:"4872",firstDate:"2025-11-25",memberType:"1month",isNew:false,total:8,used:6,startDate:"2026-03-03",endDate:"2026-03-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-25",endDate:"2025-12-31",memberType:"1month",total:12,payment:"현금"},{id:2,startDate:"2026-01-07",endDate:"2026-01-31",memberType:"1month",total:8,payment:"네이버"},{id:3,startDate:"2026-02-02",endDate:"2026-02-28",memberType:"1month",total:7,payment:"네이버"},{id:4,startDate:"2026-03-03",endDate:"2026-04-07",memberType:"1month",total:8,payment:""}]},
+  {id:11,gender:"F",name:"손하윤",adminNickname:"",adminNote:"",phone4:"4929",firstDate:"2026-03-04",memberType:"1month",isNew:true,total:8,used:6,startDate:"2026-03-04",endDate:"2026-03-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-03-04",endDate:"2026-04-08",memberType:"1month",total:8,payment:""}]},
+  {id:12,gender:"M",name:"유태균",adminNickname:"",adminNote:"",phone4:"7360",firstDate:"2026-01-02",memberType:"3month",isNew:false,total:18,used:15,startDate:"2026-01-02",endDate:"2026-04-02",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-02",endDate:"2026-04-02",memberType:"3month",total:18,payment:"3개월,카드"}]},
+  {id:13,gender:"F",name:"조진선",adminNickname:"",adminNote:"",phone4:"3508",firstDate:"2025-09-08",memberType:"3month",isNew:false,total:30,used:24,startDate:"2026-01-02",endDate:"2026-04-02",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-09-08",endDate:"2025-09-30",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-10-01",endDate:"2025-10-31",memberType:"1month",total:8,payment:"카드"},{id:3,startDate:"2025-11-01",endDate:"2025-11-30",memberType:"1month",total:8,payment:"카드"},{id:4,startDate:"2025-12-01",endDate:"2025-12-31",memberType:"1month",total:12,payment:"카드"},{id:5,startDate:"2026-01-02",endDate:"2026-04-02",memberType:"3month",total:30,payment:"3개월,카드"}]},
+  {id:14,gender:"M",name:"윤상섭",adminNickname:"",adminNote:"",phone4:"6937",firstDate:"2025-12-23",memberType:"3month",isNew:false,total:36,used:19,startDate:"2026-01-27",endDate:"2026-04-27",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-23",endDate:"2026-01-26",memberType:"1month",total:12,payment:"현금"},{id:2,startDate:"2026-01-27",endDate:"2026-04-27",memberType:"3month",total:36,payment:"현금"}]},
+  {id:15,gender:"F",name:"정순주",adminNickname:"",adminNote:"",phone4:"4348",firstDate:"2025-12-23",memberType:"3month",isNew:false,total:24,used:16,startDate:"2026-01-26",endDate:"2026-04-26",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-23",endDate:"2026-01-25",memberType:"1month",total:8,payment:"현금"},{id:2,startDate:"2026-01-26",endDate:"2026-04-26",memberType:"3month",total:24,payment:"현금"}]},
+  {id:16,gender:"F",name:"이민지",adminNickname:"",adminNote:"",phone4:"9034",firstDate:"2026-02-20",memberType:"1month",isNew:true,total:8,used:8,startDate:"2026-02-20",endDate:"2026-03-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-02-20",endDate:"2026-03-27",memberType:"1month",total:8,payment:"네이버"}]},
+  {id:17,gender:"F",name:"이예인",adminNickname:"",adminNote:"",phone4:"9791",firstDate:"2025-12-10",memberType:"3month",isNew:false,total:24,used:11,startDate:"2026-01-06",endDate:"2026-04-06",extensionDays:10,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-10",endDate:"2025-12-31",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2026-01-06",endDate:"2026-04-06",memberType:"3month",total:24,payment:"3개월,카드"}]},
+  {id:18,gender:"F",name:"임선영",adminNickname:"",adminNote:"",phone4:"5863",firstDate:"2025-11-25",memberType:"3month",isNew:false,total:24,used:15,startDate:"2026-01-05",endDate:"2026-04-05",extensionDays:0,holdingDays:0,holding:{startDate:"2026-03-05",endDate:null,workdays:0},renewalHistory:[{id:1,startDate:"2025-11-25",endDate:"2025-12-31",memberType:"1month",total:8,payment:"현금"},{id:2,startDate:"2026-01-05",endDate:"2026-04-05",memberType:"3month",total:24,payment:"3개월,카드"}]},
   {id:19,gender:"F",name:"장미순",adminNickname:"",adminNote:"",phone4:"7853",firstDate:"2026-02-02",memberType:"3month",isNew:false,total:18,used:3,startDate:"2026-03-02",endDate:"2026-06-02",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-02-02",endDate:"2026-02-28",memberType:"1month",total:8,payment:""},{id:2,startDate:"2026-03-02",endDate:"2026-06-02",memberType:"3month",total:18,payment:"카드"}]},
   {id:20,gender:"F",name:"조성경",adminNickname:"",adminNote:"",phone4:"8966",firstDate:"2025-12-12",memberType:"3month",isNew:false,total:24,used:5,startDate:"2026-03-04",endDate:"2026-06-04",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-12",endDate:"2025-12-31",memberType:"1month",total:10,payment:"카드"},{id:2,startDate:"2026-03-04",endDate:"2026-06-04",memberType:"3month",total:24,payment:"3개월,카드"}]},
-  {id:21,gender:"F",name:"조수현",adminNickname:"",adminNote:"",phone4:"1193",firstDate:"2025-11-13",memberType:"3month",isNew:false,total:30,used:19,startDate:"2026-01-05",endDate:"2026-04-07",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-13",endDate:"2025-12-31",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2026-01-05",endDate:"2026-04-07",memberType:"3month",total:30,payment:"3개월,카드"}]},
-  {id:22,gender:"M",name:"최내권",adminNickname:"",adminNote:"",phone4:"4597",firstDate:"2026-02-25",memberType:"3month",isNew:true,total:24,used:5,startDate:"2026-02-25",endDate:"2026-05-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-02-25",endDate:"2026-05-28",memberType:"3month",total:24,payment:"카드"}]},
-  {id:23,gender:"F",name:"최지영",adminNickname:"",adminNote:"",phone4:"0484",firstDate:"2025-12-29",memberType:"3month",isNew:false,total:36,used:31,startDate:"2026-01-21",endDate:"2026-04-23",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-29",endDate:"2025-12-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2026-01-02",endDate:"2026-01-20",memberType:"1month",total:10,payment:"카드"},{id:3,startDate:"2026-01-21",endDate:"2026-04-23",memberType:"3month",total:36,payment:"3개월,카드"}]},
+  {id:21,gender:"F",name:"조수현",adminNickname:"",adminNote:"",phone4:"1193",firstDate:"2025-11-13",memberType:"3month",isNew:false,total:30,used:19,startDate:"2026-01-05",endDate:"2026-04-05",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-13",endDate:"2025-11-30",memberType:"1month",total:4,payment:"카드"},{id:2,startDate:"2025-11-27",endDate:"2025-12-30",memberType:"1month",total:8,payment:"카드"},{id:3,startDate:"2026-01-05",endDate:"2026-04-05",memberType:"3month",total:30,payment:"3개월,카드"}]},
+  {id:22,gender:"M",name:"최내권",adminNickname:"",adminNote:"",phone4:"4597",firstDate:"2026-02-25",memberType:"3month",isNew:true,total:24,used:5,startDate:"2026-02-25",endDate:"2026-05-25",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-02-25",endDate:"2026-05-25",memberType:"3month",total:24,payment:"카드"}]},
+  {id:23,gender:"F",name:"최지영",adminNickname:"",adminNote:"",phone4:"0484",firstDate:"2025-12-29",memberType:"3month",isNew:false,total:36,used:31,startDate:"2026-01-21",endDate:"2026-04-21",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-29",endDate:"2025-12-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2026-01-02",endDate:"2026-01-20",memberType:"1month",total:10,payment:"카드"},{id:3,startDate:"2026-01-21",endDate:"2026-04-21",memberType:"3month",total:36,payment:"3개월,카드"}]},
   {id:24,gender:"F",name:"하지원",adminNickname:"",adminNote:"",phone4:"1023",firstDate:"2026-03-02",memberType:"3month",isNew:true,total:12,used:1,startDate:"2026-03-02",endDate:"2026-06-02",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-03-02",endDate:"2026-06-02",memberType:"3month",total:12,payment:"3개월,카드"}]},
-  {id:25,gender:"F",name:"한소리",adminNickname:"",adminNote:"",phone4:"9488",firstDate:"2025-05-22",memberType:"3month",isNew:false,total:24,used:22,startDate:"2026-01-05",endDate:"2026-04-07",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-05-22",endDate:"2025-06-30",memberType:"1month",total:4,payment:"카드"},{id:2,startDate:"2025-07-01",endDate:"2025-07-31",memberType:"1month",total:4,payment:"카드"},{id:3,startDate:"2025-08-01",endDate:"2025-08-31",memberType:"1month",total:4,payment:"카드"},{id:4,startDate:"2025-09-01",endDate:"2025-09-30",memberType:"1month",total:4,payment:"카드"},{id:5,startDate:"2025-10-01",endDate:"2025-10-31",memberType:"1month",total:8,payment:"현금"},{id:6,startDate:"2025-11-01",endDate:"2025-11-30",memberType:"1month",total:4,payment:"현금"},{id:7,startDate:"2025-12-01",endDate:"2025-12-31",memberType:"1month",total:8,payment:"현금"},{id:8,startDate:"2026-01-05",endDate:"2026-04-07",memberType:"3month",total:24,payment:"카드"}]},
+  {id:25,gender:"F",name:"한소리",adminNickname:"",adminNote:"",phone4:"9488",firstDate:"2025-05-22",memberType:"3month",isNew:false,total:24,used:22,startDate:"2026-01-05",endDate:"2026-04-05",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-05-22",endDate:"2025-06-04",memberType:"1month",total:4,payment:"카드"},{id:2,startDate:"2025-06-09",endDate:"2025-06-30",memberType:"1month",total:4,payment:"카드"},{id:3,startDate:"2025-07-01",endDate:"2025-07-31",memberType:"1month",total:4,payment:"카드"},{id:4,startDate:"2025-08-01",endDate:"2025-08-31",memberType:"1month",total:4,payment:"카드"},{id:5,startDate:"2025-09-01",endDate:"2025-09-30",memberType:"1month",total:4,payment:"카드"},{id:6,startDate:"2025-10-01",endDate:"2025-10-31",memberType:"1month",total:8,payment:"현금"},{id:7,startDate:"2025-11-01",endDate:"2025-11-30",memberType:"1month",total:4,payment:"현금"},{id:8,startDate:"2025-12-01",endDate:"2025-12-31",memberType:"1month",total:8,payment:"현금"},{id:9,startDate:"2026-01-05",endDate:"2026-04-05",memberType:"3month",total:24,payment:"카드"}]},
   {id:26,gender:"F",name:"박차오름",adminNickname:"",adminNote:"",phone4:"1303",firstDate:"2025-12-10",memberType:"3month",isNew:false,total:24,used:2,startDate:"2026-03-17",endDate:"2026-06-17",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-10",endDate:"2026-01-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2026-03-17",endDate:"2026-06-17",memberType:"3month",total:24,payment:"카드"}]},
-  {id:27,gender:"F",name:"김수민",adminNickname:"",adminNote:"",phone4:"7524",firstDate:"2026-03-20",memberType:"3month",isNew:true,total:24,used:0,startDate:"2026-01-26",endDate:"2026-04-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-26",endDate:"2026-04-28",memberType:"3month",total:24,payment:"카드"}]},
-  {id:28,gender:"F",name:"박수지",adminNickname:"",adminNote:"",phone4:"9587",firstDate:"2026-02-04",memberType:"1month",isNew:false,total:4,used:1,startDate:"2026-03-19",endDate:"2026-04-23",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-02-04",endDate:"2026-02-28",memberType:"1month",total:4,payment:"네이버"},{id:2,startDate:"2026-03-19",endDate:"2026-04-23",memberType:"1month",total:4,payment:""}]},
-  {id:29,gender:"F",name:"윤자경",adminNickname:"",adminNote:"",phone4:"9176",firstDate:"2026-03-20",memberType:"1month",isNew:true,total:15,used:1,startDate:"2026-03-20",endDate:"2026-04-24",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-03-20",endDate:"2026-04-24",memberType:"1month",total:15,payment:"네이버"}]},
+  {id:27,gender:"F",name:"김수민",adminNickname:"",adminNote:"",phone4:"7524",firstDate:"2026-03-20",memberType:"3month",isNew:true,total:24,used:0,startDate:"2026-01-26",endDate:"2026-04-26",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-26",endDate:"2026-04-26",memberType:"3month",total:24,payment:"카드"}]},
+  {id:28,gender:"F",name:"박수지",adminNickname:"",adminNote:"",phone4:"9587",firstDate:"2026-02-04",memberType:"1month",isNew:false,total:4,used:1,startDate:"2026-03-19",endDate:"2026-04-19",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-02-04",endDate:"2026-02-28",memberType:"1month",total:4,payment:"네이버"},{id:2,startDate:"2026-03-19",endDate:"2026-04-23",memberType:"1month",total:4,payment:""}]},
+  {id:29,gender:"F",name:"윤자경",adminNickname:"",adminNote:"",phone4:"9176",firstDate:"2026-03-20",memberType:"1month",isNew:true,total:15,used:1,startDate:"2026-03-20",endDate:"2026-04-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-03-20",endDate:"2026-04-24",memberType:"1month",total:15,payment:"네이버"}]},
   {id:30,gender:"F",name:"곽주혜",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2026-01-19",memberType:"1month",isNew:false,total:12,used:7,startDate:"2026-01-19",endDate:"2026-02-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-19",endDate:"2026-02-28",memberType:"1month",total:12,payment:"카드"}]},
-  {id:31,gender:"M",name:"김도형",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-12-08",memberType:"1month",isNew:false,total:5,used:3,startDate:"2025-12-08",endDate:"2026-01-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-08",endDate:"2026-01-31",memberType:"1month",total:5,payment:"카드"}]},
-  {id:32,gender:"F",name:"김래영",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-10-29",memberType:"1month",isNew:false,total:9,used:5,startDate:"2026-01-02",endDate:"2026-02-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-10-29",endDate:"2025-10-31",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-11-05",endDate:"2025-11-30",memberType:"1month",total:7,payment:"카드"},{id:3,startDate:"2025-12-08",endDate:"2025-12-31",memberType:"1month",total:6,payment:""},{id:4,startDate:"2026-01-02",endDate:"2026-02-28",memberType:"1month",total:9,payment:"카드"}]},
-  {id:33,gender:"F",name:"김민경",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-05-13",memberType:"1month",isNew:false,total:8,used:6,startDate:"2026-01-06",endDate:"2026-02-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-06",endDate:"2026-02-28",memberType:"1month",total:8,payment:"카드"}]},
+  {id:31,gender:"M",name:"김도형",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-12-08",memberType:"1month",isNew:false,total:5,used:3,startDate:"2025-12-08",endDate:"2025-12-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-08",endDate:"2025-12-30",memberType:"1month",total:5,payment:"카드"}]},
+  {id:32,gender:"F",name:"김래영",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-10-29",memberType:"1month",isNew:false,total:9,used:5,startDate:"2026-01-02",endDate:"2026-01-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-10-29",endDate:"2025-11-30",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-12-08",endDate:"2025-12-30",memberType:"1month",total:6,payment:""},{id:3,startDate:"2026-01-02",endDate:"2026-01-30",memberType:"1month",total:9,payment:"카드"}]},
+  {id:33,gender:"F",name:"김민경",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-05-13",memberType:"1month",isNew:false,total:8,used:6,startDate:"2026-01-06",endDate:"2026-01-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-06",endDate:"2026-01-30",memberType:"1month",total:8,payment:"카드"}]},
   {id:34,gender:"F",name:"김보라",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-14",memberType:"1month",isNew:false,total:8,used:8,startDate:"2025-10-02",endDate:"2025-11-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-07-03",endDate:"2025-07-31",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-08-05",endDate:"2025-08-31",memberType:"1month",total:9,payment:"카드"},{id:3,startDate:"2025-09-03",endDate:"2025-09-30",memberType:"1month",total:8,payment:"카드"},{id:4,startDate:"2025-10-02",endDate:"2025-11-30",memberType:"1month",total:8,payment:"카드"}]},
-  {id:35,gender:"F",name:"김성미",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-05-22",memberType:"1month",isNew:false,total:8,used:2,startDate:"2025-05-22",endDate:"2025-06-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-05-22",endDate:"2025-05-31",memberType:"1month",total:4,payment:"카드"},{id:2,startDate:"2025-06-01",endDate:"2025-06-30",memberType:"1month",total:8,payment:"카드"}]},
+  {id:35,gender:"F",name:"김성미",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-05-22",memberType:"1month",isNew:false,total:8,used:2,startDate:"2025-05-22",endDate:"2025-06-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-05-22",endDate:"2025-06-30",memberType:"1month",total:8,payment:"카드"}]},
   {id:36,gender:"F",name:"김승연",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-11-04",memberType:"1month",isNew:false,total:8,used:1,startDate:"2025-12-09",endDate:"2026-01-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-09",endDate:"2026-01-31",memberType:"1month",total:8,payment:"카드"}]},
-  {id:37,gender:"F",name:"김승지",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2026-01-05",memberType:"1month",isNew:false,total:10,used:5,startDate:"2026-01-05",endDate:"2026-02-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-09",endDate:"2026-01-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2026-01-05",endDate:"2026-02-28",memberType:"1month",total:10,payment:"카드"}]},
+  {id:37,gender:"F",name:"김승지",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-12-09",memberType:"1month",isNew:false,total:10,used:5,startDate:"2026-01-05",endDate:"2026-02-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-09",endDate:"2026-01-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2026-01-05",endDate:"2026-02-28",memberType:"1month",total:10,payment:"카드"}]},
   {id:38,gender:"F",name:"김인경",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-11-06",memberType:"1month",isNew:false,total:8,used:6,startDate:"2025-05-13",endDate:"2025-06-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-05-13",endDate:"2025-06-30",memberType:"1month",total:8,payment:"카드"}]},
-  {id:39,gender:"F",name:"김정효",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-09-08",memberType:"1month",isNew:false,total:8,used:6,startDate:"2025-08-04",endDate:"2025-09-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-06-02",endDate:"2025-06-30",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-07-03",endDate:"2025-07-31",memberType:"1month",total:8,payment:"카드"},{id:3,startDate:"2025-08-04",endDate:"2025-09-30",memberType:"1month",total:8,payment:"카드"}]},
-  {id:40,gender:"M",name:"김태우",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:11,used:4,startDate:"2026-01-05",endDate:"2026-02-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-19",endDate:"2026-01-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2026-01-05",endDate:"2026-02-28",memberType:"1month",total:11,payment:"카드"}]},
+  {id:39,gender:"F",name:"김정효",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-06-02",memberType:"1month",isNew:false,total:8,used:6,startDate:"2025-08-04",endDate:"2025-08-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-06-02",endDate:"2025-06-30",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-07-03",endDate:"2025-07-31",memberType:"1month",total:8,payment:"카드"},{id:3,startDate:"2025-08-04",endDate:"2025-08-30",memberType:"1month",total:8,payment:"카드"}]},
+  {id:40,gender:"M",name:"김태우",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-12-19",memberType:"1month",isNew:false,total:12,used:4,startDate:"2025-12-19",endDate:"2026-01-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-19",endDate:"2026-01-30",memberType:"1month",total:12,payment:"카드"}]},
   {id:41,gender:"F",name:"류현경",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:4,used:2,startDate:"2025-10-27",endDate:"2025-11-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-10-27",endDate:"2025-11-30",memberType:"1month",total:4,payment:"카드"}]},
-  {id:42,gender:"F",name:"문지예",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:7,used:2,startDate:"2026-01-05",endDate:"2026-02-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-17",endDate:"2026-01-31",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2026-01-05",endDate:"2026-02-28",memberType:"1month",total:7,payment:"카드"}]},
-  {id:43,gender:"F",name:"박수인",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-11-06",memberType:"1month",isNew:false,total:7,used:5,startDate:"2025-12-10",endDate:"2026-01-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-27",endDate:"2025-12-31",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-12-10",endDate:"2026-01-31",memberType:"1month",total:7,payment:"카드"}]},
+  {id:42,gender:"F",name:"문지예",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-12-17",memberType:"1month",isNew:false,total:8,used:2,startDate:"2025-12-17",endDate:"2026-01-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-17",endDate:"2026-01-30",memberType:"1month",total:8,payment:"카드"}]},
+  {id:43,gender:"F",name:"박수인",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-11-27",memberType:"1month",isNew:false,total:8,used:5,startDate:"2025-11-27",endDate:"2025-12-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-27",endDate:"2025-12-30",memberType:"1month",total:8,payment:"카드"}]},
   {id:44,gender:"F",name:"서정현",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:4,used:3,startDate:"2025-06-16",endDate:"2025-07-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-06-16",endDate:"2025-07-31",memberType:"1month",total:4,payment:"카드"}]},
   {id:45,gender:"M",name:"서현석",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-09-08",memberType:"1month",isNew:false,total:12,used:6,startDate:"2025-11-03",endDate:"2025-12-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-10-09",endDate:"2025-10-31",memberType:"1month",total:8,payment:"현금"},{id:2,startDate:"2025-11-03",endDate:"2025-12-31",memberType:"1month",total:12,payment:"현금"}]},
   {id:46,gender:"F",name:"심정은",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:6,used:3,startDate:"2025-07-14",endDate:"2025-08-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-07-14",endDate:"2025-08-31",memberType:"1month",total:6,payment:"카드"}]},
   {id:47,gender:"F",name:"양지원",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:8,used:6,startDate:"2025-07-03",endDate:"2025-08-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-07-03",endDate:"2025-08-31",memberType:"1month",total:8,payment:"카드"}]},
   {id:48,gender:"F",name:"유민영",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:4,used:3,startDate:"2025-10-15",endDate:"2025-11-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-09-05",endDate:"2025-09-30",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-10-15",endDate:"2025-11-30",memberType:"1month",total:4,payment:""}]},
-  {id:49,gender:"F",name:"윤솔이",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-08-11",memberType:"1month",isNew:false,total:1,used:1,startDate:"2025-12-05",endDate:"2026-01-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-10-23",endDate:"2025-10-31",memberType:"1month",total:5,payment:"카드"},{id:2,startDate:"2025-11-11",endDate:"2025-11-30",memberType:"1month",total:3,payment:"카드"},{id:3,startDate:"2025-12-05",endDate:"2026-01-31",memberType:"1month",total:1,payment:"카드"}]},
+  {id:49,gender:"F",name:"윤솔이",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-10-23",memberType:"1month",isNew:false,total:5,used:1,startDate:"2025-10-23",endDate:"2025-12-05",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-10-23",endDate:"2025-12-05",memberType:"1month",total:5,payment:"카드"}]},
   {id:50,gender:"F",name:"이나라",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:8,used:6,startDate:"2025-11-11",endDate:"2025-12-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-06-13",endDate:"2025-06-30",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-07-03",endDate:"2025-07-31",memberType:"1month",total:8,payment:"카드"},{id:3,startDate:"2025-08-01",endDate:"2025-08-31",memberType:"1month",total:8,payment:"카드"},{id:4,startDate:"2025-09-04",endDate:"2025-09-30",memberType:"1month",total:8,payment:"카드"},{id:5,startDate:"2025-10-01",endDate:"2025-10-31",memberType:"1month",total:8,payment:"카드"},{id:6,startDate:"2025-11-11",endDate:"2025-12-31",memberType:"1month",total:8,payment:"카드"}]},
-  {id:51,gender:"F",name:"이상아",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-12-08",memberType:"1month",isNew:false,total:4,used:1,startDate:"2025-09-05",endDate:"2025-10-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-09-05",endDate:"2025-10-31",memberType:"1month",total:4,payment:""}]},
   {id:52,gender:"F",name:"이예림",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-09-08",memberType:"1month",isNew:false,total:6,used:2,startDate:"2025-12-10",endDate:"2026-01-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-05-19",endDate:"2025-06-04",memberType:"1month",total:4,payment:""},{id:2,startDate:"2025-06-04",endDate:"2025-06-30",memberType:"1month",total:8,payment:""},{id:3,startDate:"2025-07-04",endDate:"2025-07-31",memberType:"1month",total:8,payment:"카드"},{id:4,startDate:"2025-08-05",endDate:"2025-08-31",memberType:"1month",total:8,payment:"카드"},{id:5,startDate:"2025-09-03",endDate:"2025-09-30",memberType:"1month",total:8,payment:"카드"},{id:6,startDate:"2025-10-02",endDate:"2025-10-31",memberType:"1month",total:8,payment:"카드"},{id:7,startDate:"2025-12-10",endDate:"2026-01-31",memberType:"1month",total:6,payment:""}]},
   {id:53,gender:"F",name:"이은형",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:8,used:5,startDate:"2025-07-04",endDate:"2025-08-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-07-04",endDate:"2025-08-31",memberType:"1month",total:8,payment:"카드"}]},
   {id:54,gender:"F",name:"이정민",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-09-08",memberType:"1month",isNew:false,total:4,used:4,startDate:"2026-02-19",endDate:"2026-03-19",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-07-07",endDate:"2025-07-31",memberType:"1month",total:4,payment:"카드"},{id:2,startDate:"2025-09-03",endDate:"2025-09-30",memberType:"1month",total:4,payment:"카드"},{id:3,startDate:"2025-10-01",endDate:"2025-10-31",memberType:"1month",total:4,payment:"카드"},{id:4,startDate:"2026-02-19",endDate:"2026-03-19",memberType:"1month",total:4,payment:"카드"}]},
   {id:55,gender:"F",name:"이주연",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-10-16",memberType:"1month",isNew:false,total:6,used:6,startDate:"2026-02-02",endDate:"2026-02-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-10-16",endDate:"2025-11-30",memberType:"1month",total:13,payment:"카드"},{id:2,startDate:"2026-02-02",endDate:"2026-02-28",memberType:"1month",total:6,payment:"네이버"}]},
-  {id:56,gender:"F",name:"이하림",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-11-17",memberType:"1month",isNew:false,total:6,used:6,startDate:"2026-01-05",endDate:"2026-02-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-17",endDate:"2025-11-30",memberType:"1month",total:8,payment:""},{id:2,startDate:"2025-12-02",endDate:"2025-12-31",memberType:"1month",total:13,payment:"현금"},{id:3,startDate:"2026-01-05",endDate:"2026-02-28",memberType:"1month",total:6,payment:"카드"}]},
-  {id:57,gender:"F",name:"이한나",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-11-05",memberType:"1month",isNew:false,total:4,used:3,startDate:"2025-12-08",endDate:"2026-01-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-05",endDate:"2025-11-30",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-12-08",endDate:"2026-01-31",memberType:"1month",total:4,payment:"카드"}]},
+  {id:56,gender:"F",name:"이하림",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-11-17",memberType:"1month",isNew:false,total:6,used:6,startDate:"2026-01-05",endDate:"2026-02-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-17",endDate:"2025-12-16",memberType:"1month",total:12,payment:"현금"},{id:2,startDate:"2025-12-18",endDate:"2026-01-30",memberType:"1month",total:6,payment:"카드"},{id:3,startDate:"2026-01-05",endDate:"2026-02-28",memberType:"1month",total:6,payment:"카드"}]},
+  {id:57,gender:"F",name:"이한나",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-11-05",memberType:"1month",isNew:false,total:4,used:3,startDate:"2025-12-08",endDate:"2025-12-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-05",endDate:"2025-11-30",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-12-08",endDate:"2025-12-30",memberType:"1month",total:4,payment:"카드"}]},
   {id:58,gender:"F",name:"임소정",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:8,used:7,startDate:"2025-06-18",endDate:"2025-07-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-05-19",endDate:"2025-06-02",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-06-18",endDate:"2025-07-31",memberType:"1month",total:8,payment:"카드"}]},
-  {id:59,gender:"F",name:"주상아",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:6,used:5,startDate:"2025-10-14",endDate:"2025-11-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-08-26",endDate:"2025-08-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2025-09-04",endDate:"2025-09-30",memberType:"1month",total:12,payment:"카드"},{id:3,startDate:"2025-10-14",endDate:"2025-10-31",memberType:"1month",total:6,payment:"카드"},{id:4,startDate:"2025-11-01",endDate:"2025-11-30",memberType:"1month",total:6,payment:"카드"}]},
+  {id:59,gender:"F",name:"주상아",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-09-05",memberType:"1month",isNew:false,total:4,used:1,startDate:"2025-09-05",endDate:"2025-10-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-09-05",endDate:"2025-10-31",memberType:"1month",total:4,payment:""}]},
   {id:60,gender:"F",name:"최윤",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:8,used:4,startDate:"2025-08-11",endDate:"2025-09-30",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{"id":1,"startDate":"2025-08-11","endDate":"2025-09-30","memberType":"1month","total":8,"payment":"카드"}]},
   {id:61,gender:"F",name:"하보람",adminNickname:"",adminNote:"",phone4:"0000",firstDate:"2025-07-07",memberType:"1month",isNew:false,total:20,used:3,startDate:"2025-07-14",endDate:"2025-08-31",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{"id":1,"startDate":"2025-07-14","endDate":"2025-08-31","memberType":"1month","total":20,"payment":"현금"}]}
 ];
@@ -947,6 +969,7 @@ const INIT_BOOKINGS=[
   {id:1286,date:"2026-03-06",memberId:15,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1287,date:"2026-03-06",memberId:14,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1288,date:"2026-03-06",memberId:11,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1383,date:"2026-03-09",memberId:7,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1289,date:"2026-03-09",memberId:8,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1290,date:"2026-03-09",memberId:1,timeSlot:"lunch",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1291,date:"2026-03-09",memberId:2,timeSlot:"lunch",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
@@ -1048,8 +1071,13 @@ const INIT_SPECIAL=[
 ];
 
 const INIT_CLOSURES=[
-  {id:1,date:"2026-03-28",timeSlot:null,reason:"3월 정기 휴강"},
-  {id:2,date:"2026-03-25",timeSlot:"dawn",reason:"새벽 수업 강사 사정"},
+  {id:1,date:"2026-01-01",timeSlot:null,reason:"신정",closureType:"regular",extensionOverride:0},
+  {id:2,date:"2026-01-30",timeSlot:null,reason:"1월 휴강",closureType:"regular",extensionOverride:0},
+  {id:3,date:"2026-02-16",timeSlot:null,reason:"설날",closureType:"regular",extensionOverride:0},
+  {id:4,date:"2026-02-17",timeSlot:null,reason:"설날",closureType:"regular",extensionOverride:0},
+  {id:5,date:"2026-03-25",timeSlot:"dawn",reason:"새벽 수업 강사 사정",closureType:"special",extensionOverride:0},
+  {id:6,date:"2026-03-30",timeSlot:null,reason:"3월 휴강",closureType:"regular",extensionOverride:0},
+  {id:7,date:"2026-03-31",timeSlot:null,reason:"3월 휴강",closureType:"regular",extensionOverride:0},
 ];
 
 function CalendarPicker({value,onChange,onClose}){
@@ -1195,19 +1223,24 @@ function NoticeBoard({notices}){
 }
 
 function PeriodBar({member}){
-  const end=effEnd(member);
-  const dl=calcDL(member);
+  const closures=useClosures();
+  const end=effEnd(member,closures);
+  const dl=calcDL(member,closures);
   const dlColor=dl<0?"#c97474":dl<=7?"#9a5a10":"#2e5c3e";
   const dlBg=dl<0?"#fef5f5":dl<=7?"#fdf3e3":"#eef5ee";
   const dlLabel=dl<0?`${Math.abs(dl)}일 초과`:dl===0?"오늘 만료":`D-${dl}`;
+  const closureExt=getClosureExtDays(member,closures);
+  const holdExt=member.extensionDays||0;
   return(
-    <div style={{padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fafaf7"}}>
-      <div style={{fontSize:12,color:"#7a6e60"}}>
+    <div style={{padding:"10px 16px",background:"#fafaf7",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",fontSize:12,color:"#7a6e60"}}>
         <span style={{fontWeight:600}}>{fmt(member.startDate)}</span>
-        <span style={{color:"#c8c0b0",margin:"0 6px"}}>→</span>
+        <span style={{color:"#c8c0b0"}}>→</span>
         <span style={{fontWeight:600,color:dl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(end)}</span>
+        {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
+        {holdExt>0&&<span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{holdExt}일</span>}
       </div>
-      <div style={{fontSize:13,fontWeight:700,color:dlColor,background:dlBg,borderRadius:8,padding:"4px 10px"}}>{dlLabel}</div>
+      <div style={{fontSize:13,fontWeight:700,color:dlColor,background:dlBg,borderRadius:8,padding:"4px 10px",flexShrink:0}}>{dlLabel}</div>
     </div>
   );
 }
@@ -1217,7 +1250,6 @@ function HoldBanner({member}){
   return(
     <div style={{padding:"8px 16px",background:"#edf0f8",display:"flex",alignItems:"center",gap:8,fontSize:12}}>
       <span style={{fontSize:14}}>⏸️</span>
-      <span style={{color:"#3d5494",fontWeight:600}}>홀딩 중</span>
       <span style={{color:"#6a7ab8"}}>{fmt(member.holding.startDate)} ~ 복귀 미정</span>
       <span style={{marginLeft:"auto",color:"#3d5494",fontWeight:700}}>+{elapsed}일 경과</span>
     </div>
@@ -1271,6 +1303,50 @@ function ContactBar(){
   );
 }
 
+function MemberContactBar({onLogout}){
+  return(
+    <div style={{width:"100%",maxWidth:360,marginTop:24}}>
+      <div style={{borderTop:"1px solid #e8e4dc",marginBottom:14}}/>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:0}}>
+        <a href="https://naver.me/5MVLA70u" target="_blank" rel="noopener noreferrer"
+          style={{display:"inline-flex",alignItems:"center",gap:4,padding:"4px 12px",fontSize:11,color:"#9a8e80",textDecoration:"none",whiteSpace:"nowrap"}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{opacity:0.65,flexShrink:0}}>
+            <path d="M13.5 12.4L10.2 7H7v10h3.5V11.6L14 17H17V7h-3.5v5.4z" fill="#9a8e80"/>
+          </svg>
+          네이버 플레이스
+        </a>
+        <span style={{color:"#d8d4cc",fontSize:11}}>|</span>
+        <a href="http://pf.kakao.com/_sAebn/chat" target="_blank" rel="noopener noreferrer"
+          style={{display:"inline-flex",alignItems:"center",gap:4,padding:"4px 12px",fontSize:11,color:"#9a8e80",textDecoration:"none",whiteSpace:"nowrap"}}>
+          <svg width="16" height="16" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" style={{flexShrink:0,opacity:0.65}}>
+            <ellipse cx="20" cy="18" rx="18" ry="15" fill="#8a7a50"/>
+            <path d="M11 23 L8 30 L16 24.5 Z" fill="#8a7a50"/>
+            <path d="M13.5 16.5 Q13.5 14.5 15 13.5 Q16.5 12.5 20 12.5 Q23.5 12.5 25 13.5 Q26.5 14.5 26.5 16.5 Q26.5 18.5 25 19.5 Q23.5 20.5 20 20.5 Q18.5 20.5 17 20 L14 22 L14.5 19.5 Q13.5 18.5 13.5 16.5 Z" fill="#f5f0e8"/>
+          </svg>
+          카톡채널 문의
+        </a>
+        <span style={{color:"#d8d4cc",fontSize:11}}>|</span>
+        <a href="tel:050713769324"
+          style={{display:"inline-flex",alignItems:"center",gap:4,padding:"4px 12px",fontSize:11,color:"#9a8e80",textDecoration:"none",whiteSpace:"nowrap"}}>
+          <span style={{fontSize:12,opacity:0.7}}>📞</span>
+          전화 문의
+        </a>
+      </div>
+      <div style={{textAlign:"center",marginTop:8,paddingBottom:24}}>
+        <button onClick={onLogout}
+          style={{background:"none",border:"none",fontSize:11,color:"#b8b0a8",cursor:"pointer",fontFamily:FONT,padding:"4px 12px",display:"inline-flex",alignItems:"center",gap:6}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b8b0a8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          로그아웃
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,onBack}){
   const [tab,setTab]=useState("reserve");
   const [selDate,setSelDate]=useState(TODAY_STR);
@@ -1292,7 +1368,8 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
   };
   const slots=getSlots();
   const dayActive=bookings.filter(b=>b.date===selDate&&b.status!=="cancelled");
-  const memberDl=calcDL(member);
+  const closuresCxt=useClosures();
+  const memberDl=calcDL(member,closuresCxt);
   const memberExpired=memberDl<0;
   const rem=memberExpired?0:Math.max(0,member.total-member.used);
 
@@ -1326,25 +1403,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
   const myHistory=myAll.filter(b=>b.status==="attended"||b.date<TODAY_STR);
 
   return(
-    <div style={{padding:"12px 14px 80px",maxWidth:520,margin:"0 auto",width:"100%"}}>
-      <NoticeBoard notices={notices}/>
-      <div style={{background:"#fff",borderRadius:14,border:"1px solid #e4e0d8",marginBottom:14,overflow:"hidden"}}>
-        <div style={{padding:"14px 16px",borderBottom:"1px solid #f0ece4"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
-            <span style={{fontSize:11,color:"#9a8e80"}}>등록 <b style={{color:"#3a4a3a",fontSize:13}}>{member.total}회</b></span>
-            <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a",fontSize:13}}>{member.used}</b></span>
-            <span style={{fontSize:13,color:"#9a8e80"}}>잔여 <span style={{fontSize:26,fontWeight:700,color:memberExpired?"#c97474":rem===0?"#9a5a10":"#2e5c3e"}}>{rem}</span><span style={{fontSize:13}}>회</span></span>
-          </div>
-          <div style={{background:"#e8e4dc",borderRadius:8,height:20,overflow:"hidden",position:"relative",marginTop:8}}>
-            <div style={{height:"100%",width:`${Math.round(member.used/member.total*100)}%`,background:memberExpired?"#c97474":rem===0?"#e8a44a":"#5a9e6a",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transition:"width .4s"}}>
-              {member.used>0&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{member.used}회 출석</span>}
-            </div>
-          </div>
-        </div>
-        <PeriodBar member={member}/>
-        {member.holding&&<HoldBanner member={member}/>}
-      </div>
-
+    <div style={{padding:"0 14px 80px",maxWidth:520,margin:"0 auto",width:"100%"}}>
       <div style={{display:"flex",gap:0,marginBottom:16,background:"#e8e4dc",borderRadius:10,padding:3}}>
         {[["reserve","🗓️ 수업 예약"],["history","📋 내 기록"]].map(([k,l])=>(
           <button key={k} onClick={()=>setTab(k)} style={{flex:1,border:"none",borderRadius:8,padding:"9px 0",fontSize:13,fontWeight:tab===k?700:400,background:tab===k?"#fff":"transparent",color:tab===k?"#1e2e1e":"#9a8e80",cursor:"pointer",fontFamily:FONT,boxShadow:tab===k?"0 1px 4px rgba(60,50,40,.1)":"none"}}>{l}</button>
@@ -1422,6 +1481,33 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
             <span style={{fontSize:13,color:"#7a6e60"}}>누적 출석 <span style={{fontSize:11,color:"#9a8e80"}}>({fmt(member.firstDate||member.startDate)} 최초 등록)</span></span>
             <span style={{fontSize:18,fontWeight:700,color:"#2e6e44"}}>{myHistory.filter(b=>b.status==="attended").length}회</span>
           </div>
+          {/* 회원권 연장 정보 */}
+          {(()=>{
+            const closureExt=getClosureExtDays(member,closures);
+            const holdExt=member.extensionDays||0;
+            if(closureExt===0&&holdExt===0) return null;
+            return(
+              <div style={{background:"#f0f8f0",borderRadius:12,border:"1px solid #b8d8b8",padding:"12px 16px",marginBottom:12}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#2e6e44",marginBottom:8}}>🌿 회원권 연장 내역</div>
+                {closureExt>0&&(
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,marginBottom:4}}>
+                    <span style={{color:"#5a7a5a"}}>휴강으로 인한 연장</span>
+                    <span style={{fontWeight:700,color:"#2e6e44",background:"#f0ede8",color:"#8a7e70",borderRadius:5,padding:"1px 8px"}}>+{closureExt}일</span>
+                  </div>
+                )}
+                {holdExt>0&&(
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,marginBottom:4}}>
+                    <span style={{color:"#5a6a9a"}}>홀딩으로 인한 연장</span>
+                    <span style={{fontWeight:700,color:"#3d5494",background:"#edf0f8",borderRadius:5,padding:"1px 8px"}}>+{holdExt}일</span>
+                  </div>
+                )}
+                <div style={{borderTop:"1px solid #c8e0c8",marginTop:6,paddingTop:6,display:"flex",justifyContent:"space-between",fontSize:12}}>
+                  <span style={{color:"#7a6e60"}}>총 연장</span>
+                  <span style={{fontWeight:700,color:"#2e5c3e"}}>+{closureExt+holdExt}일</span>
+                </div>
+              </div>
+            );
+          })()}
           <MiniCalendar memberId={member.id} bookings={bookings} member={member}/>
           {myUpcoming.length>0&&(
             <div style={{marginBottom:12}}>
@@ -1459,27 +1545,75 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
 
 function MemberView({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,onLogout}){
   const m=member;
-  const status=getStatus(m),sc=SC[status];
+  const closuresCxt=useClosures();
+  const status=getStatus(m,closuresCxt),sc=SC[status];
   const tc=TYPE_CFG[m.memberType]||TYPE_CFG["1month"];
+  const dl=calcDL(m,closuresCxt);
+  const end=effEnd(m,closuresCxt);
+  const expired=dl<0;
+  const rem=expired?0:Math.max(0,m.total-m.used);
+  const pct=expired?100:Math.round(m.used/Math.max(m.total,1)*100);
+  const barColor=expired?"#c97474":status==="hold"?"#6a7fc8":"#5a9e6a";
+  const isOff=status==="off";
+  const closureExt=getClosureExtDays(m,closuresCxt);
+
   return(
     <div style={{minHeight:"100vh",background:"#f5f3ef",fontFamily:FONT}}>
-      <div style={{background:"#fff",borderBottom:"1px solid #e8e4dc",padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10,flexWrap:"wrap",gap:8}}>
-        <div style={{display:"flex",alignItems:"center",gap:6,minWidth:0,flex:1,overflow:"hidden"}}>
-          <span style={{fontSize:18,flexShrink:0}}>{GE[m.gender]}</span>
-          <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e",whiteSpace:"nowrap",flexShrink:0}}>{m.name}</span>
-          {m.adminNickname&&<div style={{display:"inline-flex",alignItems:"center",gap:3,background:"#2e3a2e",borderRadius:6,padding:"2px 7px",flexShrink:0}}><span style={{fontSize:10,color:"#7aba7a"}}>👀</span><span style={{fontSize:11,fontWeight:700,color:"#a8e6a8"}}>{m.adminNickname.split("/")[0]}</span></div>}
-          {m.isNew&&<span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 6px",fontWeight:700,flexShrink:0}}>N</span>}
-          <span style={{fontSize:10,borderRadius:10,padding:"1px 7px",background:tc.bg,color:tc.color,fontWeight:700,flexShrink:0}}>{tc.label}</span>
-          <span style={{fontSize:10,borderRadius:10,padding:"1px 7px",background:sc.bg,color:sc.color,fontWeight:700,flexShrink:0}}>{sc.label}</span>
-        </div>
-        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-          <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"6px 12px",fontSize:11,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,fontWeight:600,whiteSpace:"nowrap"}}>로그아웃</button>
+      <div style={{padding:"12px 14px 0",maxWidth:520,margin:"0 auto",width:"100%"}}>
+        {/* 공지 최상단 */}
+        <NoticeBoard notices={notices}/>
+        {/* 회원카드 */}
+        <div style={{...S.card,opacity:isOff?0.82:1,marginBottom:12}}>
+          <div style={{...S.cardTop}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",flex:1,minWidth:0}}>
+              <span style={{fontSize:20,lineHeight:1,flexShrink:0}}>{GE[m.gender]}</span>
+              <span style={S.memberName}>{m.name}</span>
+              {m.adminNickname&&<div style={{display:"inline-flex",alignItems:"center",gap:3,background:"#2e3a2e",borderRadius:6,padding:"2px 7px",flexShrink:0}}><span style={{fontSize:10,color:"#7aba7a"}}>👀</span><span style={{fontSize:11,fontWeight:700,color:"#a8e6a8"}}>{m.adminNickname.split("/")[0]}</span></div>}
+              {m.isNew&&<span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
+              {!isOff&&<span style={{fontSize:11,borderRadius:20,padding:"2px 8px",background:tc.bg,color:tc.color,fontWeight:700}}>{tc.label}</span>}
+              {m.holding&&<span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
+            </div>
+            <span style={{...S.statusBadge,background:sc.bg,color:sc.color,flexShrink:0}}><span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block",marginRight:4}}/>{sc.label}</span>
+          </div>
+          {m.adminNote&&<div style={{fontSize:11,color:"#9a5a10",background:"#fffaeb",borderRadius:6,padding:"3px 8px",marginBottom:7,border:"1px dashed #e8c44a"}}>📝 {m.adminNote}</div>}
+          {isOff?(
+            <div style={{fontSize:11,color:"#b0a090",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+              <span>종료</span><span style={{fontWeight:600,color:"#c97474"}}>{fmt(end)}</span>
+            </div>
+          ):(
+            <>
+              <div style={{marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
+                  <span style={{fontSize:11,color:"#9a8e80"}}>등록 <b style={{color:"#3a4a3a"}}>{m.total}회</b></span>
+                  <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{m.used}</b></span>
+                  <span style={{fontSize:13,fontWeight:700,color:rem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:20}}>{rem}</span>회</span>
+                </div>
+                <div style={{background:"#e8e4dc",borderRadius:8,height:20,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${pct}%`,background:barColor,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transition:"width .4s"}}>
+                    {pct>15&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{m.used}회</span>}
+                  </div>
+                </div>
+              </div>
+              <div style={S.dateRow}>
+                <div style={{display:"flex",flexDirection:"column",gap:1}}><span style={S.dateLabel}>등록일</span><span style={S.dateVal}>{fmt(m.startDate)}</span></div>
+                <span style={{color:"#c8c0b0",fontSize:13,marginTop:9}}>→</span>
+                <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                  <span style={S.dateLabel}>종료일</span>
+                  <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+                    <span style={{...S.dateVal,color:dl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(end)}</span>
+                    {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
+                    {(m.extensionDays||0)>0&&<span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{m.extensionDays}일</span>}
+                  </div>
+                </div>
+                <div style={{...S.dChip,background:dl<0?"#f5eeee":dl<=7?"#fdf3e3":"#eef4ee",color:dl<0?"#c97474":dl<=7?"#9a5a10":"#2e6e44"}}>{dl<0?`D+${Math.abs(dl)}`:dl===0?"D-Day":`D-${dl}`}</div>
+              </div>
+            </>
+          )}
         </div>
       </div>
       <MemberReservePage member={m} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} onBack={()=>{}}/>
-      {/* 하단 연락처 */}
-      <div style={{padding:"0 14px 32px",maxWidth:520,margin:"0 auto",width:"100%"}}>
-        <ContactBar/>
+      <div style={{display:"flex",justifyContent:"center"}}>
+        <MemberContactBar onLogout={onLogout}/>
       </div>
     </div>
   );
@@ -1566,7 +1700,7 @@ function AdminCancelModal({booking,member,onClose,onConfirm}){
   );
 }
 
-function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedules,setSpecialSchedules,closures,setClosures,onMemberClick}){
+function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedules,setSpecialSchedules,closures,setClosures,notices,setNotices,onMemberClick}){
   const [date,setDate]=useState(TODAY_STR);
   const [showCal,setShowCal]=useState(false);
   const [addModal,setAddModal]=useState(null);
@@ -1578,7 +1712,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   const [dragId,setDragId]=useState(null);
   const [dragOver,setDragOver]=useState(null);
   const [showClosureMgr,setShowClosureMgr]=useState(false);
-  const [closureForm,setClosureForm]=useState({date:TODAY_STR,timeSlot:"",reason:""});
+  const [closureForm,setClosureForm]=useState({date:TODAY_STR,timeSlot:"",reason:"",closureType:"regular",extensionOverride:0});
   const [quickDetailM,setQuickDetailM]=useState(null); // 이름 클릭 시 회원 상세 카드
 
   const dow=parseLocal(date).getDay();
@@ -1631,7 +1765,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   }
 
   const slotMids=k=>dayActive.filter(b=>b.timeSlot===k&&b.memberId).map(b=>b.memberId);
-  const avail=k=>members.filter(m=>!slotMids(k).includes(m.id)&&getStatus(m)!=="off").sort((a,b)=>a.name.localeCompare(b.name,"ko"));
+  const avail=k=>members.filter(m=>!slotMids(k).includes(m.id)&&getStatus(m,closures)!=="off").sort((a,b)=>a.name.localeCompare(b.name,"ko"));
 
   function addSpecial(){if(!newSp.label||!newSp.date)return;const nid=Math.max(...specialSchedules.map(s=>s.id),0)+1;setSpecialSchedules(p=>[...p.filter(s=>s.date!==newSp.date),{...newSp,id:nid}]);setShowSpecialMgr(false);}
   const toggleSp=sl=>setNewSp(f=>({...f,activeSlots:f.activeSlots.includes(sl)?f.activeSlots.filter(s=>s!==sl):[...f.activeSlots,sl]}));
@@ -1661,16 +1795,29 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
           <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#8a5510",background:isSpecial?"#fdf3e3":"#fff"}} onClick={()=>{setNewSp(f=>({...f,date}));setShowSpecialMgr(true);}}>
             {isSpecial?"✏️ 특별수업":"🗓️ 특별수업"}
           </button>
-          <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#8e3030",background:dayClosure?"#fdf3e3":"#fff"}} onClick={()=>{setClosureForm({date,timeSlot:"",reason:""});setShowClosureMgr(true);}}>
+          <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#8e3030",background:dayClosure?"#fdf3e3":"#fff"}} onClick={()=>{setClosureForm({date,timeSlot:"",reason:"",closureType:"regular",extensionOverride:0});setShowClosureMgr(true);}}>
             🔕 휴강설정
           </button>
         </div>
       </div>
 
       {!isSpecial&&isWeekend&&<div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>🌿</div><div style={{fontSize:14,fontWeight:700}}>{DOW_KO[dow]}요일은 수업이 없습니다</div></div>}
-      {dayClosure&&<div style={{background:"#fdf3e3",border:"1px solid #e8a44a",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8,fontSize:13}}><span style={{fontSize:18}}>🔕</span><div><b>전체 휴강</b> — {dayClosure.reason}</div><button onClick={()=>{const nc=closures.filter(cl=>cl.id!==dayClosure.id);setClosures(nc);setMembers(prev=>prev.map(m=>m.memberType==="3month"?{...m,endDate:calc3MonthEnd(m.startDate,nc)}:m));}} style={{marginLeft:"auto",background:"none",border:"none",color:"#c97474",cursor:"pointer",fontSize:12,fontFamily:FONT}}>삭제</button></div>}
+      {dayClosure&&<div style={{
+          background:dayClosure.closureType==="regular"?"#fdf3e3":dayClosure.closureType==="regular_ext"?"#fef9ed":"#fff0f0",
+          border:`1px solid ${dayClosure.closureType==="regular"?"#e8a44a":dayClosure.closureType==="regular_ext"?"#e8c44a":"#e8a0a0"}`,
+          borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8,fontSize:13}}>
+        <span style={{fontSize:18}}>🔕</span>
+        <div style={{flex:1}}>
+          <b>{dayClosure.closureType==="regular"?"정기 휴강":dayClosure.closureType==="regular_ext"?"정기휴강 (추가연장)":"⚠️ 별도 휴강"}</b> — {dayClosure.reason}
+          {dayClosure.closureType==="regular"
+            ?<span style={{marginLeft:6,fontSize:11,background:"#e8f5e0",color:"#2e6e44",borderRadius:4,padding:"1px 6px",fontWeight:700}}>연장없음</span>
+            :!dayClosure.timeSlot&&<span style={{marginLeft:6,fontSize:11,background:"#fef5e0",color:"#9a5a10",borderRadius:4,padding:"1px 6px",fontWeight:700}}>+1일 연장</span>
+          }
+        </div>
+        <button onClick={()=>{const nc=closures.filter(cl=>cl.id!==dayClosure.id);setClosures(nc);setMembers(prev=>prev.map(m=>m.memberType==="3month"?{...m,endDate:calc3MonthEnd(m.startDate,nc)}:m));}} style={{background:"none",border:"none",color:"#c97474",cursor:"pointer",fontSize:12,fontFamily:FONT}}>삭제</button>
+      </div>}
 
-      {slots.length>0&&(
+      {slots.length>0&&!dayClosure&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
           {slots.map(slot=>{
             const recs=dayActive.filter(b=>b.timeSlot===slot.key);
@@ -1718,7 +1865,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:13,fontWeight:700,color:"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"flex",alignItems:"center",gap:4}}>
                             <span
-                              onClick={()=>!isOneday&&mem&&onMemberClick&&onMemberClick(mem)}
+                              onClick={()=>!isOneday&&mem&&setQuickDetailM(mem)}
                               style={{cursor:isOneday?"default":"pointer",textDecoration:isOneday?"none":"underline",textDecorationColor:"#c8c0b0",textUnderlineOffset:2}}>
                               {isOneday?rec.onedayName:mem.name}
                             </span>
@@ -1813,19 +1960,140 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
               </div>
             </div>
             <div style={S.fg}><label style={S.lbl}>사유</label><input style={S.inp} value={closureForm.reason} onChange={e=>setClosureForm(f=>({...f,reason:e.target.value}))} placeholder="예: 강사 사정, 시설 공사 등"/></div>
+            {!closureForm.timeSlot&&(
+              <div style={S.fg}>
+                <label style={S.lbl}>휴강 유형</label>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:8}}>
+                  {[
+                    {type:"regular",     label:"정기휴강",         desc:"연장없음"},
+                    {type:"regular_ext", label:"정기휴강",         desc:"추가연장"},
+                    {type:"special",     label:"별도휴강",         desc:"공사·개인사유"},
+                  ].map(({type,label,desc})=>{
+                    const sel=closureForm.closureType===type;
+                    const colors={regular:{sel:"#4a6a4a",bg:"#eef5ee",txt:"#2e5c3e",border:"#7aaa7a"},regular_ext:{sel:"#9a5a10",bg:"#fdf3e3",txt:"#7a4a08",border:"#e8a44a"},special:{sel:"#8e3030",bg:"#fff0f0",txt:"#6e2020",border:"#e8a0a0"}};
+                    const c=colors[type];
+                    return(
+                      <button key={type} onClick={()=>setClosureForm(f=>({...f,closureType:type,extensionOverride:type==="regular"?0:f.extensionOverride||1}))}
+                        style={{padding:"10px 4px",borderRadius:9,border:`1.5px solid ${sel?c.border:"#e0d8cc"}`,
+                          background:sel?c.bg:"#faf8f5",color:sel?c.txt:"#9a8e80",
+                          cursor:"pointer",fontFamily:FONT,
+                          display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                        <span style={{fontSize:12,fontWeight:sel?700:400}}>{label}</span>
+                        <span style={{fontSize:10,opacity:.75}}>{desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {closureForm.closureType==="regular"&&(
+                  <div style={{fontSize:11,color:"#5a7a5a",padding:"6px 10px",background:"#eef5ee",borderRadius:6}}>
+                    월 20일 수업 내 포함 — 연장 없음
+                  </div>
+                )}
+                {closureForm.closureType==="regular_ext"&&(
+                  <div style={{fontSize:11,color:"#9a5a10",padding:"6px 10px",background:"#fdf3e3",borderRadius:6}}>
+                    연속 정기휴강 추가 연장 — 기간 내 전체 회원 +1일 연장 + 공지 자동생성
+                  </div>
+                )}
+                {closureForm.closureType==="special"&&(
+                  <div style={{fontSize:11,color:"#8e3030",padding:"6px 10px",background:"#fff0f0",borderRadius:6}}>
+                    별도 사유 휴강 — 기간 내 전체 회원 +1일 연장 + 공지 자동생성
+                  </div>
+                )}
+              </div>
+            )}
             <div style={S.modalBtns}>
               <button style={S.cancelBtn} onClick={()=>setShowClosureMgr(false)}>취소</button>
               <button style={{...S.saveBtn,background:"#8e3030",opacity:closureForm.reason?1:0.5}} disabled={!closureForm.reason} onClick={()=>{
                 const nid=Math.max(...closures.map(cl=>cl.id),0)+1;
-                const newClosures=[...closures.filter(cl=>!(cl.date===closureForm.date&&cl.timeSlot===closureForm.timeSlot)),{id:nid,date:closureForm.date,timeSlot:closureForm.timeSlot||null,reason:closureForm.reason}];
+                const extVal = closureForm.closureType==="regular" ? 0 : 1;
+                const isExtra=!closureForm.timeSlot&&closureForm.closureType!=="regular";
+                const newClosure={id:nid,date:closureForm.date,timeSlot:closureForm.timeSlot||null,reason:closureForm.reason,closureType:closureForm.closureType||"regular",extensionOverride:extVal};
+                const newClosures=[...closures.filter(cl=>!(cl.date===closureForm.date&&cl.timeSlot===closureForm.timeSlot)),newClosure];
                 setClosures(newClosures);
-                if(!closureForm.timeSlot){setMembers(prev=>prev.map(m=>m.memberType==="3month"?{...m,endDate:calc3MonthEnd(m.startDate,newClosures)}:m));}
+                // 연장있는 휴강이면 공지 자동 생성
+                if(isExtra){
+                  const extLabel = `${extVal}일`;
+                  const typeLabel = closureForm.closureType==="special" ? "별도 휴강" : "정기휴강(추가연장)";
+                  const noticeId=Math.max(...(notices||[]).map(n=>n.id),0)+1;
+                  const autoNotice={
+                    id:noticeId,
+                    title:`📢 ${fmt(closureForm.date)} ${typeLabel} 안내`,
+                    content:`${fmt(closureForm.date)} 수업이 휴강됩니다.\n사유: ${closureForm.reason}\n\n회원권 기간 내 전체 회원님의 회원권이 ${extLabel} 연장됩니다. 🙏`,
+                    pinned:true,
+                    createdAt:TODAY_STR
+                  };
+                  setNotices(p=>[autoNotice,...(p||[])]);
+                }
                 setShowClosureMgr(false);
               }}>저장</button>
             </div>
           </div>
         </div>
       )}
+
+      {quickDetailM&&(()=>{
+        const qm=members.find(m=>m.id===quickDetailM.id)||quickDetailM;
+        const qdl=calcDL(qm,closures);
+        const qend=effEnd(qm,closures);
+        const qexpired=qdl<0;
+        const qrem=qexpired?0:Math.max(0,qm.total-qm.used);
+        const qstatus=getStatus(qm,closures);
+        const qsc=SC[qstatus];
+        const qtc=TYPE_CFG[qm.memberType]||TYPE_CFG["1month"];
+        const qpct=Math.min(100,Math.round(qm.used/Math.max(qm.total,1)*100));
+        const qbarColor=qexpired?"#c97474":qstatus==="hold"?"#6a7fc8":"#5a9e6a";
+        const qclosureExt=getClosureExtDays(qm,closures);
+        return(
+          <div style={{position:"fixed",inset:0,background:"rgba(40,35,25,.38)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 16px"}} onClick={()=>setQuickDetailM(null)}>
+            <div style={{background:"#fff",borderRadius:16,padding:"18px 16px 14px",width:"100%",maxWidth:340,boxShadow:"0 8px 32px rgba(40,35,25,.22)"}} onClick={e=>e.stopPropagation()}>
+              {/* 헤더 */}
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                <span style={{fontSize:24}}>{GE[qm.gender]}</span>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                    <span style={{fontSize:16,fontWeight:700,color:"#1e2e1e"}}>{qm.name}</span>
+                    {qm.adminNickname&&<span style={{fontSize:10,background:"#2e3a2e",color:"#a8e6a8",borderRadius:5,padding:"1px 7px",fontWeight:700}}>{qm.adminNickname}</span>}
+                    <span style={{fontSize:10,borderRadius:10,padding:"1px 7px",background:qtc.bg,color:qtc.color,fontWeight:700}}>{qtc.label}</span>
+                    <span style={{fontSize:10,borderRadius:10,padding:"1px 7px",background:qsc.bg,color:qsc.color,fontWeight:700,display:"flex",alignItems:"center",gap:3}}><span style={{width:5,height:5,borderRadius:"50%",background:qsc.dot,display:"inline-block"}}/>{qsc.label}</span>
+                  </div>
+                  {qm.holding&&<div style={{fontSize:10,color:"#3d5494",marginTop:2}}>⏸️ 홀딩 중 ({fmt(qm.holding.startDate)}~)</div>}
+                </div>
+                <button onClick={()=>setQuickDetailM(null)} style={{background:"#f0ece4",border:"none",borderRadius:7,width:26,height:26,cursor:"pointer",fontSize:13,color:"#9a8e80",fontFamily:FONT}}>×</button>
+              </div>
+              {/* 잔여/바 */}
+              {qstatus!=="off"&&(
+                <div style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
+                    <span style={{fontSize:11,color:"#9a8e80"}}>등록 <b style={{color:"#3a4a3a"}}>{qm.total}회</b></span>
+                    <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{qm.used}</b></span>
+                    <span style={{fontSize:13,fontWeight:700,color:qexpired?"#c97474":qrem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:22}}>{qrem}</span>회</span>
+                  </div>
+                  <div style={{background:"#e8e4dc",borderRadius:8,height:16,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${qpct}%`,background:qbarColor,borderRadius:8}}/>
+                  </div>
+                </div>
+              )}
+              {/* 기간 */}
+              <div style={{background:"#f7f4ef",borderRadius:9,padding:"8px 12px",fontSize:12,marginBottom:12}}>
+                {qstatus==="off"?(
+                  <span style={{color:"#b0a090"}}>종료 <span style={{fontWeight:600,color:"#c97474"}}>{fmt(qend)}</span></span>
+                ):(
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
+                    <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+                      <span style={{color:"#7a6e60"}}>{fmt(qm.startDate)} → <span style={{fontWeight:600,color:qdl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(qend)}</span></span>
+                      {qclosureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{qclosureExt}일</span>}
+                      {(qm.extensionDays||0)>0&&<span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{qm.extensionDays}일</span>}
+                    </div>
+                    <span style={{fontWeight:700,fontSize:12,color:qdl<0?"#c97474":qdl<=7?"#9a5a10":"#4a6a4a",flexShrink:0}}>{qdl<0?`D+${Math.abs(qdl)}`:qdl===0?"D-Day":`D-${qdl}`}</span>
+                  </div>
+                )}
+              </div>
+              {/* 버튼 */}
+              <button onClick={()=>setQuickDetailM(null)} style={{width:"100%",background:"#f0ece4",border:"none",borderRadius:9,padding:"9px 0",fontSize:13,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>닫기</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={note=>adminCancel(cancelModal.id,note)}/>}
 
@@ -1977,12 +2245,13 @@ function currentRecs(member,bookings){
 }
 
 function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdjust}){
+  const closures=useClosures();
   const [expandedRH,setExpandedRH]=useState(null);
   const [adjMode,setAdjMode]=useState(false);
   const [adjTotal,setAdjTotal]=useState(member.total);
   const [adjUsed,setAdjUsed]=useState(member.used);
-  const status=getStatus(member),sc=SC[status];
-  const end=effEnd(member),dl=calcDL(member);
+  const status=getStatus(member,closures),sc=SC[status];
+  const end=effEnd(member,closures),dl=calcDL(member,closures);
   const expired=dl<0;
   // 종료일 지나면 잔여 0 (#3)
   const dispRem=expired?0:Math.max(0,member.total-member.used);
@@ -2072,7 +2341,6 @@ function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdj
           <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
             <button onClick={onRenew} style={{...S.saveBtn,fontSize:12,padding:"7px 12px"}}>🔄 갱신</button>
             {member.memberType==="3month"&&<button onClick={onHolding} style={{background:"#edf0f8",color:"#3d5494",border:"none",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>{member.holding?"⏸️ 홀딩 관리":"⏸️ 홀딩"}</button>}
-            {member.memberType==="3month"&&<button onClick={onExt} style={{background:"#fdf3e3",color:"#9a5a10",border:"none",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>📅 5주연장</button>}
           </div>
 
           {reversedHistory.length>0&&(
@@ -2084,13 +2352,21 @@ function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdj
                   // #5: OFF(종료)면 현재 period 없음 — 모두 과거형으로 표시
                   const isCurrent=isActiveStatus&&i===0;
                   const isOpen=expandedRH===r.id;
+                  // 현재 period: 휴강연장 + 홀딩연장 반영한 실제 종료일
+                  const closureExt=isCurrent?getClosureExtDays(member,closures):0;
+                  const holdExt=(isCurrent&&member.extensionDays)||0;
+                  const displayEndDate=(closureExt>0||holdExt>0)?addDays(r.endDate,closureExt+holdExt):r.endDate;
                   return(
                     <div key={r.id} style={{marginBottom:5,borderRadius:9,overflow:"hidden",border:`1px solid ${isCurrent?"#b8d8b8":"#e4e0d8"}`}}>
                       <div onClick={()=>setExpandedRH(isOpen?null:r.id)} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:isCurrent?"#f0f8f0":"#fafaf7",cursor:"pointer",userSelect:"none"}}>
                         <span style={{fontSize:14,flexShrink:0}}>{isCurrent?"🟢":"⚪"}</span>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:12,fontWeight:700,color:"#2e3e2e"}}>{fmt(r.startDate)} ~ {fmt(r.endDate)}</div>
-                          <div style={{display:"flex",gap:6,marginTop:2,flexWrap:"wrap",alignItems:"center"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+                            <span style={{fontSize:12,fontWeight:700,color:"#2e3e2e"}}>{fmt(r.startDate)} ~ {fmt(displayEndDate)}</span>
+                            {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
+                            {holdExt>0&&<span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{holdExt}일</span>}
+                          </div>
+                          <div style={{display:"flex",gap:5,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
                             <span style={{fontSize:10,background:(TYPE_CFG[r.memberType]||TYPE_CFG["1month"]).bg,color:(TYPE_CFG[r.memberType]||TYPE_CFG["1month"]).color,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{(TYPE_CFG[r.memberType]||TYPE_CFG["1month"]).label}</span>
                             {r.total>0&&<span style={{fontSize:10,color:"#9a8e80"}}>등록 {r.total}회</span>}
                             <span style={{fontSize:10,color:precs.length>0?"#2e6e44":"#b0a090",fontWeight:700}}>출석 {precs.length}회</span>
@@ -2133,50 +2409,72 @@ function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdj
 }
 
 function MemberCard({m,onEdit,onDel,onDetail}){
-  const dl=calcDL(m);
+  const closures=useClosures();
+  const dl=calcDL(m,closures);
   const expired=dl<0;
-  // 종료일 지나면 잔여 0으로 표시 (#3)
   const rem=expired?0:Math.max(0,m.total-m.used);
   const pct=expired?100:Math.round(m.used/m.total*100);
-  const status=getStatus(m),sc=SC[status];
-  const end=effEnd(m);
+  const status=getStatus(m,closures),sc=SC[status];
+  const end=effEnd(m,closures);
+  const closureExt=getClosureExtDays(m,closures);
   const tc=TYPE_CFG[m.memberType]||TYPE_CFG["1month"];
   const barColor=expired?"#c97474":status==="hold"?"#6a7fc8":"#5a9e6a";
+  // OFF이고 종료일 30일 초과: 매우 축약된 카드
+  const isOff=status==="off";
+  const isLongOff=isOff&&Math.abs(dl)>30;
+
   return(
-    <div style={S.card}>
+    <div style={{...S.card,opacity:isOff?0.82:1}}>
       <div style={{...S.cardTop}}>
         <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",flex:1,minWidth:0}}>
           <span style={{fontSize:20,lineHeight:1,flexShrink:0}}>{GE[m.gender]}</span>
           <span style={S.memberName}>{m.name}</span>
           {m.adminNickname&&<div style={{display:"inline-flex",alignItems:"center",gap:3,background:"#2e3a2e",borderRadius:6,padding:"2px 7px",flexShrink:0}}><span style={{fontSize:10,color:"#7aba7a"}}>👀</span><span style={{fontSize:11,fontWeight:700,color:"#a8e6a8"}}>{m.adminNickname}</span></div>}
           {m.isNew&&<span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
-          <span style={{fontSize:11,borderRadius:20,padding:"2px 8px",background:tc.bg,color:tc.color,fontWeight:700}}>{tc.label}</span>
-          {m.holding&&<span style={{fontSize:10,background:"#edf0f8",color:"#3d5494",borderRadius:20,padding:"2px 7px",fontWeight:700}}>⏸️홀딩</span>}
+          {!isLongOff&&<span style={{fontSize:11,borderRadius:20,padding:"2px 8px",background:tc.bg,color:tc.color,fontWeight:700}}>{tc.label}</span>}
+          {m.holding&&<span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
         </div>
         <span style={{...S.statusBadge,background:sc.bg,color:sc.color,flexShrink:0}}><span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block",marginRight:4}}/>{sc.label}</span>
       </div>
       {m.adminNote&&<div style={{fontSize:11,color:"#9a5a10",background:"#fffaeb",borderRadius:6,padding:"3px 8px",marginBottom:7,border:"1px dashed #e8c44a"}}>📝 {m.adminNote}</div>}
-      <div style={{marginBottom:10}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
-          <span style={{fontSize:11,color:"#9a8e80"}}>등록 <b style={{color:"#3a4a3a"}}>{m.total}회</b></span>
-          <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{m.used}</b></span>
-          <span style={{fontSize:13,fontWeight:700,color:expired?"#c97474":rem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:20}}>{rem}</span>회</span>
+
+      {/* OFF: 종료일 한 줄 표시 (30일 초과 여부 무관, 동일 레이아웃) */}
+      {isOff?(
+        <div style={{fontSize:11,color:"#b0a090",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+          <span>종료</span>
+          <span style={{fontWeight:600,color:"#c97474"}}>{fmt(end)}</span>
         </div>
-        <div style={{background:"#e8e4dc",borderRadius:8,height:20,overflow:"hidden"}}>
-          <div style={{height:"100%",width:`${pct}%`,background:expired?"#c8c0b0":barColor,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transition:"width .4s"}}>
-            {!expired&&pct>15&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{m.used}회</span>}
+      ):(
+        <>
+          {/* ON/HOLD: 등록/사용/잔여/바 표시 */}
+          <div style={{marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
+              <span style={{fontSize:11,color:"#9a8e80"}}>등록 <b style={{color:"#3a4a3a"}}>{m.total}회</b></span>
+              <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{m.used}</b></span>
+              <span style={{fontSize:13,fontWeight:700,color:rem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:20}}>{rem}</span>회</span>
+            </div>
+            <div style={{background:"#e8e4dc",borderRadius:8,height:20,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${pct}%`,background:barColor,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transition:"width .4s"}}>
+                {pct>15&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{m.used}회</span>}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      <div style={S.dateRow}>
-        <div style={{display:"flex",flexDirection:"column",gap:1}}><span style={S.dateLabel}>등록일</span><span style={S.dateVal}>{fmt(m.startDate)}</span></div>
-        <span style={{color:"#c8c0b0",fontSize:13,marginTop:9}}>→</span>
-        <div style={{display:"flex",flexDirection:"column",gap:1}}>
-          <span style={S.dateLabel}>종료일{(m.extensionDays||0)>0&&<span style={{color:"#2e6e44",marginLeft:3,fontSize:10,fontWeight:700}}>+{m.extensionDays}일</span>}</span>
-          <span style={{...S.dateVal,color:dl<0?"#c97474":dl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(end)}</span>
-        </div>
-        <div style={{...S.dChip,background:dl<0?"#f5eeee":dl<=7?"#fdf3e3":"#eef4ee",color:dl<0?"#c97474":dl<=7?"#9a5a10":"#2e6e44"}}>{dl<0?`${Math.abs(dl)}일 초과`:dl===0?"D-Day":`D-${dl}`}</div>
-      </div>
+          <div style={S.dateRow}>
+            <div style={{display:"flex",flexDirection:"column",gap:1}}><span style={S.dateLabel}>등록일</span><span style={S.dateVal}>{fmt(m.startDate)}</span></div>
+            <span style={{color:"#c8c0b0",fontSize:13,marginTop:9}}>→</span>
+            <div style={{display:"flex",flexDirection:"column",gap:2}}>
+              <span style={S.dateLabel}>종료일</span>
+              <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+                <span style={{...S.dateVal,color:dl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(end)}</span>
+                {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
+                {(m.extensionDays||0)>0&&<span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{m.extensionDays}일</span>}
+              </div>
+            </div>
+            <div style={{...S.dChip,background:dl<0?"#f5eeee":dl<=7?"#fdf3e3":"#eef4ee",color:dl<0?"#c97474":dl<=7?"#9a5a10":"#2e6e44"}}>{dl<0?`D+${Math.abs(dl)}`:dl===0?"D-Day":`D-${dl}`}</div>
+          </div>
+        </>
+      )}
+
       <div style={S.actions}>
         <button style={S.detailBtn} onClick={onDetail}>상세보기</button>
         <button style={S.editBtn} onClick={onEdit}>수정</button>
@@ -2196,12 +2494,11 @@ function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,sp
   const [detailM,setDetailM]=useState(null);
   const [renewT,setRenewT]=useState(null);
   const [holdT,setHoldT]=useState(null);
-  const [extT,setExtT]=useState(null);
   const [delT,setDelT]=useState(null);
   const [showNotices,setShowNotices]=useState(false);
 
-  const counts={all:members.length,on:members.filter(m=>getStatus(m)==="on").length,hold:members.filter(m=>getStatus(m)==="hold").length,off:members.filter(m=>getStatus(m)==="off").length};
-  const filtered=useMemo(()=>members.filter(m=>{if(filter!=="all"&&getStatus(m)!==filter)return false;if(search&&!m.name.includes(search))return false;return true;}).sort((a,b)=>a.name.localeCompare(b.name,"ko")),[members,filter,search]);
+  const counts={all:members.length,on:members.filter(m=>getStatus(m,closures)==="on").length,hold:members.filter(m=>getStatus(m,closures)==="hold").length,off:members.filter(m=>getStatus(m,closures)==="off").length};
+  const filtered=useMemo(()=>members.filter(m=>{if(filter!=="all"&&getStatus(m,closures)!==filter)return false;if(search&&!m.name.includes(search))return false;return true;}).sort((a,b)=>a.name.localeCompare(b.name,"ko")),[members,filter,search,closures]);
 
   function openAdd(){
     const autoEnd=endOfNextMonth(TODAY_STR);
@@ -2251,7 +2548,7 @@ return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays
         {tab==="members"&&<button style={{...S.addBtn,marginLeft:"auto"}} onClick={openAdd}>+ 회원 추가</button>}
       </div>
 
-      {tab==="attendance"&&<AttendanceBoard members={members} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} onMemberClick={(m)=>setDetailM(m)}/>}
+      {tab==="attendance"&&<AttendanceBoard members={members} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} notices={notices} setNotices={setNotices} onMemberClick={(m)=>setDetailM(m)}/>}
 
       {tab==="members"&&(<>
         <div style={S.pillRow}>
@@ -2268,10 +2565,9 @@ return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays
         </div>
       </>)}
 
-      {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onExt={()=>setExtT(members.find(m=>m.id===detailM.id)||detailM)} onAdjust={(t,u)=>applyAdjust(detailM.id,t,u)}/>}
+      {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(t,u)=>applyAdjust(detailM.id,t,u)}/>}
       {renewT&&<RenewalModal member={members.find(m=>m.id===renewT)} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)}/>}
       {holdT&&<HoldingModal member={members.find(m=>m.id===holdT)} onClose={()=>setHoldT(null)} onSave={hd=>applyHolding(holdT,hd)}/>}
-      {extT&&<ExtensionModal member={extT} onClose={()=>setExtT(null)} onSave={days=>{setMembers(p=>p.map(m=>m.id===extT.id?{...m,extensionDays:days}:m));setExtT(null);}}/>}
       {showNotices&&<NoticeManager notices={notices} setNotices={setNotices} onClose={()=>setShowNotices(false)}/>}
 
       {showForm&&(
@@ -2290,7 +2586,19 @@ return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays
             <div style={S.fg}><label style={S.lbl}>회원권</label><div style={{display:"flex",gap:10}}>{[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>setForm(f=>{const newEnd=v==="1month"?endOfNextMonth(f.startDate||TODAY_STR):calc3MonthEnd(f.startDate||TODAY_STR,closures);return{...f,memberType:v,total:v==="3month"?24:f.total,endDate:newEnd};})} style={{flex:1,padding:"9px 0",borderRadius:10,border:"1.5px solid",cursor:"pointer",fontSize:14,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}</div></div>
             <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>총 회차</label><input style={S.inp} type="number" min="1" value={form.total||""} onChange={e=>setForm(f=>({...f,total:e.target.value}))}/></div><div style={{...S.fg,flex:1}}><label style={S.lbl}>사용 회차</label><input style={S.inp} type="number" min="0" value={form.used||0} onChange={e=>setForm(f=>({...f,used:e.target.value}))}/></div></div>
             <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>최초 등록일</label><input style={S.inp} type="date" value={form.firstDate||""} onChange={e=>setForm(f=>({...f,firstDate:e.target.value}))}/></div></div>
-            <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>현재 시작일</label><input style={S.inp} type="date" value={form.startDate||""} onChange={e=>{const sd=e.target.value;setForm(f=>({...f,startDate:sd,endDate:f.memberType==="1month"?endOfNextMonth(sd):calc3MonthEnd(sd,closures)}));}}/></div><div style={{...S.fg,flex:1}}><label style={S.lbl}>종료일</label><input style={S.inp} type="date" value={form.endDate||""} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/></div></div>
+            <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>현재 시작일</label><input style={S.inp} type="date" value={form.startDate||""} onChange={e=>{const sd=e.target.value;setForm(f=>({...f,startDate:sd,endDate:f.memberType==="1month"?endOfNextMonth(sd):calc3MonthEnd(sd,closures)}));}}/></div>
+              <div style={{...S.fg,flex:1}}>
+                <label style={S.lbl}>종료일{form.memberType==="3month"&&<span style={{fontSize:10,color:"#7a9a7a",marginLeft:4}}>자동계산</span>}</label>
+                {form.memberType==="3month"?(
+                  <div style={{...S.inp,background:"#f0f8f0",color:"#3a4a3a",cursor:"default",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <span>{form.endDate?fmt(form.endDate):"-"}</span>
+                    <span style={{fontSize:10,color:"#7a9a7a"}}>60평일 기준</span>
+                  </div>
+                ):(
+                  <input style={S.inp} type="date" value={form.endDate||""} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/>
+                )}
+              </div>
+            </div>
             <div style={S.modalBtns}><button style={S.cancelBtn} onClick={()=>setShowForm(false)}>취소</button><button style={S.saveBtn} onClick={saveForm}>저장</button></div>
           </div>
         </div>
@@ -2315,24 +2623,29 @@ function MemberLoginPage({members,onLogin,onGoAdmin}){
   const [phone,setPhone]=useState("");
   const [error,setError]=useState("");
   const [shake,setShake]=useState(false);
-  const [candidates,setCandidates]=useState(null); // 동명이인 선택용
+  const [candidates,setCandidates]=useState(null);
+  const [autoLogin,setAutoLogin]=useState(false);
 
-  // 이름 매칭: 동명이인은 전화번호로 구분
+  async function doLogin(m){
+    if(autoLogin){
+      try{ await storeSave(AUTO_LOGIN_KEY, {memberId:m.id}, false); }catch(e){}
+    }
+    onLogin(m);
+    setCandidates(null);
+  }
+
   function tryLogin(){
     const trimName=name.trim(), trimPhone=phone.trim();
-    // 이름+전화번호 완전 일치
     const exact=members.find(m=>m.name.trim()===trimName&&m.phone4===trimPhone);
-    if(exact){onLogin(exact);setCandidates(null);return;}
-    // 이름만 일치하는 후보 (전화번호 미입력 or 동명이인)
-    const byName=members.filter(m=>m.name.trim()===trimName&&m.phone4===trimPhone);
-    // 이름만으로 여러 명 매칭 시 선택 화면
+    if(exact){doLogin(exact);return;}
     const byNameOnly=members.filter(m=>m.name.trim()===trimName);
     if(byNameOnly.length>1&&!trimPhone){setCandidates(byNameOnly);return;}
     if(byNameOnly.length>1&&trimPhone){
       const matched=byNameOnly.filter(m=>m.phone4===trimPhone);
-      if(matched.length===1){onLogin(matched[0]);setCandidates(null);return;}
+      if(matched.length===1){doLogin(matched[0]);return;}
       if(matched.length===0){setCandidates(byNameOnly);return;}
     }
+    if(byNameOnly.length===1&&!trimPhone){doLogin(byNameOnly[0]);return;}
     setError("이름 또는 전화번호 뒷자리가 일치하지 않습니다.");
     setShake(true);setTimeout(()=>setShake(false),500);
   }
@@ -2340,12 +2653,12 @@ function MemberLoginPage({members,onLogin,onGoAdmin}){
   // 동명이인 선택 화면
   if(candidates){
     return(
-      <div style={{minHeight:"100vh",background:"#f5f3ef",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"20px 16px",fontFamily:FONT}}>
+      <div style={{minHeight:"100vh",background:"#f5f3ef",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",padding:"40px 16px 20px",fontFamily:FONT}}>
         <div style={{background:"#fff",borderRadius:18,padding:"24px 20px",width:"100%",maxWidth:360,boxShadow:"0 4px 24px rgba(40,35,25,.1)"}}>
           <div style={{fontSize:14,fontWeight:700,color:"#1e2e1e",marginBottom:4,textAlign:"center"}}>어느 분이세요?</div>
           <div style={{fontSize:12,color:"#9a8e80",marginBottom:16,textAlign:"center"}}>같은 이름의 회원이 여러 명 있어요</div>
           {candidates.map(m=>(
-            <button key={m.id} onClick={()=>onLogin(m)}
+            <button key={m.id} onClick={()=>doLogin(m)}
               style={{width:"100%",background:"#f7f4ef",border:"1.5px solid #e4e0d8",borderRadius:12,padding:"14px 16px",marginBottom:8,cursor:"pointer",fontFamily:FONT,display:"flex",alignItems:"center",gap:10,textAlign:"left"}}>
               <span style={{fontSize:22}}>{GE[m.gender]}</span>
               <div>
@@ -2361,7 +2674,7 @@ function MemberLoginPage({members,onLogin,onGoAdmin}){
   }
 
   return(
-    <div style={{minHeight:"100vh",background:"#f5f3ef",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"20px 16px",fontFamily:FONT}}>
+    <div style={{minHeight:"100vh",background:"#f5f3ef",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",padding:"40px 16px 20px",fontFamily:FONT}}>
       <style>{`@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}.shake{animation:shake .4s ease}*{box-sizing:border-box}button,input{font-family:${FONT};outline:none}@media(max-width:360px){.login-card{padding:20px 16px!important}}`}</style>
       {/* 로고 */}
       <div style={{textAlign:"center",marginBottom:20}}>
@@ -2373,7 +2686,13 @@ function MemberLoginPage({members,onLogin,onGoAdmin}){
         <div style={{marginBottom:12}}><label style={{display:"block",fontSize:12,fontWeight:700,color:"#9a8e80",marginBottom:5}}>이름</label><input style={{...S.inp,fontSize:15}} placeholder="이름을 입력하세요" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&tryLogin()}/></div>
         <div style={{marginBottom:8}}><label style={{display:"block",fontSize:12,fontWeight:700,color:"#9a8e80",marginBottom:5}}>전화번호 뒷 4자리</label><input style={{...S.inp,fontSize:16,letterSpacing:5,textAlign:"center"}} placeholder="0000" maxLength={4} value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,""))} onKeyDown={e=>e.key==="Enter"&&tryLogin()} type="tel"/></div>
         {error&&<div style={{fontSize:12,color:"#c97474",marginBottom:10,padding:"7px 11px",background:"#fef5f5",borderRadius:8}}>{error}</div>}
-        <button onClick={tryLogin} style={{width:"100%",background:"#4a6a4a",color:"#fff",border:"none",borderRadius:12,padding:14,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:FONT,marginTop:6,touchAction:"manipulation"}}>확인하기</button>
+        <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:14,userSelect:"none"}} onClick={()=>setAutoLogin(a=>!a)}>
+          <div style={{width:38,height:20,borderRadius:10,background:autoLogin?"#4a6a4a":"#ddd",position:"relative",transition:"background .2s",flexShrink:0}}>
+            <div style={{position:"absolute",top:2,left:autoLogin?19:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+          </div>
+          <span style={{fontSize:12,color:"#7a6e60"}}>자동 로그인</span>
+        </label>
+        <button onClick={tryLogin} style={{width:"100%",background:"#4a6a4a",color:"#fff",border:"none",borderRadius:12,padding:14,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:FONT,marginTop:0,touchAction:"manipulation"}}>확인하기</button>
       </div>
       {/* 하단 연락처 */}
       <ContactBar/>
@@ -2403,6 +2722,7 @@ function AdminLoginPage({onLogin,onGoMember}){
 }
 
 const STORE_KEY = "yogapian_v3";
+const AUTO_LOGIN_KEY = "yogapian_autologin";
 const SHARED = true;
 
 async function storeSave(key, data) {
@@ -2435,6 +2755,14 @@ export default function App(){
           if(saved.notices?.length)   setNoticesState(saved.notices);
           if(saved.specialSchedules?.length) setSpecialSchedulesState(saved.specialSchedules);
           if(saved.closures?.length)  setClosuresState(saved.closures);
+          // 자동로그인 확인
+          try {
+            const autoLogin = await storeLoad(AUTO_LOGIN_KEY);
+            if(autoLogin && autoLogin.memberId && saved.members?.length){
+              const m = saved.members.find(mb=>mb.id===autoLogin.memberId);
+              if(m){ setLoggedMember(m); setScreen("memberView"); }
+            }
+          } catch(e){}
         }
       } catch(e){ console.warn("스토리지 로드 실패:", e); }
     })();
@@ -2509,29 +2837,37 @@ export default function App(){
   );
 
   if(screen==="memberLogin") return(
+    <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72}@media(max-width:390px){html{font-size:14px}}`}</style>
       <MemberLoginPage members={members} onLogin={m=>{setLoggedMember(m);setScreen("memberView");}} onGoAdmin={()=>setScreen("adminLogin")}/>
     </div>
+    </ClosuresContext.Provider>
   );
   if(screen==="memberView"&&loggedMember) return(
+    <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72;transform:scale(.97)}@media(max-width:390px){html{font-size:14px}}.member-header{flex-wrap:wrap;gap:8px!important}`}</style>
-      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");}}/>
+      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{window.storage.delete(AUTO_LOGIN_KEY,false);}catch(e){}}}/>
     </div>
+    </ClosuresContext.Provider>
   );
   if(screen==="adminLogin") return(
+    <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}body{background:#2e3a2e}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72}`}</style>
       <AdminLoginPage onLogin={()=>setScreen("admin")} onGoMember={()=>setScreen("memberLogin")}/>
     </div>
+    </ClosuresContext.Provider>
   );
   if(screen==="admin") return(
+    <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input,select,textarea{font-family:${FONT};outline:none;-webkit-appearance:none}.card{transition:box-shadow .2s,transform .15s}@media(hover:hover){.card:hover{box-shadow:0 6px 24px rgba(60,50,30,.14);transform:translateY(-2px)}}.pill:hover{opacity:.78}button:active{opacity:.72}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c8c0b0;border-radius:4px}@media(max-width:600px){html{font-size:14px}.admin-grid{grid-template-columns:1fr!important}.admin-pillrow{gap:5px!important}.admin-toolbar{flex-direction:column!important}}`}</style>
       <SaveBadge/>
       <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} onLogout={()=>setScreen("memberLogin")}/>
     </div>
+    </ClosuresContext.Provider>
   );
   return null;
 }
