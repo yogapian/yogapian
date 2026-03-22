@@ -48,6 +48,13 @@ const ADMIN_PIN="0066";
 const parseLocal=s=>{if(!s)return TODAY;const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);};
 const fmt=d=>{const dt=parseLocal(d);return`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,"0")}.${String(dt.getDate()).padStart(2,"0")}`;};
 const fmtWithDow=d=>`${fmt(d)} (${DOW_KO[parseLocal(d).getDay()]})`;
+function useClock(){
+  const [now,setNow]=useState(new Date());
+  useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
+  const h=String(now.getHours()).padStart(2,"0"),mi=String(now.getMinutes()).padStart(2,"0"),s=String(now.getSeconds()).padStart(2,"0");
+  const dateStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  return{timeStr:`${h}:${mi}:${s}`,dateTimeStr:`${fmtWithDow(dateStr)} ${h}:${mi}:${s}`};
+}
 const addDays=(s,n)=>{const d=parseLocal(s);d.setDate(d.getDate()+n);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
 // 3개월권: 휴강 반영 실제 종료일 (60평일 카운트)
 // 홀딩 중인 기간은 카운트에서 제외 (홀딩 startDate까지만 카운트 후 복귀 후 이어서)
@@ -1303,9 +1310,11 @@ function MiniCalendar({memberId, bookings, member}){
   );
 }
 
-function NoticeBoard({notices}){
+function NoticeBoard({notices,member}){
   const [expanded,setExpanded]=useState(null);
-  const visible=notices.filter(n=>n.pinned).concat(notices.filter(n=>!n.pinned)).slice(0,3);
+  // targetMemberId 없으면 전체 공지, 있으면 해당 회원 것도 포함
+  const filtered=notices.filter(n=>!n.targetMemberId||(member&&n.targetMemberId===member.id));
+  const visible=filtered.filter(n=>n.pinned).concat(filtered.filter(n=>!n.pinned)).slice(0,5);
   if(!visible.length)return null;
   return(
     <div style={{marginBottom:16}}>
@@ -1409,7 +1418,7 @@ function ContactBar(){
   );
 }
 
-function MemberContactBar({onLogout}){
+function MemberContactBar(){
   return(
     <div style={{width:"100%",maxWidth:360,marginTop:24}}>
       <div style={{borderTop:"1px solid #e8e4dc",marginBottom:14}}/>
@@ -1438,17 +1447,7 @@ function MemberContactBar({onLogout}){
           전화 문의
         </a>
       </div>
-      <div style={{textAlign:"center",marginTop:8,paddingBottom:24}}>
-        <button onClick={onLogout}
-          style={{background:"none",border:"none",fontSize:11,color:"#b8b0a8",cursor:"pointer",fontFamily:FONT,padding:"4px 12px",display:"inline-flex",alignItems:"center",gap:6}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b8b0a8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-          로그아웃
-        </button>
-      </div>
+      <div style={{paddingBottom:24}}/>
     </div>
   );
 }
@@ -1680,7 +1679,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
   );
 }
 
-function MemberView({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,onLogout}){
+function MemberView({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,setNotices,onLogout}){
   const m=member;
   const closuresCxt=useClosures();
   const status=getStatus(m,closuresCxt),sc=SC[status];
@@ -1694,11 +1693,44 @@ function MemberView({member,bookings,setBookings,setMembers,specialSchedules,clo
   const isOff=status==="off";
   const closureExt=getClosureExtDays(m,closuresCxt);
 
+  // 개인 공지 팝업 — 읽지 않은 것만
+  const personalNotices=(notices||[]).filter(n=>n.targetMemberId===m.id&&!n.readBy?.includes(m.id));
+  const [popupNotice,setPopupNotice]=useState(personalNotices.length>0?personalNotices[0]:null);
+
+  function markRead(n){
+    setNotices&&setNotices(p=>p.filter(x=>x.id!==n.id));
+    setPopupNotice(null);
+  }
+
+  const {dateTimeStr}=useClock();
+
   return(
     <div style={{minHeight:"100vh",background:"#f5f3ef",fontFamily:FONT}}>
-      <div style={{padding:"env(safe-area-inset-top, 12px) 14px 0",paddingTop:"max(12px, env(safe-area-inset-top))",maxWidth:520,margin:"0 auto",width:"100%"}}>
+      {/* 개인 공지 팝업 */}
+      {popupNotice&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 24px"}}>
+          <div style={{background:"#fff",borderRadius:18,padding:"24px 20px",width:"100%",maxWidth:360,boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}}>
+            <div style={{fontSize:20,marginBottom:8,textAlign:"center"}}>📢</div>
+            <div style={{fontSize:15,fontWeight:700,color:"#1e2e1e",marginBottom:12,textAlign:"center"}}>{popupNotice.title}</div>
+            <div style={{fontSize:13,color:"#5a5a5a",lineHeight:1.8,whiteSpace:"pre-wrap",background:"#f7f4ef",borderRadius:10,padding:"12px 14px",marginBottom:16}}>{popupNotice.content}</div>
+            <button onClick={()=>markRead(popupNotice)} style={{width:"100%",background:"#4a6a4a",color:"#fff",border:"none",borderRadius:12,padding:"13px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>확인했어요</button>
+          </div>
+        </div>
+      )}
+      {/* 상단 헤더 */}
+      <div style={{background:"#f5f3ef",padding:"max(16px, env(safe-area-inset-top)) 16px 12px",maxWidth:520,margin:"0 auto",width:"100%",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+        <div>
+          <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
+            <span style={{fontSize:20,color:"#5a7a5a"}}>ॐ</span>
+            <span style={{fontSize:21,fontWeight:700,color:"#1e2e1e"}}>요가피안</span>
+          </div>
+          <div style={{fontSize:11,color:"#a09080"}}>{dateTimeStr}</div>
+        </div>
+        <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,marginTop:4}}>로그아웃</button>
+      </div>
+      <div style={{padding:"0 14px 0",maxWidth:520,margin:"0 auto",width:"100%"}}>
         {/* 공지 최상단 */}
-        <NoticeBoard notices={notices}/>
+        <NoticeBoard notices={notices} member={member}/>
         {/* 회원카드 */}
         <div style={{...S.card,opacity:isOff?0.82:1,marginBottom:12}}>
           <div style={{...S.cardTop}}>
@@ -1750,7 +1782,7 @@ function MemberView({member,bookings,setBookings,setMembers,specialSchedules,clo
       </div>
       <MemberReservePage member={m} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} onBack={()=>{}}/>
       <div style={{display:"flex",justifyContent:"center"}}>
-        <MemberContactBar onLogout={onLogout}/>
+        <MemberContactBar/>
       </div>
     </div>
   );
@@ -1815,6 +1847,86 @@ function NoticeManager({notices,setNotices,onClose}){
   );
 }
 
+function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,notices,setNotices,onClose}){
+  const [note,setNote]=useState("");
+  const [confirmDelete,setConfirmDelete]=useState(false);
+  const mem=rec.memberId?members.find(m=>m.id===rec.memberId):null;
+  const slotLabel=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.label||"";
+  const live=bookings.find(b=>b.id===rec.id)||rec;
+
+  function doAttend(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:true}:b));onClose();}
+  function doAbsent(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:false}:b));onClose();}
+  function doDelete(){
+    setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelNote:note,cancelledBy:"admin",confirmedAttend:false}:b));
+    if(mem&&!isOpen) setMembers(p=>p.map(m=>m.id===mem.id?{...m,used:Math.max(0,m.used-1)}:m));
+    if(mem&&setNotices){
+      const slotTime=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.time||"";
+      const nid=Math.max(...(notices||[]).map(n=>n.id),0)+1;
+      const content=`${fmt(rec.date)} ${slotLabel} ${slotTime} 예약이 취소되었습니다.${note?`\n사유: ${note}`:""}`;
+      setNotices(p=>[{id:nid,title:`📢 예약 취소 안내`,content,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(p||[])]);
+    }
+    onClose();
+  }
+  function doReset(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:null}:b));onClose();}
+
+  return(
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{...S.modal,maxWidth:300}} onClick={e=>e.stopPropagation()}>
+        <div style={S.modalHead}>
+          <span style={{fontSize:20}}>📋</span>
+          <div>
+            <div style={S.modalTitle}>{mem?mem.name:rec.onedayName}</div>
+            <div style={{fontSize:12,color:"#9a8e80",marginTop:2}}>{slotLabel} 출석 확인</div>
+          </div>
+        </div>
+        {live.confirmedAttend===true&&(
+          <div style={{textAlign:"center",marginBottom:12}}>
+            <div style={{fontSize:32,marginBottom:6}}>✅</div>
+            <div style={{fontSize:13,color:"#9a8e80"}}>출석 확인됨</div>
+            <button onClick={doReset} style={{marginTop:10,background:"none",border:"none",fontSize:12,color:"#9a8e80",cursor:"pointer",fontFamily:FONT}}>↩ 되돌리기</button>
+          </div>
+        )}
+        {live.confirmedAttend===false&&(
+          confirmDelete?(
+            <>
+              <div style={{textAlign:"center",fontSize:13,color:"#c97474",fontWeight:700,marginBottom:10}}>목록에서 삭제할까요?</div>
+              <input style={{...S.inp,fontSize:12,marginBottom:10}} value={note} onChange={e=>setNote(e.target.value)} placeholder="불참 사유 (선택)"/>
+              <div style={{display:"flex",gap:8,marginBottom:12}}>
+                <button onClick={()=>setConfirmDelete(false)} style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>취소</button>
+                <button onClick={doDelete} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>삭제</button>
+              </div>
+            </>
+          ):(
+            <div style={{textAlign:"center",marginBottom:12}}>
+              <div style={{fontSize:32,marginBottom:6}}>❌</div>
+              <div style={{fontSize:13,color:"#9a8e80",marginBottom:10}}>불참 처리됨</div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={doReset} style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>↩ 되돌리기</button>
+                <button onClick={()=>setConfirmDelete(true)} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>🗑️ 삭제</button>
+              </div>
+            </div>
+          )
+        )}
+        {(live.confirmedAttend===undefined||live.confirmedAttend===null)&&(
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
+            <button onClick={doAttend} style={{flex:1,background:"#eef5ee",color:"#2e6e44",border:"1.5px solid #7aaa7a",borderRadius:10,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>✅ 출석</button>
+            <button onClick={()=>{
+              if(!mem){
+                // 원데이: 바로 불참(삭제)
+                setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:false,status:"cancelled",cancelledBy:"admin"}:b));
+                onClose();
+              } else {
+                doAbsent();
+              }
+            }} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>❌ 불참</button>
+          </div>
+        )}
+        <button onClick={onClose} style={{...S.cancelBtn,width:"100%"}}>닫기</button>
+      </div>
+    </div>
+  );
+}
+
 function AdminCancelModal({booking,member,onClose,onConfirm}){
   const [note,setNote]=useState("");
   const sl=TIME_SLOTS.find(t=>t.key===booking.timeSlot);
@@ -1849,6 +1961,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   const [originalType,setOriginalType]=useState(null);
   const closeSpecialMgr=()=>{setShowSpecialMgr(false);setOriginalType(null);setNewSp(INIT_SP);};
   const [cancelModal,setCancelModal]=useState(null);
+  const [attendCheckModal,setAttendCheckModal]=useState(null);
   const [dragId,setDragId]=useState(null);
   const [dragOver,setDragOver]=useState(null);
   const [showClosureMgr,setShowClosureMgr]=useState(false);
@@ -2037,7 +2150,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                     <span style={{fontSize:12,color:slot.color,fontWeight:700}}>{recs.length}명</span>
-                    <button onClick={()=>{setAddModal(slot.key);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});}} style={{fontSize:11,background:slot.color,color:"#fff",border:"none",borderRadius:6,padding:"3px 9px",cursor:"pointer",fontFamily:FONT,fontWeight:700,minHeight:26}}>+ 추가</button>
+                    {!slotCl&&<button onClick={()=>{setAddModal(slot.key);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});}} style={{fontSize:11,background:slot.color,color:"#fff",border:"none",borderRadius:6,padding:"3px 9px",cursor:"pointer",fontFamily:FONT,fontWeight:700,minHeight:26}}>+ 추가</button>}
                   </div>
                 </div>
                 <div style={{minHeight:44}}>
@@ -2045,40 +2158,36 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                   {recs.map(rec=>{
                     const isOneday=!rec.memberId;
                     const mem=isOneday?null:members.find(m=>m.id===rec.memberId);
-                    // 잔여 횟수: 현재 회원 기준 단순 계산
-                    const remCount=mem?Math.max(0,mem.total-mem.used):null;
-                    const bs=BOOKING_STATUS[rec.status]||BOOKING_STATUS.attended;
+                    const remCount=mem?Math.max(0,mem.total-usedAsOf(mem.id,date,bookings,members)):null;
                     const isDragging=dragId===rec.id;
-                    // 잔여 3회 미만일 때만 경고 표시
-                    const showRemWarn=!isOneday&&remCount!==null&&remCount<3;
+                    const showRemWarn=!isOneday&&remCount!==null&&remCount<=2;
+                    const remBg=showRemWarn?(remCount<=1?"#fff5f5":"#fffbf0"):undefined;
+                    const remColor=showRemWarn?(remCount<=1?"#a83030":"#9a5a10"):undefined;
+                    const cardColor=mem?.cardColor||"";
+                    const isAttended=rec.confirmedAttend===true;
+                    const isAbsent=rec.confirmedAttend===false;
                     return(
-                      <div key={rec.id} draggable onDragStart={e=>onDragStart(e,rec.id)} onDragEnd={onDragEnd}
-                        style={{padding:"7px 10px",borderBottom:"1px solid #f8f4ef",display:"flex",alignItems:"center",gap:6,opacity:isDragging?0.4:1,background:"#fff",cursor:"grab",WebkitUserSelect:"none",userSelect:"none"}}>
-                        <span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>
-                        <span style={{fontSize:17,flexShrink:0}}>{isOneday?"🙋":GE[mem.gender]}</span>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:13,fontWeight:700,color:"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"flex",alignItems:"center",gap:4}}>
-                            <span
-                              onClick={()=>!isOneday&&mem&&setQuickDetailM(mem)}
-                              style={{cursor:isOneday?"default":"pointer",textDecoration:isOneday?"none":"underline",textDecorationColor:"#c8c0b0",textUnderlineOffset:2}}>
-                              {isOneday?rec.onedayName:mem.name}
-                            </span>
-                            {!isOneday&&mem.adminNickname&&<><span style={{color:"#c8c0b0",margin:"0 2px"}}>|</span><span style={{fontSize:10,color:"#5a7a5a",fontWeight:600}}>{mem.adminNickname}</span></>}
-                          </div>
-                          {isOneday
-                            ?<span style={{fontSize:10,background:"#fdf3e3",color:"#9a6020",border:"1px solid #e8a44a",borderRadius:4,padding:"1px 5px",fontWeight:700}}>원데이</span>
-                            :showRemWarn
-                              ?<div style={{fontSize:10,color:"#c97474",fontWeight:700}}>잔여 {remCount}회</div>
-                              :null
-                          }
+                      <div key={rec.id} draggable={!slotCl} onDragStart={e=>!slotCl&&onDragStart(e,rec.id)} onDragEnd={onDragEnd}
+                        style={{padding:"8px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:isDragging?0.4:isAbsent?0.5:1,background:isAbsent?"#fff8f8":remBg||"#fff",cursor:slotCl?"default":"grab",WebkitUserSelect:"none",userSelect:"none",borderLeft:cardColor?`3px solid ${cardColor}`:"none"}}>
+                        {!slotCl&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
+                        <span style={{fontSize:15,flexShrink:0}}>{GE[mem?.gender]||"🧘🏿"}</span>
+                        <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
+                          <span onClick={()=>!isOneday&&mem&&setQuickDetailM(mem)}
+                            style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:isOneday?"default":"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
+                            {isOneday?rec.onedayName:mem.name}
+                          </span>
+                          {showRemWarn&&!isAbsent&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
                         </div>
-                        <div style={{display:"flex",flexDirection:"column",gap:3,alignItems:"flex-end",flexShrink:0}}>
-                          <span style={{fontSize:10,background:bs.bg,color:bs.color,borderRadius:5,padding:"1px 6px",fontWeight:700}}>{bs.icon} {bs.label}</span>
-                          {rec.walkIn&&!isOneday&&<span style={{fontSize:10,background:"#fdf3e3",color:"#9a6020",border:"1px solid #e8a44a",borderRadius:5,padding:"1px 5px",fontWeight:700}}>워크인</span>}
-                        </div>
-                        <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
-                          <button onClick={()=>setCancelModal(rec)} style={{fontSize:10,background:"#f5eeee",color:"#c97474",border:"none",borderRadius:5,padding:"2px 6px",cursor:"pointer",fontFamily:FONT}}>취소</button>
-                        </div>
+                        {/* 원데이: 1️⃣ 버튼 / 회원: 🕉 버튼 */}
+                        {isOneday?(
+                          <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,flexShrink:0}}>
+                            {isAttended?"✅":isAbsent?"❌":"1️⃣"}
+                          </button>
+                        ):(
+                          <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,opacity:isAbsent?0.7:1,flexShrink:0}}>
+                            {isAttended?"✅":isAbsent?"❌":"🕉"}
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -2289,6 +2398,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
         );
       })()}
 
+      {attendCheckModal&&<AttendCheckModal rec={attendCheckModal} members={members} isOpen={isOpen} bookings={bookings} setBookings={setBookings} setMembers={setMembers} notices={notices} setNotices={setNotices} onClose={()=>setAttendCheckModal(null)}/>}
       {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={note=>adminCancel(cancelModal.id,note)}/>}
 
       {showSpecialMgr&&(
@@ -2326,39 +2436,54 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                 })}
               </div>
             </div>
-            <div style={S.fg}><label style={S.lbl}>날짜</label><input style={S.inp} type="date" value={newSp.date} onChange={e=>{
-              const dowSlots=SCHEDULE[new Date(e.target.value+"T00:00:00").getDay()]||[];
-              const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
-              const existingOnDate=specialSchedules.find(s=>s.date===e.target.value);
-              if(existingOnDate){
-                setNewSp(f=>({...f,date:e.target.value,type:existingOnDate.type,activeSlots:existingOnDate.activeSlots||[],customTimes:{...regularTimes,...(existingOnDate.customTimes||{})},label:existingOnDate.label||"",feeNote:existingOnDate.feeNote||""}));
-                setOriginalType(existingOnDate.type);
-              } else if(dowSlots.length){
-                setNewSp(f=>({...f,date:e.target.value,type:"regular",activeSlots:dowSlots,customTimes:regularTimes,label:"",feeNote:""}));
-                setOriginalType("regular");
-              } else {
-                setNewSp(f=>({...f,date:e.target.value,type:"special",activeSlots:[],customTimes:regularTimes,label:"",feeNote:""}));
-                setOriginalType(null);
-              }
-            }}/></div>
-            <div style={S.fg}><label style={S.lbl}>메모 <span style={{fontWeight:400,color:"#9a8e80"}}>(선택)</span></label><input style={S.inp} value={newSp.label} onChange={e=>setNewSp(f=>({...f,label:e.target.value}))} placeholder={newSp.type==="open"?"예: 연말 무료수업 🎉":newSp.type==="regular"?"예: 관리자 메모":"예: 어린이날 집중수업"}/></div>
-            {/* 정규: 이 날 공지 토글 + 입력 */}
-            {newSp.type==="regular"&&(
-              <div style={S.fg}>
-                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",userSelect:"none",marginBottom:8}} onClick={()=>setNewSp(f=>({...f,dailyNote:f.dailyNote===undefined?"":undefined}))}>
-                  <div style={{width:36,height:20,borderRadius:10,background:newSp.dailyNote!==undefined&&newSp.dailyNote!==null?"#c97474":"#ddd",position:"relative",transition:"background .2s",flexShrink:0}}>
-                    <div style={{position:"absolute",top:2,left:(newSp.dailyNote!==undefined&&newSp.dailyNote!==null)?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+            <div style={S.fg}>
+              <label style={S.lbl}>날짜</label>
+              {(()=>{
+                function changeSpDate(val){
+                  const dowSlots=SCHEDULE[new Date(val+"T00:00:00").getDay()]||[];
+                  const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
+                  const existingOnDate=specialSchedules.find(s=>s.date===val);
+                  if(existingOnDate){
+                    setNewSp(f=>({...f,date:val,type:existingOnDate.type,activeSlots:existingOnDate.activeSlots||[],customTimes:{...regularTimes,...(existingOnDate.customTimes||{})},label:existingOnDate.label||"",feeNote:existingOnDate.feeNote||""}));
+                    setOriginalType(existingOnDate.type);
+                  } else if(dowSlots.length){
+                    setNewSp(f=>({...f,date:val,type:"regular",activeSlots:dowSlots,customTimes:regularTimes,label:"",feeNote:""}));
+                    setOriginalType("regular");
+                  } else {
+                    setNewSp(f=>({...f,date:val,type:"special",activeSlots:[],customTimes:regularTimes,label:"",feeNote:""}));
+                    setOriginalType(null);
+                  }
+                }
+                const spDow=newSp.date?DOW_KO[new Date(newSp.date+"T00:00:00").getDay()]:"";
+                const isToday=newSp.date===TODAY_STR;
+                return(
+                  <div style={{display:"flex",alignItems:"center",gap:0,background:"#fafaf7",border:"1.5px solid #ddd",borderRadius:9,overflow:"hidden"}}>
+                    <button type="button" onClick={()=>changeSpDate(addDays(newSp.date,-1))} style={{background:"none",border:"none",borderRight:"1px solid #e8e4dc",padding:"10px 13px",fontSize:15,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,flexShrink:0}}>‹</button>
+                    <label style={{flex:1,position:"relative",cursor:"pointer"}}>
+                      <input type="date" value={newSp.date} onChange={e=>changeSpDate(e.target.value)} style={{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%"}}/>
+                      <div style={{padding:"10px 0",textAlign:"center",fontSize:14,fontWeight:700,color:"#1e2e1e",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
+                        <span>{newSp.date?`${newSp.date.replace(/-/g,".")} (${spDow})`:""}</span>
+                        {isToday&&<span style={{fontSize:10,background:"#4a6a4a",color:"#fff",borderRadius:5,padding:"2px 6px",fontWeight:700}}>오늘</span>}
+                      </div>
+                    </label>
+                    <button type="button" onClick={()=>changeSpDate(addDays(newSp.date,1))} style={{background:"none",border:"none",borderLeft:"1px solid #e8e4dc",padding:"10px 13px",fontSize:15,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,flexShrink:0}}>›</button>
                   </div>
-                  <span style={{fontSize:12,color:"#4a4a4a"}}>🔔 이 날 공지 띄우기</span>
-                </label>
-                {newSp.dailyNote!==undefined&&newSp.dailyNote!==null&&(
-                  <textarea style={{...S.inp,height:70,resize:"vertical",fontSize:12}} value={newSp.dailyNote} onChange={e=>setNewSp(f=>({...f,dailyNote:e.target.value}))} placeholder="예: 오전 수업 08:30 → 08:20 변경 / 오늘 방송 촬영 있어요 📹 / 매트 지참 부탁드려요"/>
-                )}
-              </div>
-            )}
-            {newSp.type==="open"&&(
-              <div style={S.fg}><label style={S.lbl}>비용 안내 문구 <span style={{fontWeight:400,color:"#9a8e80"}}>(선택)</span></label><input style={S.inp} value={newSp.feeNote||""} onChange={e=>setNewSp(f=>({...f,feeNote:e.target.value}))} placeholder="예: 무료 참여 / 별도 3만원 현장 결제"/></div>
-            )}
+                );
+              })()}
+            </div>
+            <div style={S.fg}><label style={S.lbl}>메모 <span style={{fontWeight:400,color:"#9a8e80"}}>(선택)</span></label><input style={S.inp} value={newSp.label} onChange={e=>setNewSp(f=>({...f,label:e.target.value}))} placeholder={newSp.type==="open"?"예: 연말 무료수업 🎉":newSp.type==="regular"?"예: 관리자 메모":"예: 어린이날 집중수업"}/></div>
+            {/* 공지 토글 - 정규/집중/오픈 공통 */}
+            <div style={S.fg}>
+              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",userSelect:"none",marginBottom:8}} onClick={()=>setNewSp(f=>({...f,dailyNote:f.dailyNote!==undefined&&f.dailyNote!==null?undefined:""}))}>
+                <div style={{width:36,height:20,borderRadius:10,background:newSp.dailyNote!==undefined&&newSp.dailyNote!==null?"#c97474":"#ddd",position:"relative",transition:"background .2s",flexShrink:0}}>
+                  <div style={{position:"absolute",top:2,left:(newSp.dailyNote!==undefined&&newSp.dailyNote!==null)?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+                </div>
+                <span style={{fontSize:12,color:"#4a4a4a"}}>🔔 이 날 공지 띄우기</span>
+              </label>
+              {newSp.dailyNote!==undefined&&newSp.dailyNote!==null&&(
+                <textarea style={{...S.inp,height:70,resize:"vertical",fontSize:12}} value={newSp.dailyNote} onChange={e=>setNewSp(f=>({...f,dailyNote:e.target.value}))} placeholder="예: 오전 수업 08:30 → 08:20 변경 / 방송 촬영 있어요 📹 / 매트 지참 부탁드려요"/>
+              )}
+            </div>
             {/* 운영 수업 - 휴강 있으면 숨김 */}
             {!closures.some(cl=>cl.date===newSp.date&&!cl.timeSlot)&&(
               <div style={S.fg}>
@@ -2817,7 +2942,7 @@ function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,sp
   function openAdd(){
     const autoEnd=endOfNextMonth(TODAY_STR);
     setEditId(null);
-    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,used:0,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[]});
+    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,used:0,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[]});
     setShowForm(true);
   }
   function openEdit(m){setEditId(m.id);setForm({...m});setShowForm(true);}
@@ -2841,6 +2966,7 @@ if(hd.resumed){
 // 홀딩 시작
 return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays:0};}));setHoldT(null);setDetailM(null);}
   function applyAdjust(mid,newTotal,newUsed){setMembers(p=>p.map(m=>m.id!==mid?m:{...m,total:newTotal,used:newUsed}));}
+  const {dateTimeStr}=useClock();
 
   return(
     <div style={S.page}>
@@ -2851,7 +2977,7 @@ return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays
             <span style={S.studioName}>요가피안</span>
             <span style={{fontSize:11,background:"#2e3a2e",color:"#7a9a7a",borderRadius:5,padding:"2px 7px",fontWeight:700,marginLeft:4}}>관리자</span>
           </div>
-          <div style={S.sub}>{fmtWithDow(TODAY_STR)}</div>
+          <div style={S.sub}>{dateTimeStr}</div>
         </div>
         <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
           <button style={{...S.navBtn,fontSize:12,padding:"7px 11px",color:"#92610a",background:"#fef3c7",border:"1px solid #e8c44a",fontWeight:600}} onClick={()=>setShowNotices(true)}>📢 공지관리</button>
@@ -2900,6 +3026,18 @@ return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays
             <div style={{background:"#f5f9f5",borderRadius:10,padding:"12px 14px",marginBottom:12,border:"1px dashed #b8d8b8"}}>
               <div style={{fontSize:11,fontWeight:700,color:"#3d6e45",marginBottom:7}}>👀 어드민 전용</div>
               <div style={S.fg}><label style={S.lbl}>별명 (구별용)</label><input style={S.inp} value={form.adminNickname||""} onChange={e=>setForm(f=>({...f,adminNickname:e.target.value}))} placeholder="예: 1호/저녁반"/></div>
+              <div style={S.fg}>
+                <label style={S.lbl}>카드 색상 <span style={{fontWeight:400,color:"#9a8e80"}}>(동명이인 구별용)</span></label>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <input type="color" value={form.cardColor||"#cccccc"} onChange={e=>setForm(f=>({...f,cardColor:e.target.value}))} style={{width:44,height:36,border:"1.5px solid #e0d8cc",borderRadius:8,cursor:"pointer",padding:2,background:"none"}}/>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {["#e05050","#2255cc","#e8820a","#9b30d0","#1a8a5a","#d4387a","#3d7ab5","#c0922a"].map(c=>(
+                      <div key={c} onClick={()=>setForm(f=>({...f,cardColor:c}))} style={{width:22,height:22,borderRadius:"50%",background:c,cursor:"pointer",border:form.cardColor===c?"3px solid #333":"2px solid transparent"}}/>
+                    ))}
+                  </div>
+                  {form.cardColor&&<button onClick={()=>setForm(f=>({...f,cardColor:""}))} style={{background:"none",border:"none",fontSize:11,color:"#9a8e80",cursor:"pointer",fontFamily:FONT}}>초기화</button>}
+                </div>
+              </div>
               <div style={{marginBottom:0}}><label style={S.lbl}>메모</label><input style={S.inp} value={form.adminNote||""} onChange={e=>setForm(f=>({...f,adminNote:e.target.value}))} placeholder="특이사항"/></div>
             </div>
             <div style={S.fg}><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}><div onClick={()=>setForm(f=>({...f,isNew:!f.isNew}))} style={{width:36,height:20,borderRadius:10,background:form.isNew?"#4a6a4a":"#ddd",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}><div style={{position:"absolute",top:2,left:form.isNew?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/></div><span style={{color:"#4a4a4a"}}>신규 회원 (N 표시)</span></label></div>
@@ -3049,7 +3187,7 @@ function MemberLoginPage({members,onLogin,onGoAdmin}){
 
   return(
     <div style={{minHeight:"100vh",background:"#f5f3ef",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",padding:"40px 16px 20px",fontFamily:FONT}}>
-      <style>{`@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}.shake{animation:shake .4s ease}*{box-sizing:border-box}button,input{font-family:${FONT};outline:none}@media(max-width:360px){.login-card{padding:20px 16px!important}}`}</style>
+      <style>{`@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}.shake{animation:shake .4s ease}*{box-sizing:border-box}button,input{font-family:${FONT};outline:none}@media(max-width:360px){.login-card{padding:20px 16px!important}}input,textarea,select{font-size:16px!important}`}</style>
       {/* 로고 */}
       <div style={{textAlign:"center",marginBottom:20}}>
         <img src={LOGO_B64} alt="요가피안" style={{width:140,height:140,objectFit:"contain",display:"block",margin:"0 auto"}}/>
@@ -3114,7 +3252,9 @@ export default function App(){
   const [screen,setScreen]=useState("memberLogin");
   const [loggedMember,setLoggedMember]=useState(null);
   const [members,setMembersState]=useState(INIT_MEMBERS);
-  const [bookings,setBookingsState]=useState(INIT_BOOKINGS);
+  const [bookings,setBookingsState]=useState(()=>
+    INIT_BOOKINGS.map(b=>b.status==="attended"&&b.date<TODAY_STR&&b.confirmedAttend==null?{...b,confirmedAttend:true}:b)
+  );
   const [notices,setNoticesState]=useState(INIT_NOTICES);
   const [specialSchedules,setSpecialSchedulesState]=useState(INIT_SPECIAL);
   const [closures,setClosuresState]=useState(INIT_CLOSURES);
@@ -3126,7 +3266,15 @@ export default function App(){
         const saved = await storeLoad(STORE_KEY);
         if(saved){
           if(saved.members?.length)   setMembersState(saved.members);
-          if(saved.bookings?.length)  setBookingsState(saved.bookings);
+          if(saved.bookings?.length){
+            // 과거 날짜 attended 건은 자동으로 confirmedAttend:true 처리
+            const processed=saved.bookings.map(b=>{
+              if(b.status==="attended"&&b.date<TODAY_STR&&b.confirmedAttend==null)
+                return {...b,confirmedAttend:true};
+              return b;
+            });
+            setBookingsState(processed);
+          }
           if(saved.notices?.length)   setNoticesState(saved.notices);
           if(saved.specialSchedules?.length) setSpecialSchedulesState(saved.specialSchedules);
           if(saved.closures?.length)  setClosuresState(saved.closures);
@@ -3223,7 +3371,7 @@ export default function App(){
     <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72;transform:scale(.97)}@media(max-width:390px){html{font-size:14px}}.member-header{flex-wrap:wrap;gap:8px!important}`}</style>
-      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{window.storage.delete(AUTO_LOGIN_KEY,false);}catch(e){}}}/>
+      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{window.storage.delete(AUTO_LOGIN_KEY,false);}catch(e){}}}/>
     </div>
     </ClosuresContext.Provider>
   );
