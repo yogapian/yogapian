@@ -1554,7 +1554,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
             <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
               <span style={{fontSize:24,flexShrink:0}}>🍀</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>오픈클래스 - 회원권 차감없음</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>오픈클래스</div>
 <div style={{fontSize:11,color:"#a08030",marginTop:3}}>{special.label}</div>
 {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:3}}>{special.feeNote}</div>}
               </div>
@@ -2112,7 +2112,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
         <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:20,flexShrink:0}}>🍀</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>오픈클래스- 회원권 차감없음</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>오픈클래스</div>
 <div style={{fontSize:11,color:"#a08030",marginTop:3}}>{special.label}</div>
 {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:3}}>{special.feeNote}</div>}
           </div>
@@ -2496,7 +2496,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                 );
               })()}
             </div>
-            <div style={S.fg}><label style={S.lbl}>메모 <span style={{fontWeight:400,color:"#9a8e80"}}>(선택)</span></label><input style={S.inp} value={newSp.label} onChange={e=>setNewSp(f=>({...f,label:e.target.value}))} placeholder={newSp.type==="open"?"예: 연말 무료수업 🎉":newSp.type==="regular"?"예: 관리자 메모":"예: 어린이날 집중수업"}/></div>
+            <div style={S.fg}><label style={S.lbl}>메모 <span style={{fontWeight:400,color:"#9a8e80"}}>(선택)</span></label><input style={S.inp} value={newSp.label} onChange={e=>setNewSp(f=>({...f,label:e.target.value}))} placeholder={newSp.type==="open"?"예: 연말 무료수업":newSp.type==="regular"?"예: 관리자 메모":"예: 어린이날 집중수업"}/></div>
             {/* 공지 토글 - 정규/집중/오픈 공통 */}
             <div style={S.fg}>
               <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",userSelect:"none",marginBottom:8}} onClick={()=>setNewSp(f=>({...f,dailyNote:f.dailyNote!==undefined&&f.dailyNote!==null?undefined:""}))}>
