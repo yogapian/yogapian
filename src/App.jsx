@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect, createContext, useContext } from "react";
+import { useState, useMemo, useCallback, useEffect, createContext, useContext } from "react";
 
 function debounce(fn, delay){
   let timer;
@@ -1539,7 +1539,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
 
           {!isFuture&&<div style={{textAlign:"center",padding:"20px 0",color:"#b0a090",fontSize:13}}>과거 날짜는 예약할 수 없어요.</div>}
           {isFuture&&isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"28px 0",color:"#b0a090"}}><div style={{fontSize:32,marginBottom:8}}>🌿</div><div style={{fontSize:14}}>이 날은 수업이 없습니다.</div></div>}
-          {isFuture&&isRegular&&(hasTimeChange||special?.dailyNote)&&(
+          {isFuture&&isSpecial&&(hasTimeChange||special?.dailyNote)&&(
             <div style={{background:"#fff5f5",border:"1.5px solid #f0b0b0",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
               <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
                 <span style={{fontSize:18,flexShrink:0}}>🔔</span>
@@ -1552,24 +1552,21 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
           )}
           {isFuture&&isOpen&&(
             <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
-              <span style={{fontSize:24,flexShrink:0}}>🍀</span>
+              <span style={{fontSize:24,flexShrink:0}}>🎉</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>오픈클래스</div>
-                <div style={{fontSize:12,color:"#3a6a3a",marginTop:2}}>{special.label}</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>{special.label}</div>
                 {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:3}}>{special.feeNote}</div>}
-                <div style={{fontSize:11,color:"#a08030",marginTop:3}}>오픈클래스 — 횟수 차감 없이 참여 가능해요</div>
-                {special.dailyNote&&<div style={{fontSize:12,color:"#7a5a00",marginTop:4,whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+                <div style={{fontSize:11,color:"#a08030",marginTop:3}}>🍀 오픈클래스 — 횟수 차감 없이 참여 가능해요</div>
               </div>
             </div>
           )}
-          {isFuture&&isSpecial&&special.type==="special"&&(
-            <div style={{background:"linear-gradient(135deg,#f0f0ff,#e8e8fc)",border:"1.5px solid #a0a0e0",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+          {isFuture&&isSpecial&&!isOpen&&(
+            <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
               <span style={{fontSize:24,flexShrink:0}}>⚡️</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#3050b0"}}>집중수련</div>
-                <div style={{fontSize:12,color:"#4a4a9a",marginTop:2}}>{special.label}</div>
-                {special.feeNote&&<div style={{fontSize:12,color:"#5a5ab0",marginTop:3}}>{special.feeNote}</div>}
-                {special.dailyNote&&<div style={{fontSize:12,color:"#4a4a8a",marginTop:4,whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+                <div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>{special.label}</div>
+                {special.feeNote&&<div style={{fontSize:12,color:"#6a4aaa",marginTop:3}}>{special.feeNote}</div>}
+                <div style={{fontSize:11,color:"#7a5aaa",marginTop:3}}>⚡️ 집중수련</div>
               </div>
             </div>
           )}
@@ -2048,17 +2045,6 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
     const nid=Math.max(...specialSchedules.map(s=>s.id),0)+1;
     const label=newSp.label||(newSp.type==="regular"?"정규수업":"");
     setSpecialSchedules(p=>[...p.filter(s=>s.date!==newSp.date),{...newSp,label,id:nid}]);
-    if((newSp.type==="special"||newSp.type==="open")&&newSp.dailyNote!=null){
-      const typePrefix=newSp.type==="open"?"🍀오픈클래스":"⚡️집중수련";
-      const noticeId=Math.max(...(notices||[]).map(n=>n.id),0)+1;
-      const noticeContent=newSp.dailyNote?`${typePrefix}
-${newSp.dailyNote}`:typePrefix;
-      setNotices(p=>[{id:noticeId,title:`📢 ${fmt(newSp.date)} ${label} 공지`,content:noticeContent,pinned:true,createdAt:TODAY_STR},...(p||[])]);
-    }
-    if(newSp.type==="regular"&&newSp.dailyNote!=null&&newSp.dailyNote!==""){
-      const noticeId=Math.max(...(notices||[]).map(n=>n.id),0)+1;
-      setNotices(p=>[{id:noticeId,title:`📢 ${fmt(newSp.date)} 공지`,content:newSp.dailyNote,pinned:false,createdAt:TODAY_STR},...(p||[])]);
-    }
     closeSpecialMgr();
   }
   const toggleSp=sl=>setNewSp(f=>({...f,activeSlots:f.activeSlots.includes(sl)?f.activeSlots.filter(s=>s!==sl):[...f.activeSlots,sl]}));
@@ -2111,7 +2097,7 @@ ${newSp.dailyNote}`:typePrefix;
       </div>
 
       {isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>🌿</div><div style={{fontSize:14,fontWeight:700}}>이 날은 수업이 없습니다.</div></div>}
-      {isRegular&&(hasTimeChange||special?.dailyNote)&&(
+      {isSpecial&&(hasTimeChange||special?.dailyNote)&&(
         <div style={{background:"#fff5f5",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 14px",marginBottom:12}}>
           <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
             <span style={{fontSize:16,flexShrink:0}}>🔔</span>
@@ -2124,22 +2110,21 @@ ${newSp.dailyNote}`:typePrefix;
       )}
       {isOpen&&(
         <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
-          <span style={{fontSize:20,flexShrink:0}}>🍀</span>
+          <span style={{fontSize:20,flexShrink:0}}>🎉</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>오픈클래스 — {special.label}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>{special.label} — 오픈클래스</div>
             {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:2}}>{special.feeNote}</div>}
-            <div style={{fontSize:11,color:"#a08030",marginTop:2}}>횟수 차감 없이 출석 처리됩니다</div>
-            {special.dailyNote&&<div style={{fontSize:12,color:"#7a5a00",marginTop:3,whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+            <div style={{fontSize:11,color:"#a08030",marginTop:2}}>🍀 오픈클래스 — 횟수 차감 없이 출석 처리됩니다</div>
           </div>
         </div>
       )}
-      {isSpecial&&special.type==="special"&&(
-        <div style={{background:"linear-gradient(135deg,#f0f0ff,#e8e8fc)",border:"1.5px solid #a0a0e0",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+      {isSpecial&&!isOpen&&(
+        <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:20,flexShrink:0}}>⚡️</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#3050b0"}}>집중수련 — {special.label}</div>
-            {special.feeNote&&<div style={{fontSize:12,color:"#5a5ab0",marginTop:2}}>{special.feeNote}</div>}
-            {special.dailyNote&&<div style={{fontSize:12,color:"#4a4a8a",marginTop:3,whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+            <div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>{special.label} — 집중수련</div>
+            {special.feeNote&&<div style={{fontSize:12,color:"#6a4aaa",marginTop:2}}>{special.feeNote}</div>}
+            <div style={{fontSize:11,color:"#7a5aaa",marginTop:2}}>⚡️ 집중수련</div>
           </div>
         </div>
       )}
@@ -2452,7 +2437,7 @@ ${newSp.dailyNote}`:typePrefix;
                 {[
                   {v:"regular", label:"정규",    icon:"📅"},
                   {v:"special", label:"집중",    icon:"⚡"},
-                  {v:"open",    label:"오픈클래스",icon:"🍀"},
+                  {v:"open",    label:"오픈클래스",icon:"🎉"},
                 ].map(t=>{
                   const hasClosure=closures.some(cl=>cl.date===newSp.date&&!cl.timeSlot);
                   // 휴강 있거나, 다른 유형 등록됐으면 잠금
@@ -2532,7 +2517,7 @@ ${newSp.dailyNote}`:typePrefix;
                   {TIME_SLOTS.map(sl=>{
                     const on=newSp.activeSlots.includes(sl.key);
                     const defTime={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"}[sl.key]||sl.time;
-                    const curTime=newSp.customTimes[sl.key]!=null?newSp.customTimes[sl.key]:defTime;
+                    const curTime=newSp.customTimes[sl.key]||defTime;
                     const isChanged=on&&newSp.type==="regular"&&defTime&&curTime!==defTime;
                     return(
                       <div key={sl.key} style={{border:`1.5px solid ${on?sl.color:"#e0d8cc"}`,borderRadius:10,padding:"8px 12px",background:on?sl.bg:"#faf8f5",cursor:"pointer",display:"flex",alignItems:"center",gap:8}} onClick={()=>toggleSp(sl.key)}>
@@ -2541,7 +2526,7 @@ ${newSp.dailyNote}`:typePrefix;
                         {on
                           ? <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
                               {isChanged&&<span style={{fontSize:11,textDecoration:"line-through",color:"#b0a0a0"}}>{defTime}</span>}
-                              <input style={{...S.inp,padding:"4px 8px",fontSize:12,flex:1,margin:0,color:isChanged?"#c97474":"inherit",fontWeight:isChanged?700:400}} type="time" value={curTime} onChange={e=>{e.stopPropagation();setNewSp(f=>({...f,customTimes:{...f.customTimes,[sl.key]:e.target.value}}));}} onClick={e=>e.stopPropagation()}/>
+                              <input type="text" style={{...S.inp,padding:"4px 8px",fontSize:12,flex:1,margin:0,color:isChanged?"#c97474":"inherit",fontWeight:isChanged?700:400}} value={curTime} onChange={e=>{e.stopPropagation();setNewSp(f=>({...f,customTimes:{...f.customTimes,[sl.key]:e.target.value}}));}} onClick={e=>e.stopPropagation()} onFocus={e=>{e.stopPropagation();e.target.select();}} placeholder="HH:MM"/>
                             </div>
                           : <span style={{fontSize:11,color:"#b0a090",flex:1}}>{defTime||"직접 입력"}</span>
                         }
@@ -3187,7 +3172,7 @@ function MemberLoginPage({members,onLogin,onGoAdmin}){
 
   async function doLogin(m){
     if(autoLogin){
-      try{ storeSave(AUTO_LOGIN_KEY, {memberId:m.id}); }catch(e){}
+      try{ await storeSave(AUTO_LOGIN_KEY, {memberId:m.id}, false); }catch(e){}
     }
     onLogin(m);
     setCandidates(null);
@@ -3281,17 +3266,17 @@ function AdminLoginPage({onLogin,onGoMember}){
   );
 }
 
-const STORE_KEY = "yogapian_v4";
+const STORE_KEY = "yogapian_v3";
 const AUTO_LOGIN_KEY = "yogapian_autologin";
+const SHARED = true;
 
-// localStorage 기반 — GitHub Pages 배포 시 URL 고정이므로 코드 변경해도 데이터 영구 유지
-function storeSave(key, data) {
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch(e){ console.warn("storage save:", e); }
+async function storeSave(key, data) {
+  try { await window.storage.set(key, JSON.stringify(data), SHARED); } catch(e){ console.warn("storage save:", e); }
 }
-function storeLoad(key) {
+async function storeLoad(key) {
   try {
-    const r = localStorage.getItem(key);
-    return r ? JSON.parse(r) : null;
+    const r = await window.storage.get(key, SHARED);
+    return r ? JSON.parse(r.value) : null;
   } catch(e){ return null; }
 }
 
@@ -3308,54 +3293,56 @@ export default function App(){
   const [saving,setSaving]=useState(false);
 
   useEffect(()=>{
-    try {
-      const saved = storeLoad(STORE_KEY);
-      if(saved){
-        if(saved.members?.length)   setMembersState(saved.members);
-        if(saved.bookings?.length){
-          // 과거 날짜 attended 건은 자동으로 confirmedAttend:true 처리
-          const processed=saved.bookings.map(b=>{
-            if(b.status==="attended"&&b.date<TODAY_STR&&b.confirmedAttend==null)
-              return {...b,confirmedAttend:true};
-            return b;
-          });
-          setBookingsState(processed);
-        }
-        if(Array.isArray(saved.notices))   setNoticesState(saved.notices);
-        if(saved.specialSchedules?.length) setSpecialSchedulesState(saved.specialSchedules);
-        if(saved.closures?.length)  setClosuresState(saved.closures);
-        // 자동로그인 확인
-        try {
-          const autoLogin = storeLoad(AUTO_LOGIN_KEY);
-          if(autoLogin && autoLogin.memberId && saved.members?.length){
-            const m = saved.members.find(mb=>mb.id===autoLogin.memberId);
-            if(m){ setLoggedMember(m); setScreen("memberView"); }
+    (async()=>{
+      try {
+        const saved = await storeLoad(STORE_KEY);
+        if(saved){
+          if(saved.members?.length)   setMembersState(saved.members);
+          if(saved.bookings?.length){
+            // 과거 날짜 attended 건은 자동으로 confirmedAttend:true 처리
+            const processed=saved.bookings.map(b=>{
+              if(b.status==="attended"&&b.date<TODAY_STR&&b.confirmedAttend==null)
+                return {...b,confirmedAttend:true};
+              return b;
+            });
+            setBookingsState(processed);
           }
-        } catch(e){}
-      }
-    } catch(e){ console.warn("스토리지 로드 실패:", e); }
+          if(Array.isArray(saved.notices))   setNoticesState(saved.notices);
+          if(saved.specialSchedules?.length) setSpecialSchedulesState(saved.specialSchedules);
+          if(saved.closures?.length)  setClosuresState(saved.closures);
+          // 자동로그인 확인
+          try {
+            const autoLogin = await storeLoad(AUTO_LOGIN_KEY);
+            if(autoLogin && autoLogin.memberId && saved.members?.length){
+              const m = saved.members.find(mb=>mb.id===autoLogin.memberId);
+              if(m){ setLoggedMember(m); setScreen("memberView"); }
+            }
+          } catch(e){}
+        }
+      } catch(e){ console.warn("스토리지 로드 실패:", e); }
+    })();
   }, []);
 
   const saveDebounced = useCallback(
-    debounce((data) => {
+    debounce(async(data) => {
       setSaving(true);
-      storeSave(STORE_KEY, data);
+      await storeSave(STORE_KEY, data);
       setSaving(false);
     }, 800),
     []
   );
 
-  // Refs to access latest state in callbacks (useRef로 항상 최신값 유지)
+  // Refs to access latest state in callbacks
   const membersRef = useRef(members);
   const bookingsRef = useRef(bookings);
   const noticesRef = useRef(notices);
   const specialsRef = useRef(specialSchedules);
   const closuresRef = useRef(closures);
-  membersRef.current = members;
-  bookingsRef.current = bookings;
-  noticesRef.current = notices;
-  specialsRef.current = specialSchedules;
-  closuresRef.current = closures;
+  useEffect(()=>{membersRef.current=members;},[members]);
+  useEffect(()=>{bookingsRef.current=bookings;},[bookings]);
+  useEffect(()=>{noticesRef.current=notices;},[notices]);
+  useEffect(()=>{specialsRef.current=specialSchedules;},[specialSchedules]);
+  useEffect(()=>{closuresRef.current=closures;},[closures]);
 
   const setMembers = useCallback((updater) => {
     setMembersState(prev => {
@@ -3421,7 +3408,7 @@ export default function App(){
     <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72;transform:scale(.97)}@media(max-width:390px){html{font-size:14px}}.member-header{flex-wrap:wrap;gap:8px!important}`}</style>
-      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{localStorage.removeItem(AUTO_LOGIN_KEY);}catch(e){}}}/>
+      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{window.storage.delete(AUTO_LOGIN_KEY,false);}catch(e){}}}/>
     </div>
     </ClosuresContext.Provider>
   );
