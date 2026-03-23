@@ -3319,18 +3319,21 @@ export default function App(){
           } catch(e){}
         }
       } catch(e){ console.warn("스토리지 로드 실패:", e); }
+          loadedRef.current = true;
     })();
   }, []);
 
-  const saveDebounced = useCallback(
-    debounce(async(data) => {
-      setSaving(true);
-      await storeSave(STORE_KEY, data);
-      setSaving(false);
-    }, 800),
-    []
-  );
+  const loadedRef = useRef(false);
 
+const saveDebounced = useCallback(
+  debounce(async(data) => {
+    if(!loadedRef.current) return;
+    setSaving(true);
+    await storeSave(STORE_KEY, data);
+    setSaving(false);
+  }, 800),
+  []
+);
   // Refs to access latest state in callbacks
   const membersRef = useRef(members);
   const bookingsRef = useRef(bookings);
