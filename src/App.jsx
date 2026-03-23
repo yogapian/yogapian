@@ -1523,15 +1523,24 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
 
       {tab==="reserve"&&(
         <div>
-          <div style={{position:"relative",marginBottom:14}}>
-            <div onClick={()=>setShowCal(s=>!s)} style={{background:showCal?"#eef5ee":"#fff",border:`1.5px solid ${showCal?"#4a6a4a":"#ddd"}`,borderRadius:10,padding:"11px 14px",fontSize:14,fontWeight:700,color:"#1e2e1e",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <span>{fmtWithDow(selDate)}</span>
-                {selDate===TODAY_STR&&<span style={{fontSize:11,background:"#4a6a4a",color:"#fff",borderRadius:5,padding:"2px 7px",fontWeight:700}}>오늘</span>}
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+            <button style={{...S.navBtn,padding:"10px 14px",fontSize:16,minWidth:44,flexShrink:0,opacity:selDate<=TODAY_STR?0.3:1,cursor:selDate<=TODAY_STR?"default":"pointer"}} onClick={()=>{if(selDate>TODAY_STR)setSelDate(d=>addDays(d,-1));}}>←</button>
+            <div style={{flex:1,position:"relative"}}>
+              <div onClick={()=>setShowCal(s=>!s)} style={{background:showCal?"#eef5ee":"#fff",border:`1.5px solid ${showCal?"#4a6a4a":"#ddd"}`,borderRadius:10,padding:"11px 14px",fontSize:14,fontWeight:700,color:"#1e2e1e",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  <span>{fmtWithDow(selDate)}</span>
+                  {selDate===TODAY_STR&&<span style={{fontSize:11,background:"#4a6a4a",color:"#fff",borderRadius:5,padding:"2px 7px",fontWeight:700}}>오늘</span>}
+                  {dayClosure&&<span style={{fontSize:10,background:"#fde8e8",color:"#a83030",borderRadius:4,padding:"1px 6px",fontWeight:700}}>휴강</span>}
+                  {!dayClosure&&isOpen&&<span style={{fontSize:10,background:"#d8f5ec",color:"#1a6e4a",borderRadius:4,padding:"1px 6px",fontWeight:700}}>오픈</span>}
+                  {!dayClosure&&isSpecial&&special?.type==="special"&&<span style={{fontSize:10,background:"#ede8fa",color:"#5a3a9a",borderRadius:4,padding:"1px 6px",fontWeight:700}}>집중</span>}
+                  {!dayClosure&&isRegular&&hasTimeChange&&<span style={{fontSize:10,background:"#fdf0d8",color:"#9a5a10",borderRadius:4,padding:"1px 6px",fontWeight:700}}>변경❗</span>}
+                  {!dayClosure&&isRegular&&special?.dailyNote&&!hasTimeChange&&<span style={{fontSize:10,background:"#fdf0d8",color:"#9a5a10",borderRadius:4,padding:"1px 6px",fontWeight:700}}>📌</span>}
+                </div>
+                <span style={{fontSize:12,color:"#9a8e80"}}>▾</span>
               </div>
-              <span style={{fontSize:12,color:"#9a8e80"}}>▾</span>
+              {showCal&&(<><div style={{position:"fixed",inset:0,zIndex:150}} onClick={()=>setShowCal(false)}/><CalendarPicker value={selDate} onChange={v=>{setSelDate(v);setShowCal(false);}} onClose={()=>setShowCal(false)} closures={closures} specialSchedules={specialSchedules}/></>)}
             </div>
-            {showCal&&(<><div style={{position:"fixed",inset:0,zIndex:150}} onClick={()=>setShowCal(false)}/><CalendarPicker value={selDate} onChange={v=>{setSelDate(v);setShowCal(false);}} onClose={()=>setShowCal(false)} closures={closures} specialSchedules={specialSchedules}/></>)}
+            <button style={{...S.navBtn,padding:"10px 14px",fontSize:16,minWidth:44,flexShrink:0}} onClick={()=>setSelDate(d=>addDays(d,1))}>→</button>
           </div>
 
           {!isFuture&&<div style={{textAlign:"center",padding:"20px 0",color:"#b0a090",fontSize:13}}>과거 날짜는 예약할 수 없어요.</div>}
