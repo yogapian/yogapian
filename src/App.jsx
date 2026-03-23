@@ -2068,7 +2068,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
           <button style={{...S.navBtn,padding:"10px 14px",fontSize:16,minWidth:44,flexShrink:0}} onClick={()=>setDate(d=>addDays(d,1))}>→</button>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-          {slots.length>0&&<div style={{background:"#eaf4ea",color:"#2e6e44",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:700}}>출석 {attendedDay}</div>}
+          {slots.length>0&&<div style={{background:"#2e8a4a",color:"#fff",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:700}}>출석 {attendedDay}</div>}
           <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#8a5510",background:"#fff"}} onClick={()=>{
             const dowSlots=SCHEDULE[new Date(date+"T00:00:00").getDay()]||[];
             const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
