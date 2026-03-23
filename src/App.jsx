@@ -2126,7 +2126,7 @@ ${newSp.dailyNote}`:typePrefix;
         <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:20,flexShrink:0}}>🍀</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>🍀오픈클래스 — {special.label}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>오픈클래스 — {special.label}</div>
             {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:2}}>{special.feeNote}</div>}
             <div style={{fontSize:11,color:"#a08030",marginTop:2}}>횟수 차감 없이 출석 처리됩니다</div>
             {special.dailyNote&&<div style={{fontSize:12,color:"#7a5a00",marginTop:3,whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
@@ -2137,7 +2137,7 @@ ${newSp.dailyNote}`:typePrefix;
         <div style={{background:"linear-gradient(135deg,#f0f0ff,#e8e8fc)",border:"1.5px solid #a0a0e0",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:20,flexShrink:0}}>⚡️</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#3050b0"}}>⚡️집중수련 — {special.label}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#3050b0"}}>집중수련 — {special.label}</div>
             {special.feeNote&&<div style={{fontSize:12,color:"#5a5ab0",marginTop:2}}>{special.feeNote}</div>}
             {special.dailyNote&&<div style={{fontSize:12,color:"#4a4a8a",marginTop:3,whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
           </div>
@@ -3187,7 +3187,7 @@ function MemberLoginPage({members,onLogin,onGoAdmin}){
 
   async function doLogin(m){
     if(autoLogin){
-      try{ await storeSave(AUTO_LOGIN_KEY, {memberId:m.id}, false); }catch(e){}
+      try{ storeSave(AUTO_LOGIN_KEY, {memberId:m.id}); }catch(e){}
     }
     onLogin(m);
     setCandidates(null);
@@ -3283,15 +3283,15 @@ function AdminLoginPage({onLogin,onGoMember}){
 
 const STORE_KEY = "yogapian_v4";
 const AUTO_LOGIN_KEY = "yogapian_autologin";
-const SHARED = false; // false = 개인 스토리지 (배포 갱신해도 데이터 유지)
 
-async function storeSave(key, data, shared=SHARED) {
-  try { await localStorage.set(key, JSON.stringify(data), shared); } catch(e){ console.warn("storage save:", e); }
+// localStorage 기반 — GitHub Pages 배포 시 URL 고정이므로 코드 변경해도 데이터 영구 유지
+function storeSave(key, data) {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch(e){ console.warn("storage save:", e); }
 }
-async function storeLoad(key, shared=SHARED) {
+function storeLoad(key) {
   try {
-    const r = await localStorage.get(key, shared);
-    return r ? JSON.parse(r.value) : null;
+    const r = localStorage.getItem(key);
+    return r ? JSON.parse(r) : null;
   } catch(e){ return null; }
 }
 
@@ -3308,40 +3308,38 @@ export default function App(){
   const [saving,setSaving]=useState(false);
 
   useEffect(()=>{
-    (async()=>{
-      try {
-        const saved = await storeLoad(STORE_KEY);
-        if(saved){
-          if(saved.members?.length)   setMembersState(saved.members);
-          if(saved.bookings?.length){
-            // 과거 날짜 attended 건은 자동으로 confirmedAttend:true 처리
-            const processed=saved.bookings.map(b=>{
-              if(b.status==="attended"&&b.date<TODAY_STR&&b.confirmedAttend==null)
-                return {...b,confirmedAttend:true};
-              return b;
-            });
-            setBookingsState(processed);
-          }
-          if(Array.isArray(saved.notices))   setNoticesState(saved.notices);
-          if(saved.specialSchedules?.length) setSpecialSchedulesState(saved.specialSchedules);
-          if(saved.closures?.length)  setClosuresState(saved.closures);
-          // 자동로그인 확인
-          try {
-            const autoLogin = await storeLoad(AUTO_LOGIN_KEY);
-            if(autoLogin && autoLogin.memberId && saved.members?.length){
-              const m = saved.members.find(mb=>mb.id===autoLogin.memberId);
-              if(m){ setLoggedMember(m); setScreen("memberView"); }
-            }
-          } catch(e){}
+    try {
+      const saved = storeLoad(STORE_KEY);
+      if(saved){
+        if(saved.members?.length)   setMembersState(saved.members);
+        if(saved.bookings?.length){
+          // 과거 날짜 attended 건은 자동으로 confirmedAttend:true 처리
+          const processed=saved.bookings.map(b=>{
+            if(b.status==="attended"&&b.date<TODAY_STR&&b.confirmedAttend==null)
+              return {...b,confirmedAttend:true};
+            return b;
+          });
+          setBookingsState(processed);
         }
-      } catch(e){ console.warn("스토리지 로드 실패:", e); }
-    })();
+        if(Array.isArray(saved.notices))   setNoticesState(saved.notices);
+        if(saved.specialSchedules?.length) setSpecialSchedulesState(saved.specialSchedules);
+        if(saved.closures?.length)  setClosuresState(saved.closures);
+        // 자동로그인 확인
+        try {
+          const autoLogin = storeLoad(AUTO_LOGIN_KEY);
+          if(autoLogin && autoLogin.memberId && saved.members?.length){
+            const m = saved.members.find(mb=>mb.id===autoLogin.memberId);
+            if(m){ setLoggedMember(m); setScreen("memberView"); }
+          }
+        } catch(e){}
+      }
+    } catch(e){ console.warn("스토리지 로드 실패:", e); }
   }, []);
 
   const saveDebounced = useCallback(
-    debounce(async(data) => {
+    debounce((data) => {
       setSaving(true);
-      await storeSave(STORE_KEY, data);
+      storeSave(STORE_KEY, data);
       setSaving(false);
     }, 800),
     []
@@ -3423,7 +3421,7 @@ export default function App(){
     <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72;transform:scale(.97)}@media(max-width:390px){html{font-size:14px}}.member-header{flex-wrap:wrap;gap:8px!important}`}</style>
-      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{localStorage.delete(AUTO_LOGIN_KEY,false);}catch(e){}}}/>
+      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{localStorage.removeItem(AUTO_LOGIN_KEY);}catch(e){}}}/>
     </div>
     </ClosuresContext.Provider>
   );
