@@ -3286,11 +3286,11 @@ const AUTO_LOGIN_KEY = "yogapian_autologin";
 const SHARED = false; // false = 개인 스토리지 (배포 갱신해도 데이터 유지)
 
 async function storeSave(key, data, shared=SHARED) {
-  try { await window.storage.set(key, JSON.stringify(data), shared); } catch(e){ console.warn("storage save:", e); }
+  try { await localStorage.set(key, JSON.stringify(data), shared); } catch(e){ console.warn("storage save:", e); }
 }
 async function storeLoad(key, shared=SHARED) {
   try {
-    const r = await window.storage.get(key, shared);
+    const r = await localStorage.get(key, shared);
     return r ? JSON.parse(r.value) : null;
   } catch(e){ return null; }
 }
@@ -3423,7 +3423,7 @@ export default function App(){
     <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72;transform:scale(.97)}@media(max-width:390px){html{font-size:14px}}.member-header{flex-wrap:wrap;gap:8px!important}`}</style>
-      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{window.storage.delete(AUTO_LOGIN_KEY,false);}catch(e){}}}/>
+      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{localStorage.delete(AUTO_LOGIN_KEY,false);}catch(e){}}}/>
     </div>
     </ClosuresContext.Provider>
   );
