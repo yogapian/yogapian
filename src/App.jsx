@@ -1537,12 +1537,12 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
           {!isFuture&&<div style={{textAlign:"center",padding:"20px 0",color:"#b0a090",fontSize:13}}>과거 날짜는 예약할 수 없어요.</div>}
           {isFuture&&isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"28px 0",color:"#b0a090"}}><div style={{fontSize:32,marginBottom:8}}>🌿</div><div style={{fontSize:14}}>이 날은 수업이 없습니다.</div></div>}
           {isFuture&&isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
-            <div style={{background:special.type==="open"?"#d8f5ec":special.type==="special"?"#f0edff":"#fff5f5",border:`1.5px solid ${special.type==="open"?"#1a6e4a":special.type==="special"?"#a090d0":"#f0b0b0"}`,borderRadius:12,padding:"12px 14px",marginBottom:12}}>
+            <div style={{background:special.type==="open"?"#d8f5ec":special.type==="special"?"#f0edff":"#fdf3e3",border:`1.5px solid ${special.type==="open"?"#1a6e4a":special.type==="special"?"#a090d0":"#e8a44a"}`,borderRadius:12,padding:"12px 14px",marginBottom:12}}>
               <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
                 <span style={{fontSize:18,flexShrink:0}}>🔔</span>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:12,fontWeight:700,color:special.type==="open"?"#1a6e4a":special.type==="special"?"#5a3a9a":"#c97474",marginBottom:4}}>오늘의 공지</div>
-                  {special.dailyNote?.trim()&&<div style={{fontSize:12,color:special.type==="open"?"#1a5a3a":special.type==="special"?"#4a2e8a":"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+                  <div style={{fontSize:12,fontWeight:700,color:special.type==="open"?"#1a6e4a":special.type==="special"?"#5a3a9a":"#9a5a10",marginBottom:4}}>오늘의 공지</div>
+                  {special.dailyNote?.trim()&&<div style={{fontSize:12,color:special.type==="open"?"#1a5a3a":special.type==="special"?"#4a2e8a":"#7a4a10",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
                 </div>
               </div>
             </div>
@@ -2095,12 +2095,12 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
 
       {isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>🌿</div><div style={{fontSize:14,fontWeight:700}}>이 날은 수업이 없습니다.</div></div>}
       {isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
-        <div style={{background:special.type==="open"?"#d8f5ec":special.type==="special"?"#f0edff":"#fff5f5",border:`1.5px solid ${special.type==="open"?"#1a6e4a":special.type==="special"?"#a090d0":"#f0b0b0"}`,borderRadius:10,padding:"10px 14px",marginBottom:12}}>
+        <div style={{background:special.type==="open"?"#d8f5ec":special.type==="special"?"#f0edff":"#fdf3e3",border:`1.5px solid ${special.type==="open"?"#1a6e4a":special.type==="special"?"#a090d0":"#e8a44a"}`,borderRadius:10,padding:"10px 14px",marginBottom:12}}>
           <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
             <span style={{fontSize:16,flexShrink:0}}>🔔</span>
             <div style={{flex:1}}>
-              <div style={{fontSize:12,fontWeight:700,color:special.type==="open"?"#1a6e4a":special.type==="special"?"#5a3a9a":"#c97474",marginBottom:4}}>오늘의 공지</div>
-              {special.dailyNote?.trim()&&<div style={{fontSize:12,color:special.type==="open"?"#1a5a3a":special.type==="special"?"#4a2e8a":"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+              <div style={{fontSize:12,fontWeight:700,color:special.type==="open"?"#1a6e4a":special.type==="special"?"#5a3a9a":"#9a5a10",marginBottom:4}}>오늘의 공지</div>
+              {special.dailyNote?.trim()&&<div style={{fontSize:12,color:special.type==="open"?"#1a5a3a":special.type==="special"?"#4a2e8a":"#7a4a10",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
             </div>
           </div>
         </div>
@@ -2115,7 +2115,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
           </div>
         </div>
       )}
-      {isSpecial&&!isOpen&&(
+    {isSpecial&&!isOpen&&special?.type==="special"&&(
         <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:20,flexShrink:0}}>⚡️</span>
           <div style={{flex:1}}>
@@ -2126,8 +2126,8 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
         </div>
       )}
       {dayClosure&&<div style={{
-          background:dayClosure.closureType==="regular"?"#fdf3e3":dayClosure.closureType==="regular_ext"?"#fef9ed":"#fff0f0",
-          border:`1px solid ${dayClosure.closureType==="regular"?"#e8a44a":dayClosure.closureType==="regular_ext"?"#e8c44a":"#e8a0a0"}`,
+          background:dayClosure.closureType==="regular"?"#fff0f0":dayClosure.closureType==="regular_ext"?"#fff5f5":"#fff0f0",
+          border:`1px solid ${dayClosure.closureType==="regular"?"#e8a0a0":dayClosure.closureType==="regular_ext"?"#f0b0b0":"#e8a0a0"}`,
           borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8,fontSize:13}}>
         <span style={{fontSize:18}}>🔕</span>
         <div style={{flex:1}}>
