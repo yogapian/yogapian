@@ -3290,6 +3290,8 @@ export default function App(){
   const [specialSchedules,setSpecialSchedulesState]=useState(INIT_SPECIAL);
   const [closures,setClosuresState]=useState(INIT_CLOSURES);
   const [saving,setSaving]=useState(false);
+  const loadedRef = useRef(false);
+
 
   useEffect(()=>{
     (async()=>{
@@ -3322,8 +3324,6 @@ export default function App(){
           loadedRef.current = true;
     })();
   }, []);
-
-  const loadedRef = useRef(false);
 
 const saveDebounced = useCallback(
   debounce(async(data) => {
