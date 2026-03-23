@@ -1552,11 +1552,11 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
           )}
           {isFuture&&isOpen&&(
             <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
-              <span style={{fontSize:24,flexShrink:0}}>🎉</span>
+              <span style={{fontSize:24,flexShrink:0}}>🍀</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>{special.label}</div>
-                {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:3}}>{special.feeNote}</div>}
-                <div style={{fontSize:11,color:"#a08030",marginTop:3}}>🍀 오픈클래스 — 횟수 차감 없이 참여 가능해요</div>
+                <div style={{fontSize:11,color:"#a08030",marginBottom:3}}> 오픈클래스 — 횟수 차감 없이 참여 가능해요</div>
+<div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>{special.label}</div>
+{special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:3}}>{special.feeNote}</div>}
               </div>
             </div>
           )}
@@ -1564,9 +1564,9 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
             <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
               <span style={{fontSize:24,flexShrink:0}}>⚡️</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>{special.label}</div>
-                {special.feeNote&&<div style={{fontSize:12,color:"#6a4aaa",marginTop:3}}>{special.feeNote}</div>}
-                <div style={{fontSize:11,color:"#7a5aaa",marginTop:3}}>⚡️ 집중수련</div>
+                <div style={{fontSize:11,color:"#7a5aaa",marginBottom:3}}>⚡️ 집중수련</div>
+<div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>{special.label}</div>
+{special.feeNote&&<div style={{fontSize:12,color:"#6a4aaa",marginTop:3}}>{special.feeNote}</div>}
               </div>
             </div>
           )}
@@ -2110,11 +2110,11 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
       )}
       {isOpen&&(
         <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
-          <span style={{fontSize:20,flexShrink:0}}>🎉</span>
+          <span style={{fontSize:20,flexShrink:0}}>🍀</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>{special.label} — 오픈클래스</div>
-            {special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:2}}>{special.feeNote}</div>}
-            <div style={{fontSize:11,color:"#a08030",marginTop:2}}>🍀 오픈클래스 — 횟수 차감 없이 출석 처리됩니다</div>
+            <div style={{fontSize:11,color:"#a08030",marginBottom:3}}>오픈클래스 — 횟수 차감 없이 참여 가능해요</div>
+<div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>{special.label}</div>
+{special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:3}}>{special.feeNote}</div>}
           </div>
         </div>
       )}
@@ -2122,9 +2122,9 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
         <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:20,flexShrink:0}}>⚡️</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>{special.label} — 집중수련</div>
-            {special.feeNote&&<div style={{fontSize:12,color:"#6a4aaa",marginTop:2}}>{special.feeNote}</div>}
-            <div style={{fontSize:11,color:"#7a5aaa",marginTop:2}}>⚡️ 집중수련</div>
+            <div style={{fontSize:11,color:"#7a5aaa",marginBottom:3}}>집중수련</div>
+<div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>{special.label}</div>
+{special.feeNote&&<div style={{fontSize:12,color:"#6a4aaa",marginTop:3}}>{special.feeNote}</div>}
           </div>
         </div>
       )}
