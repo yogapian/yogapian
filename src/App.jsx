@@ -1557,7 +1557,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
               </div>
             </div>
           )}
-          {isFuture&&isSpecial&&!isOpen&&(
+          {isFuture&&isSpecial&&!isOpen&&special?.type==="special"&&(
             <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
               <span style={{fontSize:24,flexShrink:0}}>⚡️</span>
               <div style={{flex:1}}>
@@ -1902,11 +1902,12 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
           confirmDelete?(
             <>
               <div style={{textAlign:"center",fontSize:13,color:"#c97474",fontWeight:700,marginBottom:10}}>목록에서 삭제할까요?</div>
-              <input style={{...S.inp,fontSize:12,marginBottom:10}} value={note} onChange={e=>setNote(e.target.value)} placeholder="불참 사유 (선택)"/>
-              <div style={{display:"flex",gap:8,marginBottom:12}}>
-                <button onClick={()=>setConfirmDelete(false)} style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>취소</button>
-                <button onClick={doDelete} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>삭제</button>
-              </div>
+<input style={{...S.inp,fontSize:12,marginBottom:10}} value={note} onChange={e=>setNote(e.target.value)} placeholder="불참 사유 (선택)"/>
+<div style={{display:"flex",gap:8,marginBottom:8}}>
+  <button onClick={()=>setConfirmDelete(false)} style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>취소</button>
+  <button onClick={doDelete} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>삭제+알림</button>
+</div>
+<button onClick={()=>{setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelNote:note,cancelledBy:"admin",confirmedAttend:false}:b));if(mem)setMembers(p=>p.map(m=>m.id===mem.id?{...m,used:Math.max(0,m.used-1)}:m));onClose();}} style={{width:"100%",background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT,marginBottom:4}}>알림없이 삭제</button>
             </>
           ):(
             <div style={{textAlign:"center",marginBottom:12}}>
