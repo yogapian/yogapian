@@ -1099,8 +1099,8 @@ const INIT_BOOKINGS=[
 ];
 
 const INIT_SPECIAL=[
-  {id:1,date:"2025-12-31",label:"연말 무료수업 🎉",type:"open",feeNote:"무료 참여 가능합니다 🎊",activeSlots:["morning","evening"],customTimes:{morning:"10:00",evening:"17:00"}},
-  {id:2,date:"2026-01-01",label:"신년 무료수업 🎊",type:"open",feeNote:"무료 참여 가능합니다 🎉",activeSlots:["morning","evening"],customTimes:{morning:"10:00",evening:"17:00"}},
+  {id:1,date:"2025-12-31",label:"연말 무료수업",type:"open",feeNote:"무료 참여 가능합니다",activeSlots:["morning","evening"],customTimes:{morning:"10:00",evening:"17:00"}},
+  {id:2,date:"2026-01-01",label:"신년 무료수업",type:"open",feeNote:"무료 참여 가능합니다",activeSlots:["morning","evening"],customTimes:{morning:"10:00",evening:"17:00"}},
   {id:3,date:"2026-02-18",label:"설날 집중수업",type:"special",feeNote:"",activeSlots:["dawn","morning","lunch","evening"],customTimes:{dawn:"06:30",morning:"08:30",lunch:"11:50",evening:"19:30"}},
   {id:4,date:"2026-02-22",label:"2월 보강",type:"special",feeNote:"",activeSlots:["morning"],customTimes:{morning:"10:00"}},
   {id:4,date:"2026-03-02",label:"삼일절 집중수업",type:"special",feeNote:"",activeSlots:["morning","evening"],customTimes:{morning:"10:00",evening:"17:00"}},
