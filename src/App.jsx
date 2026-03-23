@@ -1540,12 +1540,12 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
           {!isFuture&&<div style={{textAlign:"center",padding:"20px 0",color:"#b0a090",fontSize:13}}>과거 날짜는 예약할 수 없어요.</div>}
           {isFuture&&isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"28px 0",color:"#b0a090"}}><div style={{fontSize:32,marginBottom:8}}>🌿</div><div style={{fontSize:14}}>이 날은 수업이 없습니다.</div></div>}
           {isFuture&&isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
-            <div style={{background:"#fff5f5",border:"1.5px solid #f0b0b0",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
+            <div style={{background:special.type==="open"?"#eaf7f0":special.type==="special"?"#f0edff":"#fff5f5",border:`1.5px solid ${special.type==="open"?"#7acca0":special.type==="special"?"#a090d0":"#f0b0b0"}`,borderRadius:12,padding:"12px 14px",marginBottom:12}}>
               <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
                 <span style={{fontSize:18,flexShrink:0}}>🔔</span>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#c97474",marginBottom:4}}>오늘의 공지</div>
-                  {special.dailyNote?.trim()&&<div style={{fontSize:12,color:"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+                  <div style={{fontSize:12,fontWeight:700,color:special.type==="open"?"#1a6e4a":special.type==="special"?"#5a3a9a":"#c97474",marginBottom:4}}>오늘의 공지</div>
+                  {special.dailyNote?.trim()&&<div style={{fontSize:12,color:special.type==="open"?"#1a5a3a":special.type==="special"?"#4a2e8a":"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
                 </div>
               </div>
             </div>
@@ -2098,12 +2098,12 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
 
       {isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>🌿</div><div style={{fontSize:14,fontWeight:700}}>이 날은 수업이 없습니다.</div></div>}
       {isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
-        <div style={{background:"#fff5f5",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 14px",marginBottom:12}}>
+        <div style={{background:special.type==="open"?"#eaf7f0":special.type==="special"?"#f0edff":"#fff5f5",border:`1.5px solid ${special.type==="open"?"#7acca0":special.type==="special"?"#a090d0":"#f0b0b0"}`,borderRadius:10,padding:"10px 14px",marginBottom:12}}>
           <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
             <span style={{fontSize:16,flexShrink:0}}>🔔</span>
             <div style={{flex:1}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#c97474",marginBottom:4}}>오늘의 공지</div>
-              {special.dailyNote?.trim()&&<div style={{fontSize:12,color:"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+              <div style={{fontSize:12,fontWeight:700,color:special.type==="open"?"#1a6e4a":special.type==="special"?"#5a3a9a":"#c97474",marginBottom:4}}>오늘의 공지</div>
+              {special.dailyNote?.trim()&&<div style={{fontSize:12,color:special.type==="open"?"#1a5a3a":special.type==="special"?"#4a2e8a":"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
             </div>
           </div>
         </div>
