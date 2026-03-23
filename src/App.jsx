@@ -2541,7 +2541,7 @@ ${newSp.dailyNote}`:typePrefix;
                         {on
                           ? <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
                               {isChanged&&<span style={{fontSize:11,textDecoration:"line-through",color:"#b0a0a0"}}>{defTime}</span>}
-                              <input style={{...S.inp,padding:"4px 8px",fontSize:12,flex:1,margin:0,color:isChanged?"#c97474":"inherit",fontWeight:isChanged?700:400}} value={curTime} onChange={e=>{e.stopPropagation();setNewSp(f=>({...f,customTimes:{...f.customTimes,[sl.key]:e.target.value}}));}} onClick={e=>e.stopPropagation()} placeholder="HH:MM"/>
+                              <input style={{...S.inp,padding:"4px 8px",fontSize:12,flex:1,margin:0,color:isChanged?"#c97474":"inherit",fontWeight:isChanged?700:400}} type="time" value={curTime} onChange={e=>{e.stopPropagation();setNewSp(f=>({...f,customTimes:{...f.customTimes,[sl.key]:e.target.value}}));}} onClick={e=>e.stopPropagation()}/>
                             </div>
                           : <span style={{fontSize:11,color:"#b0a090",flex:1}}>{defTime||"직접 입력"}</span>
                         }
