@@ -1548,12 +1548,12 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
             </div>
           )}
           {isFuture&&isOpen&&(
-            <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+            <div style={{background:"#d8f5ec",border:"1.5px solid #1a6e4a",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
               <span style={{fontSize:24,flexShrink:0}}>🍀</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>오픈클래스</div>
-<div style={{fontSize:11,color:"#a08030",marginTop:3}}>{special.label}</div>
-{special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:3}}>{special.feeNote}</div>}
+                <div style={{fontSize:13,fontWeight:700,color:"#1a6e4a"}}>오픈클래스</div>
+<div style={{fontSize:11,color:"#1a5a3a",marginTop:3}}>{special.label}</div>
+{special.feeNote&&<div style={{fontSize:12,color:"#1a5a3a",marginTop:3}}>{special.feeNote}</div>}
               </div>
             </div>
           )}
@@ -2106,12 +2106,12 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
         </div>
       )}
       {isOpen&&(
-        <div style={{background:"linear-gradient(135deg,#fffbea,#fff8d6)",border:"1.5px solid #f0d060",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+        <div style={{background:"#d8f5ec",border:"1.5px solid #1a6e4a",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:20,flexShrink:0}}>🍀</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#7a5a00"}}>오픈클래스</div>
-<div style={{fontSize:11,color:"#a08030",marginTop:3}}>{special.label}</div>
-{special.feeNote&&<div style={{fontSize:12,color:"#9a7010",marginTop:3}}>{special.feeNote}</div>}
+            <div style={{fontSize:13,fontWeight:700,color:"#1a6e4a"}}>오픈클래스</div>
+<div style={{fontSize:11,color:"#1a5a3a",marginTop:3}}>{special.label}</div>
+{special.feeNote&&<div style={{fontSize:12,color:"#1a5a3a",marginTop:3}}>{special.feeNote}</div>}
           </div>
         </div>
       )}
