@@ -145,7 +145,7 @@ const BOOKING_STATUS={
 
 const INIT_NOTICES=[
   {id:1,title:"3월 수업 일정 안내",content:"2월 22일(일) 저녁반 보강, 3월 2일(월) 삼일절 대체 특별수업이 진행되었습니다.\n새벽·오전·저녁반 정상 운영하였습니다 🙏",pinned:true,createdAt:"2026-03-01"},
-  {id:2,title:"4주 단위 수련 안내",content:"요가피안은 4주 단위로 운영됩니다. 매월 휴강 일정을 꼭 확인해주세요. 수련실은 시작 20분 전 개방됩니다.",pinned:false,createdAt:"2026-01-02"},
+  {id:2,title:"4주 단위 수련 안내",content:"요가피안은 4주 단위로 운영됩니다.",pinned:false,createdAt:"2026-01-02"},
 ];
 
 const INIT_MEMBERS=[
