@@ -1172,7 +1172,7 @@ function CalendarPicker({value,onChange,onClose,closures=[],specialSchedules=[]}
             else if(partialClosure){const slabel={dawn:"새벽",morning:"오전",lunch:"점심",afternoon:"오후",evening:"저녁"}[partialClosure.timeSlot]||partialClosure.timeSlot;ind=<div style={{fontSize:8,color:"#9a5a10",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#fdf0d8",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>{slabel}✕</div>;}
             else if(isOpen) ind=<div style={{fontSize:8,color:"#1a6e4a",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#d8f5ec",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>오픈</div>;
             else if(isRegular&&hasTimeChange) ind=<div style={{fontSize:8,color:"#c97474",fontWeight:700,lineHeight:1.2,marginTop:1,marginTop:1}}>변경❗</div>;
-            else if(isRegular&&special?.dailyNote) ind=<div style={{fontSize:8,color:"#c97474",fontWeight:700,lineHeight:1.2,marginTop:1}}>📌</div>;
+            else if(isRegular&&special?.dailyNote) ind=<div style={{fontSize:8,color:"transparent",fontWeight:700,lineHeight:1.2,marginTop:1}}>📌</div>;
             else if(isSpecialDay) ind=<div style={{fontSize:8,color:"#5a3a9a",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#ede8fa",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>집중</div>;
             else if(holiday&&!fullClosure) ind=<div style={{fontSize:7,color:"#e05050",lineHeight:1.2,marginTop:1,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{holidayName(ds).slice(0,3)}</div>;
           }
