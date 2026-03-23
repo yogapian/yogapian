@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, createContext, useContext } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect, createContext, useContext } from "react";
 
 function debounce(fn, delay){
   let timer;
@@ -1539,13 +1539,13 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
 
           {!isFuture&&<div style={{textAlign:"center",padding:"20px 0",color:"#b0a090",fontSize:13}}>과거 날짜는 예약할 수 없어요.</div>}
           {isFuture&&isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"28px 0",color:"#b0a090"}}><div style={{fontSize:32,marginBottom:8}}>🌿</div><div style={{fontSize:14}}>이 날은 수업이 없습니다.</div></div>}
-          {isFuture&&isSpecial&&(hasTimeChange||special?.dailyNote)&&(
+          {isFuture&&isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
             <div style={{background:"#fff5f5",border:"1.5px solid #f0b0b0",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
               <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
                 <span style={{fontSize:18,flexShrink:0}}>🔔</span>
                 <div style={{flex:1}}>
                   <div style={{fontSize:12,fontWeight:700,color:"#c97474",marginBottom:4}}>오늘의 공지</div>
-                  {special.dailyNote&&<div style={{fontSize:12,color:"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+                  {special.dailyNote?.trim()&&<div style={{fontSize:12,color:"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
                 </div>
               </div>
             </div>
@@ -2097,13 +2097,13 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
       </div>
 
       {isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>🌿</div><div style={{fontSize:14,fontWeight:700}}>이 날은 수업이 없습니다.</div></div>}
-      {isSpecial&&(hasTimeChange||special?.dailyNote)&&(
+      {isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
         <div style={{background:"#fff5f5",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 14px",marginBottom:12}}>
           <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
             <span style={{fontSize:16,flexShrink:0}}>🔔</span>
             <div style={{flex:1}}>
               <div style={{fontSize:12,fontWeight:700,color:"#c97474",marginBottom:4}}>오늘의 공지</div>
-              {special.dailyNote&&<div style={{fontSize:12,color:"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
+              {special.dailyNote?.trim()&&<div style={{fontSize:12,color:"#7a4040",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
             </div>
           </div>
         </div>
@@ -2526,7 +2526,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                         {on
                           ? <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
                               {isChanged&&<span style={{fontSize:11,textDecoration:"line-through",color:"#b0a0a0"}}>{defTime}</span>}
-                              <input type="text" style={{...S.inp,padding:"4px 8px",fontSize:12,flex:1,margin:0,color:isChanged?"#c97474":"inherit",fontWeight:isChanged?700:400}} value={curTime} onChange={e=>{e.stopPropagation();setNewSp(f=>({...f,customTimes:{...f.customTimes,[sl.key]:e.target.value}}));}} onClick={e=>e.stopPropagation()} onFocus={e=>{e.stopPropagation();e.target.select();}} placeholder="HH:MM"/>
+                              <input key={sl.key+"_"+curTime} type="text" style={{...S.inp,padding:"4px 8px",fontSize:12,flex:1,margin:0,color:isChanged?"#c97474":"inherit",fontWeight:isChanged?700:400}} defaultValue={curTime} onBlur={e=>{e.stopPropagation();const v=e.target.value;setNewSp(f=>({...f,customTimes:{...f.customTimes,[sl.key]:v}}));}} onClick={e=>e.stopPropagation()} onFocus={e=>{e.stopPropagation();e.target.select();}} placeholder="HH:MM"/>
                             </div>
                           : <span style={{fontSize:11,color:"#b0a090",flex:1}}>{defTime||"직접 입력"}</span>
                         }
