@@ -1323,7 +1323,7 @@ function NoticeBoard({notices,member}){
       {visible.map(n=>(
         <div key={n.id} style={{background:n.pinned?"#fffaeb":"#fff",border:`1px solid ${n.pinned?"#e8c44a":"#e4e0d8"}`,borderRadius:12,padding:"12px 14px",marginBottom:8,cursor:"pointer"}} onClick={()=>setExpanded(expanded===n.id?null:n.id)}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {n.pinned&&<span style={{fontSize:11,background:"#fef3c7",color:"#92610a",borderRadius:5,padding:"1px 6px",fontWeight:700,flexShrink:0}}>📌 공지</span>}
+            {n.pinned&&<span style={{fontSize:14,flexShrink:0}}>📌</span>}
             <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e",flex:1}}>{n.title}</span>
             <span style={{fontSize:12,color:"#9a8e80",flexShrink:0}}>{expanded===n.id?"▴":"▾"}</span>
           </div>
@@ -1537,7 +1537,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
           {!isFuture&&<div style={{textAlign:"center",padding:"20px 0",color:"#b0a090",fontSize:13}}>과거 날짜는 예약할 수 없어요.</div>}
           {isFuture&&isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"28px 0",color:"#b0a090"}}><div style={{fontSize:32,marginBottom:8}}>🌿</div><div style={{fontSize:14}}>이 날은 수업이 없습니다.</div></div>}
           {isFuture&&isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
-            <div style={{background:special.type==="open"?"#eaf7f0":special.type==="special"?"#f0edff":"#fff5f5",border:`1.5px solid ${special.type==="open"?"#7acca0":special.type==="special"?"#a090d0":"#f0b0b0"}`,borderRadius:12,padding:"12px 14px",marginBottom:12}}>
+            <div style={{background:special.type==="open"?"#d8f5ec":special.type==="special"?"#f0edff":"#fff5f5",border:`1.5px solid ${special.type==="open"?"#1a6e4a":special.type==="special"?"#a090d0":"#f0b0b0"}`,borderRadius:12,padding:"12px 14px",marginBottom:12}}>
               <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
                 <span style={{fontSize:18,flexShrink:0}}>🔔</span>
                 <div style={{flex:1}}>
@@ -2057,10 +2057,10 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
             <div onClick={()=>setShowCal(s=>!s)} style={{background:showCal?"#eef5ee":"#fff",border:`1.5px solid ${showCal?"#4a6a4a":"#ddd"}`,borderRadius:10,padding:"10px 12px",fontSize:14,fontWeight:700,color:"#1e2e1e",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               {fmtWithDow(date)}
               {date===TODAY_STR&&<span style={{fontSize:10,background:"#4a6a4a",color:"#fff",borderRadius:5,padding:"2px 6px",fontWeight:700}}>오늘</span>}
-              {dayClosure&&<span style={{fontSize:10,color:"#c97474",fontWeight:700}}>휴강</span>}
-              {isSpecial&&special.type==="open"&&<span style={{fontSize:10,color:"#9a7010",fontWeight:700}}>오픈</span>}
-              {isSpecial&&special.type==="special"&&<span style={{fontSize:10,color:"#3050b0",fontWeight:700}}>집중</span>}
-              {isSpecial&&special.type==="regular"&&(hasTimeChange||special.dailyNote)&&<span style={{fontSize:10,color:hasTimeChange?"#c97474":"#9a5a10",fontWeight:700}}>{hasTimeChange?"변경❗":"📌"}</span>}
+              {dayClosure&&<span style={{fontSize:10,background:"#fde8e8",color:"#a83030",borderRadius:4,padding:"1px 6px",fontWeight:700}}>휴강</span>}
+              {isSpecial&&special.type==="open"&&<span style={{fontSize:10,background:"#d8f5ec",color:"#1a6e4a",borderRadius:4,padding:"1px 6px",fontWeight:700}}>오픈</span>}
+              {isSpecial&&special.type==="special"&&<span style={{fontSize:10,background:"#ede8fa",color:"#5a3a9a",borderRadius:4,padding:"1px 6px",fontWeight:700}}>집중</span>}
+              {isSpecial&&special.type==="regular"&&(hasTimeChange||special.dailyNote)&&<span style={{fontSize:10,background:"#fdf0d8",color:"#9a5a10",borderRadius:4,padding:"1px 6px",fontWeight:700}}>{hasTimeChange?"변경❗":"📌"}</span>}
               <span style={{fontSize:12,color:"#9a8e80"}}>▾</span>
             </div>
             {showCal&&(<><div style={{position:"fixed",inset:0,zIndex:150}} onClick={()=>setShowCal(false)}/><CalendarPicker value={date} onChange={v=>{setDate(v);setShowCal(false);}} onClose={()=>setShowCal(false)} closures={closures} specialSchedules={specialSchedules}/></>)}
@@ -2095,7 +2095,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
 
       {isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>🌿</div><div style={{fontSize:14,fontWeight:700}}>이 날은 수업이 없습니다.</div></div>}
       {isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
-        <div style={{background:special.type==="open"?"#eaf7f0":special.type==="special"?"#f0edff":"#fff5f5",border:`1.5px solid ${special.type==="open"?"#7acca0":special.type==="special"?"#a090d0":"#f0b0b0"}`,borderRadius:10,padding:"10px 14px",marginBottom:12}}>
+        <div style={{background:special.type==="open"?"#d8f5ec":special.type==="special"?"#f0edff":"#fff5f5",border:`1.5px solid ${special.type==="open"?"#1a6e4a":special.type==="special"?"#a090d0":"#f0b0b0"}`,borderRadius:10,padding:"10px 14px",marginBottom:12}}>
           <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
             <span style={{fontSize:16,flexShrink:0}}>🔔</span>
             <div style={{flex:1}}>
