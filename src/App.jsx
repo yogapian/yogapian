@@ -1548,7 +1548,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
             </div>
           )}
           {isFuture&&isOpen&&(
-            <div style={{background:"#d8f5ec",border:"1.5px solid #1a6e4a",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+            <div style={{background:"#d8f5ec",border:"1.5px solid #7acca0",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
               <span style={{fontSize:24,flexShrink:0}}>🍀</span>
               <div style={{flex:1}}>
                 <div style={{fontSize:13,fontWeight:700,color:"#1a6e4a"}}>오픈클래스</div>
@@ -2106,7 +2106,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
         </div>
       )}
       {isOpen&&(
-        <div style={{background:"#d8f5ec",border:"1.5px solid #1a6e4a",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
+        <div style={{background:"#d8f5ec",border:"1.5px solid #7acca0",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:20,flexShrink:0}}>🍀</span>
           <div style={{flex:1}}>
             <div style={{fontSize:13,fontWeight:700,color:"#1a6e4a"}}>오픈클래스</div>
