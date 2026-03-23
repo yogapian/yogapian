@@ -3172,7 +3172,7 @@ function MemberLoginPage({members,onLogin,onGoAdmin}){
 
   async function doLogin(m){
     if(autoLogin){
-      try{ await storeSave(AUTO_LOGIN_KEY, {memberId:m.id}, false); }catch(e){}
+      try{ await storeSave(AUTO_LOGIN_KEY, {memberId:m.id}); }catch(e){}
     }
     onLogin(m);
     setCandidates(null);
@@ -3268,15 +3268,14 @@ function AdminLoginPage({onLogin,onGoMember}){
 
 const STORE_KEY = "yogapian_v3";
 const AUTO_LOGIN_KEY = "yogapian_autologin";
-const SHARED = true;
 
 async function storeSave(key, data) {
-  try { await window.storage.set(key, JSON.stringify(data), SHARED); } catch(e){ console.warn("storage save:", e); }
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch(e){ console.warn("storage save:", e); }
 }
 async function storeLoad(key) {
   try {
-    const r = await window.storage.get(key, SHARED);
-    return r ? JSON.parse(r.value) : null;
+    const r = localStorage.getItem(key);
+    return r ? JSON.parse(r) : null;
   } catch(e){ return null; }
 }
 
@@ -3408,7 +3407,7 @@ export default function App(){
     <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72;transform:scale(.97)}@media(max-width:390px){html{font-size:14px}}.member-header{flex-wrap:wrap;gap:8px!important}`}</style>
-      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{window.storage.delete(AUTO_LOGIN_KEY,false);}catch(e){}}}/>
+      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{localStorage.removeItem(AUTO_LOGIN_KEY);}catch(e){}}}/>
     </div>
     </ClosuresContext.Provider>
   );
