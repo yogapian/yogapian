@@ -1564,7 +1564,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
             <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
               <span style={{fontSize:24,flexShrink:0}}>⚡️</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,color:"#7a5aaa",marginBottom:3}}>⚡️ 집중수련</div>
+                <div style={{fontSize:11,color:"#7a5aaa",marginBottom:3}}>집중수련</div>
 <div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>{special.label}</div>
 {special.feeNote&&<div style={{fontSize:12,color:"#6a4aaa",marginTop:3}}>{special.feeNote}</div>}
               </div>
