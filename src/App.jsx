@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useCallback, useEffect, createContext, useContext } from "react";
+import { createClient } from "@supabase/supabase-js";
 
 function debounce(fn, delay){
   let timer;
@@ -3275,13 +3276,20 @@ function AdminLoginPage({onLogin,onGoMember}){
 const STORE_KEY = "yogapian_v3";
 const AUTO_LOGIN_KEY = "yogapian_autologin";
 
+const _supabase = createClient(
+  "https://bgrgmrxlahtrpgrnigid.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJncmdtcnhsYWh0cnBncm5pZ2lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NjUzOTQsImV4cCI6MjA4OTU0MTM5NH0.-HRgZaFoWuXWizdHe4ANaRfuo3QCQlP7aYUasofNj4s"
+);
+
 async function storeSave(key, data) {
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch(e){ console.warn("storage save:", e); }
+  try {
+    await _supabase.from("appdata").upsert({ key, value: JSON.stringify(data), updated_at: new Date().toISOString() });
+  } catch(e){ console.warn("storage save:", e); }
 }
 async function storeLoad(key) {
   try {
-    const r = localStorage.getItem(key);
-    return r ? JSON.parse(r) : null;
+    const { data } = await _supabase.from("appdata").select("value").eq("key", key).single();
+    return data ? JSON.parse(data.value) : null;
   } catch(e){ return null; }
 }
 
@@ -3416,7 +3424,7 @@ const saveDebounced = useCallback(
     <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72;transform:scale(.97)}@media(max-width:390px){html{font-size:14px}}.member-header{flex-wrap:wrap;gap:8px!important}`}</style>
-      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{localStorage.removeItem(AUTO_LOGIN_KEY);}catch(e){}}}/>
+      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");try{storeSave(AUTO_LOGIN_KEY, null);}catch(e){}}}/>
     </div>
     </ClosuresContext.Provider>
   );
