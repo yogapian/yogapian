@@ -1512,7 +1512,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
     setBookings(p=>{
       const next=p.map(b=>b.id===bId?{...b,status:"cancelled",cancelledBy:"member"}:b);
       if(firstWaiter){
-        return next.map(b=>b.id===firstWaiter.id?{...b,status:"reserved"}:b);
+        return next.map(b=>b.id===firstWaiter.id?{...b,status:"attended"}:b);
       }
       return next;
     });
@@ -1521,6 +1521,14 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
       const nid=Date.now();
       setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(cancelled.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
     }
+    if(!isOpen) setMembers(p=>p.map(m=>m.id===member.id?{...m,used:Math.max(0,m.used-1)}:m));
+    setConfirmCancel(null);
+  }
+  // 대기자 승격 시 수강권 1회 차감(used 증가) 로직 추가
+      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId?{...m,used:m.used+1}:m));
+    }
+    
+    // 취소한 회원의 수강권 복구
     if(!isOpen) setMembers(p=>p.map(m=>m.id===member.id?{...m,used:Math.max(0,m.used-1)}:m));
     setConfirmCancel(null);
   }
@@ -1900,15 +1908,21 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
     setBookings(p=>{
       const next=p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelNote:note,cancelledBy:"admin",confirmedAttend:false}:b);
       if(firstWaiter){
-        return next.map(b=>b.id===firstWaiter.id?{...b,status:"reserved"}:b);
+        return next.map(b=>b.id===firstWaiter.id?{...b,status:"attended"}:b);
       }
       return next;
     });
+    // 취소한 회원의 수강권 복구
     if(mem&&!isOpen) setMembers(p=>p.map(m=>m.id===mem.id?{...m,used:Math.max(0,m.used-1)}:m));
+    
     if(firstWaiter){
       const nid=Date.now()+2;
       setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(rec.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
+      
+      // 🔴 대기자 승격 시 수강권 차감 로직 추가
+      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId?{...m,used:m.used+1}:m));
     }
+    
     if(mem&&setNotices){
       const slotTime=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.time||"";
       const nid=Math.max(...(notices||[]).map(n=>n.id),0)+1;
@@ -2051,7 +2065,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
     setBookings(p=>{
       const next=p.map(bk=>bk.id===id?{...bk,status:"cancelled",cancelledBy:"admin",cancelNote:note}:bk);
       if(firstWaiter){
-        return next.map(bk=>bk.id===firstWaiter.id?{...bk,status:"reserved"}:bk);
+        return next.map(bk=>bk.id===firstWaiter.id?{...bk,status:"attended"}:bk);
       }
       return next;
     });
@@ -2061,6 +2075,14 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
       setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(b.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
     }
     if(b.memberId&&!isOpen) setMembers(p=>p.map(m=>m.id===b.memberId?{...m,used:Math.max(0,m.used-1)}:m));
+    // 🔴 대기자 승격 시 수강권 1회 차감 로직 추가
+      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId?{...m,used:m.used+1}:m));
+    }
+    
+    // 취소한 회원의 수강권 복구
+    if(b.memberId&&!isOpen) setMembers(p=>p.map(m=>m.id===b.memberId?{...m,used:Math.max(0,m.used-1)}:m));
+    setCancelModal(null);
+  }
     setCancelModal(null);
   }
 
