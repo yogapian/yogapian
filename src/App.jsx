@@ -3288,7 +3288,7 @@ async function storeSave(key, data) {
 }
 async function storeLoad(key) {
   try {
-    const { data } = await _supabase.from("appdata").select("value").eq("key", key).single();
+    const { data } = await _supabase.from("appdata").select("value").eq("key", key).maybeSingle();
     return data ? JSON.parse(data.value) : null;
   } catch(e){ return null; }
 }
