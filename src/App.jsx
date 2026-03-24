@@ -1902,8 +1902,8 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
         </div>
         {live.confirmedAttend===true&&(
           <div style={{textAlign:"center",marginBottom:12}}>
-            <div style={{fontSize:32,marginBottom:6}}>✅</div>
-            <div style={{fontSize:13,color:"#9a8e80"}}>출석 확인됨</div>
+           <div style={{fontSize:32,marginBottom:6}}>{live.walkIn ? "☑️" : "✅"}</div>
+            <div style={{fontSize:13,color:"#9a8e80"}}>출석 확인됨 {live.walkIn ? "(워크인)" : ""}</div>
             <button onClick={doReset} style={{marginTop:10,background:"none",border:"none",fontSize:12,color:"#9a8e80",cursor:"pointer",fontFamily:FONT}}>↩ 되돌리기</button>
           </div>
         )}
@@ -2213,11 +2213,11 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                         {/* 원데이: 1️⃣ 버튼 / 회원: 🕉 버튼 */}
                         {isOneday?(
                           <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,flexShrink:0}}>
-                            {isAttended?"✅":isAbsent?"❌":"1️⃣"}
+                            {isAttended ? (rec.walkIn ? "☑️" : "✅") : isAbsent ? "❌" : "1️⃣"}
                           </button>
                         ):(
                           <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,opacity:isAbsent?0.7:1,flexShrink:0}}>
-                            {isAttended?"✅":isAbsent?"❌":"🕉"}
+                            {isAttended ? (rec.walkIn ? "☑️" : "✅") : isAbsent ? "❌" : "🕉"}
                           </button>
                         )}
                       </div>
