@@ -2075,7 +2075,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
       setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(b.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
     }
     if(b.memberId&&!isOpen) setMembers(p=>p.map(m=>m.id===b.memberId?{...m,used:Math.max(0,m.used-1)}:m));
-    // 🔴 대기자 승격 시 수강권 1회 차감 로직 추가
+    // 대기자 승격 시 수강권 1회 차감 로직 추가
       if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId?{...m,used:m.used+1}:m));
     }
     
