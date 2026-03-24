@@ -1506,22 +1506,21 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
   function cancelBooking(bId){
     const cancelled=bookings.find(b=>b.id===bId);
     const slotKey=cancelled?.timeSlot;
+    // 대기자 미리 계산 (setBookings 콜백 밖에서)
+    const waiters=bookings.filter(b=>b.date===cancelled.date&&b.timeSlot===slotKey&&b.status==="waiting").sort((a,b)=>a.id-b.id);
+    const firstWaiter=waiters.length>0?waiters[0]:null;
     setBookings(p=>{
       const next=p.map(b=>b.id===bId?{...b,status:"cancelled",cancelledBy:"member"}:b);
-      // 대기자 자동 전환 — 해당 슬롯 대기 1번
-      const waiters=next.filter(b=>b.date===cancelled.date&&b.timeSlot===slotKey&&b.status==="waiting").sort((a,b)=>a.id-b.id);
-      if(waiters.length>0){
-        const first=waiters[0];
-        // reserved 전환
-        const upgraded=next.map(b=>b.id===first.id?{...b,status:"reserved"}:b);
-        // 알림 생성
-        const nid=Math.max(...(upgraded.map(b=>b.id)),0)+Date.now();
-        const slotLabel=TIME_SLOTS.find(t=>t.key===slotKey)?.label||"";
-        setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(cancelled.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:first.memberId},...(prev||[])]);
-        return upgraded;
+      if(firstWaiter){
+        return next.map(b=>b.id===firstWaiter.id?{...b,status:"reserved"}:b);
       }
       return next;
     });
+    if(firstWaiter){
+      const slotLabel=TIME_SLOTS.find(t=>t.key===slotKey)?.label||"";
+      const nid=Date.now();
+      setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(cancelled.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
+    }
     if(!isOpen) setMembers(p=>p.map(m=>m.id===member.id?{...m,used:Math.max(0,m.used-1)}:m));
     setConfirmCancel(null);
   }
@@ -1895,19 +1894,21 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
   function doAttend(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:true}:b));onClose();}
   function doAbsent(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:false}:b));onClose();}
   function doDelete(){
+    // 대기자 미리 계산
+    const waiters=bookings.filter(b=>b.date===rec.date&&b.timeSlot===rec.timeSlot&&b.status==="waiting").sort((a,b)=>a.id-b.id);
+    const firstWaiter=waiters.length>0&&mem?waiters[0]:null;
     setBookings(p=>{
       const next=p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelNote:note,cancelledBy:"admin",confirmedAttend:false}:b);
-      // 대기자 자동 승격
-      const waiters=next.filter(b=>b.date===rec.date&&b.timeSlot===rec.timeSlot&&b.status==="waiting").sort((a,b)=>a.id-b.id);
-      if(waiters.length>0&&mem){
-        const first=waiters[0];
-        const nid=Date.now()+2;
-        setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(rec.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:first.memberId},...(prev||[])]);
-        return next.map(b=>b.id===first.id?{...b,status:"reserved"}:b);
+      if(firstWaiter){
+        return next.map(b=>b.id===firstWaiter.id?{...b,status:"reserved"}:b);
       }
       return next;
     });
     if(mem&&!isOpen) setMembers(p=>p.map(m=>m.id===mem.id?{...m,used:Math.max(0,m.used-1)}:m));
+    if(firstWaiter){
+      const nid=Date.now()+2;
+      setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(rec.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
+    }
     if(mem&&setNotices){
       const slotTime=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.time||"";
       const nid=Math.max(...(notices||[]).map(n=>n.id),0)+1;
@@ -2043,21 +2044,22 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   function adminCancel(id,note){
     const b=bookings.find(bk=>bk.id===id);
     if(!b)return;
+    // 대기자 자동 승격: setBookings 밖에서 미리 계산
+    const currentBookings=bookings;
+    const waiters=currentBookings.filter(bk=>bk.date===b.date&&bk.timeSlot===b.timeSlot&&bk.status==="waiting").sort((a,c)=>a.id-c.id);
+    const firstWaiter=waiters.length>0?waiters[0]:null;
     setBookings(p=>{
       const next=p.map(bk=>bk.id===id?{...bk,status:"cancelled",cancelledBy:"admin",cancelNote:note}:bk);
-      // 대기자 자동 승격: 취소된 슬롯의 대기 1번을 예약으로 전환
-      if(b.status==="attended"||b.status==="reserved"){
-        const waiters=next.filter(bk=>bk.date===b.date&&bk.timeSlot===b.timeSlot&&bk.status==="waiting").sort((a,c)=>a.id-c.id);
-        if(waiters.length>0){
-          const first=waiters[0];
-          const slotLabel=TIME_SLOTS.find(t=>t.key===b.timeSlot)?.label||"";
-          const nid=Date.now();
-          setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(b.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:first.memberId},...(prev||[])]);
-          return next.map(bk=>bk.id===first.id?{...bk,status:"reserved"}:bk);
-        }
+      if(firstWaiter){
+        return next.map(bk=>bk.id===firstWaiter.id?{...bk,status:"reserved"}:bk);
       }
       return next;
     });
+    if(firstWaiter){
+      const slotLabel=TIME_SLOTS.find(t=>t.key===b.timeSlot)?.label||"";
+      const nid=Date.now();
+      setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(b.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
+    }
     if(b.memberId&&!isOpen) setMembers(p=>p.map(m=>m.id===b.memberId?{...m,used:Math.max(0,m.used-1)}:m));
     setCancelModal(null);
   }
