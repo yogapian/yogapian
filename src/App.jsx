@@ -1895,7 +1895,18 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
   function doAttend(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:true}:b));onClose();}
   function doAbsent(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:false}:b));onClose();}
   function doDelete(){
-    setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelNote:note,cancelledBy:"admin",confirmedAttend:false}:b));
+    setBookings(p=>{
+      const next=p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelNote:note,cancelledBy:"admin",confirmedAttend:false}:b);
+      // 대기자 자동 승격
+      const waiters=next.filter(b=>b.date===rec.date&&b.timeSlot===rec.timeSlot&&b.status==="waiting").sort((a,b)=>a.id-b.id);
+      if(waiters.length>0&&mem){
+        const first=waiters[0];
+        const nid=Date.now()+2;
+        setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(rec.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:first.memberId},...(prev||[])]);
+        return next.map(b=>b.id===first.id?{...b,status:"reserved"}:b);
+      }
+      return next;
+    });
     if(mem&&!isOpen) setMembers(p=>p.map(m=>m.id===mem.id?{...m,used:Math.max(0,m.used-1)}:m));
     if(mem&&setNotices){
       const slotTime=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.time||"";
@@ -2008,6 +2019,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   const [quickDetailM,setQuickDetailM]=useState(null); // 이름 클릭 시 회원 상세 카드
 
   const [openWaitActionId, setOpenWaitActionId] = useState(null);
+  const [waitPopup, setWaitPopup] = useState(null); // {rec, slotKey, mem}
 
   const dow=parseLocal(date).getDay();
   const special=specialSchedules.find(s=>s.date===date);
@@ -2031,7 +2043,21 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   function adminCancel(id,note){
     const b=bookings.find(bk=>bk.id===id);
     if(!b)return;
-    setBookings(p=>p.map(bk=>bk.id===id?{...bk,status:"cancelled",cancelledBy:"admin",cancelNote:note}:bk));
+    setBookings(p=>{
+      const next=p.map(bk=>bk.id===id?{...bk,status:"cancelled",cancelledBy:"admin",cancelNote:note}:bk);
+      // 대기자 자동 승격: 취소된 슬롯의 대기 1번을 예약으로 전환
+      if(b.status==="attended"||b.status==="reserved"){
+        const waiters=next.filter(bk=>bk.date===b.date&&bk.timeSlot===b.timeSlot&&bk.status==="waiting").sort((a,c)=>a.id-c.id);
+        if(waiters.length>0){
+          const first=waiters[0];
+          const slotLabel=TIME_SLOTS.find(t=>t.key===b.timeSlot)?.label||"";
+          const nid=Date.now();
+          setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(b.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:first.memberId},...(prev||[])]);
+          return next.map(bk=>bk.id===first.id?{...bk,status:"reserved"}:bk);
+        }
+      }
+      return next;
+    });
     if(b.memberId&&!isOpen) setMembers(p=>p.map(m=>m.id===b.memberId?{...m,used:Math.max(0,m.used-1)}:m));
     setCancelModal(null);
   }
@@ -2252,30 +2278,12 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                           {/* 3. 오른쪽 버튼 및 상태 표시 영역 */}
                           {isWaiting?(
                             <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
-                              {openWaitActionId === rec.id && (
-                                <>
-                                  <button onClick={()=>{
-                                    const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
-                                    const nid=Date.now();
-                                    setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"reserved"}:b));
-                                    if(mem) setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
-                                    setOpenWaitActionId(null);
-                                  }} style={{fontSize:11,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>수락</button>
-                                  <button onClick={()=>{
-                                    const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
-                                    const nid=Date.now()+1;
-                                    setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelledBy:"admin"}:b));
-                                    if(mem) setNotices(prev=>[{id:nid,title:"📢 대기 취소 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 취소되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
-                                    setOpenWaitActionId(null);
-                                  }} style={{fontSize:11,background:"#f0ece4",color:"#c97474",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>거절</button>
-                                </>
-                              )}
                               <span 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setOpenWaitActionId(prev => prev === rec.id ? null : rec.id);
+                                  setWaitPopup({rec, slotKey: slot.key, mem});
                                 }} 
-                                style={{fontSize:14,flexShrink:0, cursor:"pointer", padding:"2px 4px", borderRadius:4, background: openWaitActionId === rec.id ? "#e0e0e0" : "transparent"}}
+                                style={{fontSize:14,flexShrink:0, cursor:"pointer", padding:"2px 4px", borderRadius:4, background:"transparent"}}
                               >
                                 {waitEmoji}
                               </span>
@@ -2498,6 +2506,40 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
           </div>
         );
       })()}
+
+      {waitPopup&&(
+        <div style={S.overlay} onClick={()=>setWaitPopup(null)}>
+          <div style={{...S.modal,maxWidth:320,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:28,marginBottom:8}}>⏳</div>
+            <div style={{...S.modalTitle,marginBottom:6}}>대기자 처리</div>
+            <div style={{fontSize:13,color:"#7a6e60",marginBottom:4}}>
+              <b>{waitPopup.mem?.name||"알 수 없음"}</b>
+            </div>
+            <div style={{fontSize:12,color:"#9a8e80",marginBottom:20}}>
+              {fmtWithDow(date)} {TIME_SLOTS.find(t=>t.key===waitPopup.slotKey)?.label} 수업
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button style={{flex:1,background:"#f0ece4",color:"#c97474",border:"1px solid #e8c0c0",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}
+                onClick={()=>{
+                  const slotLabel=TIME_SLOTS.find(t=>t.key===waitPopup.slotKey)?.label||"";
+                  const nid=Date.now()+1;
+                  setBookings(p=>p.map(b=>b.id===waitPopup.rec.id?{...b,status:"cancelled",cancelledBy:"admin"}:b));
+                  if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"📢 대기 취소 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 취소되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
+                  setWaitPopup(null);
+                }}>거절</button>
+              <button style={{flex:1,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}
+                onClick={()=>{
+                  const slotLabel=TIME_SLOTS.find(t=>t.key===waitPopup.slotKey)?.label||"";
+                  const nid=Date.now();
+                  setBookings(p=>p.map(b=>b.id===waitPopup.rec.id?{...b,status:"reserved"}:b));
+                  if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
+                  setWaitPopup(null);
+                }}>수락</button>
+            </div>
+            <button style={{...S.cancelBtn,width:"100%",marginTop:10}} onClick={()=>setWaitPopup(null)}>닫기</button>
+          </div>
+        </div>
+      )}
 
       {attendCheckModal&&<AttendCheckModal rec={attendCheckModal} members={members} isOpen={isOpen} bookings={bookings} setBookings={setBookings} setMembers={setMembers} notices={notices} setNotices={setNotices} onClose={()=>setAttendCheckModal(null)}/>}
       {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={note=>adminCancel(cancelModal.id,note)}/>}
