@@ -2236,7 +2236,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                           style={{padding:"8px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:isDragging?0.4:isAbsent?0.5:1,background:rowBg,cursor:slotCl||isWaiting?"default":"grab",WebkitUserSelect:"none",userSelect:"none"}}>
                           
                           {/* 1. 왼쪽 여백 및 이모지 영역 (지워졌던 부분 복구!) */}
-                          {!slotCl&&!isWaiting&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
+                          {!slotCl&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
                           {isWaiting&&<span style={{fontSize:11,color:"transparent",flexShrink:0}}>⠿</span>}
                           <span style={{fontSize:15,flexShrink:0}}>{isOneday?"👤":GE[mem?.gender]||"🧘🏿"}</span>
                           
