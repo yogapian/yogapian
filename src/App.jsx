@@ -2237,7 +2237,6 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                           
                           {/* 1. 왼쪽 여백 및 이모지 영역 (지워졌던 부분 복구!) */}
                           {!slotCl&&!isWaiting&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
-                          {isWaiting&&<span style={{fontSize:11,color:"#888",flexShrink:0,width:14}}/>}
                           <span style={{fontSize:15,flexShrink:0}}>{isOneday?"👤":GE[mem?.gender]||"🧘🏿"}</span>
                           
                           {/* 2. 이름 영역 */}
