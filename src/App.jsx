@@ -2193,7 +2193,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                     const remCount=mem?Math.max(0,mem.total-usedAsOf(mem.id,date,bookings,members)):null;
                     const isDragging=dragId===rec.id;
                     const showRemWarn=!isOneday&&remCount!==null&&remCount<=2;
-                    const remBg=showRemWarn?(remCount<=1?"#fff5f5":"#fffbf0"):undefined;
+                    const remBg=undefined;
                     const remColor=showRemWarn?(remCount<=1?"#a83030":"#9a5a10"):undefined;
                     const cardColor=mem?.cardColor||"";
                     const isAttended=rec.confirmedAttend===true;
