@@ -2237,6 +2237,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                           
                           {/* 1. 왼쪽 여백 및 이모지 영역 (지워졌던 부분 복구!) */}
                           {!slotCl&&!isWaiting&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
+                          {isWaiting&&<span style={{fontSize:11,color:"transparent",flexShrink:0}}>⠿</span>}
                           <span style={{fontSize:15,flexShrink:0}}>{isOneday?"👤":GE[mem?.gender]||"🧘🏿"}</span>
                           
                           {/* 2. 이름 영역 */}
@@ -2281,7 +2282,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                             </div>
                           ):isOneday?(
                             <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,flexShrink:0}}>
-                              {isAttended ? (rec.walkIn ? "☑️" : "✅") : isAbsent ? "❌" : "👤"}
+                              {isAttended ? (rec.walkIn ? "☑️" : "✅") : isAbsent ? "❌" : "🕉"}
                             </button>
                           ):(
                             <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,opacity:isAbsent?0.7:1,flexShrink:0}}>
