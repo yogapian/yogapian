@@ -2232,59 +2232,65 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                     const isAbsent=rec.confirmedAttend===false;
                     const rowBg=isAbsent?"#fff8f8":isWaiting?"#e8e8e8":cardColor?`${cardColor}22`:"#fff";
                     return(
-                      <div key={rec.id} draggable={!slotCl&&!isWaiting} onDragStart={e=>!slotCl&&!isWaiting&&onDragStart(e,rec.id)} onDragEnd={onDragEnd}
-                        style={{padding:"8px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:isDragging?0.4:isAbsent?0.5:1,background:rowBg,cursor:slotCl||isWaiting?"default":"grab",WebkitUserSelect:"none",userSelect:"none"}}>
-                        {!slotCl&&!isWaiting&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
-                        {isWaiting&&<span style={{fontSize:11,color:"#888",flexShrink:0,width:14}}/>}
-                        <span style={{fontSize:15,flexShrink:0}}>{isOneday?"👤":GE[mem?.gender]||"🧘🏿"}</span>
-                        <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
-                          <span onClick={()=>!isOneday&&mem&&setQuickDetailM(mem)}
-                            style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isWaiting?"#666":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:isOneday?"default":"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
-                            {isOneday?rec.onedayName:mem.name}
-                          </span>
-                          {showRemWarn&&!isAbsent&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
-                        </div>
-                        {isWaiting?(
-                          <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
-                            {openWaitActionId === rec.id && (
-                              <>
-                                <button onClick={()=>{
-                                  const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
-                                  const nid=Date.now();
-                                  setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"reserved"}:b));
-                                  if(mem) setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
-                                  setOpenWaitActionId(null);
-                                }} style={{fontSize:11,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>수락</button>
-                                <button onClick={()=>{
-                                  const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
-                                  const nid=Date.now()+1;
-                                  setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelledBy:"admin"}:b));
-                                  if(mem) setNotices(prev=>[{id:nid,title:"📢 대기 취소 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 취소되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
-                                  setOpenWaitActionId(null);
-                                }} style={{fontSize:11,background:"#f0ece4",color:"#c97474",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>거절</button>
-                              </>
-                            )}
-                            <span 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenWaitActionId(prev => prev === rec.id ? null : rec.id);
-                              }} 
-                              style={{fontSize:14,flexShrink:0, cursor:"pointer", padding:"2px 4px", borderRadius:4, background: openWaitActionId === rec.id ? "#e0e0e0" : "transparent"}}
-                            >
-                              {waitEmoji}
+                        <div key={rec.id} draggable={!slotCl&&!isWaiting} onDragStart={e=>!slotCl&&!isWaiting&&onDragStart(e,rec.id)} onDragEnd={onDragEnd}
+                          style={{padding:"8px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:isDragging?0.4:isAbsent?0.5:1,background:rowBg,cursor:slotCl||isWaiting?"default":"grab",WebkitUserSelect:"none",userSelect:"none"}}>
+                          
+                          {/* 1. 왼쪽 여백 및 이모지 영역 (지워졌던 부분 복구!) */}
+                          {!slotCl&&!isWaiting&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
+                          {isWaiting&&<span style={{fontSize:11,color:"#888",flexShrink:0,width:14}}/>}
+                          <span style={{fontSize:15,flexShrink:0}}>{isOneday?"👤":GE[mem?.gender]||"🧘🏿"}</span>
+                          
+                          {/* 2. 이름 영역 */}
+                          <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
+                            <span onClick={()=>!isOneday&&mem&&setQuickDetailM(mem)}
+                              style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isWaiting?"#666":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:isOneday?"default":"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
+                              {isOneday?rec.onedayName:mem.name}
                             </span>
+                            {showRemWarn&&!isAbsent&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
                           </div>
-                        ):isOneday?(
-                          <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,flexShrink:0}}>
-                            {isAttended ? (rec.walkIn ? "☑️" : "✅") : isAbsent ? "❌" : "👤"}
-                          </button>
-                        ):(
-                          <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,opacity:isAbsent?0.7:1,flexShrink:0}}>
-                            {isAttended ? (rec.walkIn ? "☑️" : "✅") : isAbsent ? "❌" : "🕉"}
-                          </button>
-                        )}
-                      </div>
-                    );
+                          
+                          {/* 3. 오른쪽 버튼 및 상태 표시 영역 */}
+                          {isWaiting?(
+                            <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
+                              {openWaitActionId === rec.id && (
+                                <>
+                                  <button onClick={()=>{
+                                    const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
+                                    const nid=Date.now();
+                                    setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"reserved"}:b));
+                                    if(mem) setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
+                                    setOpenWaitActionId(null);
+                                  }} style={{fontSize:11,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>수락</button>
+                                  <button onClick={()=>{
+                                    const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
+                                    const nid=Date.now()+1;
+                                    setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelledBy:"admin"}:b));
+                                    if(mem) setNotices(prev=>[{id:nid,title:"📢 대기 취소 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 취소되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
+                                    setOpenWaitActionId(null);
+                                  }} style={{fontSize:11,background:"#f0ece4",color:"#c97474",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>거절</button>
+                                </>
+                              )}
+                              <span 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenWaitActionId(prev => prev === rec.id ? null : rec.id);
+                                }} 
+                                style={{fontSize:14,flexShrink:0, cursor:"pointer", padding:"2px 4px", borderRadius:4, background: openWaitActionId === rec.id ? "#e0e0e0" : "transparent"}}
+                              >
+                                {waitEmoji}
+                              </span>
+                            </div>
+                          ):isOneday?(
+                            <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,flexShrink:0}}>
+                              {isAttended ? (rec.walkIn ? "☑️" : "✅") : isAbsent ? "❌" : "👤"}
+                            </button>
+                          ):(
+                            <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,opacity:isAbsent?0.7:1,flexShrink:0}}>
+                              {isAttended ? (rec.walkIn ? "☑️" : "✅") : isAbsent ? "❌" : "🕉"}
+                            </button>
+                          )}
+                        </div>
+                      );
                   });})()}
                 </div>
               </div>
