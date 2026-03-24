@@ -2247,31 +2247,32 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                         {isWaiting?(
                           <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
                             {openWaitActionId === rec.id && (
-2098 |                               <>
-2099 |                                 <button onClick={()=>{
-2100 |                                   // 수락 → reserved 전환 + 알림
-2101 |                                   const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
-2102 |                                   const nid=Date.now();
-2103 |                                   setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"reserved"}:b));
-2104 |                                   if(mem) setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
-2105 |                                   setOpenWaitActionId(null);
-2106 |                                 }} style={{fontSize:11,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>수락</button>
-2107 |                                 <button onClick={()=>{
-2108 |                                   // 거절 → cancelled + 알림
-2109 |                                   const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
-2110 |                                   const nid=Date.now()+1;
-2111 |                                   setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelledBy:"admin"}:b));
-2112 |                                   if(mem) setNotices(prev=>[{id:nid,title:"📢 대기 취소 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 취소되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
-2113 |                                   setOpenWaitActionId(null);
-2114 |                                 }} style={{fontSize:11,background:"#f0ece4",color:"#c97474",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>거절</button>
-2115 |                               </>
-2116 |                             )}
-2117 |                             <span 
-2118 |                               onClick={() => setOpenWaitActionId(prev => prev === rec.id ? null : rec.id)} 
-2119 |                               style={{fontSize:14,flexShrink:0, cursor:"pointer", padding:"2px 4px", borderRadius:4, background: openWaitActionId === rec.id ? "#e0e0e0" : "transparent"}}
-2120 |                             >
-2121 |                               {waitEmoji}
-2122 |                             </span>
+                              <>
+                                <button onClick={()=>{
+                                  const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
+                                  const nid=Date.now();
+                                  setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"reserved"}:b));
+                                  if(mem) setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
+                                  setOpenWaitActionId(null);
+                                }} style={{fontSize:11,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>수락</button>
+                                <button onClick={()=>{
+                                  const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
+                                  const nid=Date.now()+1;
+                                  setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelledBy:"admin"}:b));
+                                  if(mem) setNotices(prev=>[{id:nid,title:"📢 대기 취소 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 취소되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
+                                  setOpenWaitActionId(null);
+                                }} style={{fontSize:11,background:"#f0ece4",color:"#c97474",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>거절</button>
+                              </>
+                            )}
+                            <span 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenWaitActionId(prev => prev === rec.id ? null : rec.id);
+                              }} 
+                              style={{fontSize:14,flexShrink:0, cursor:"pointer", padding:"2px 4px", borderRadius:4, background: openWaitActionId === rec.id ? "#e0e0e0" : "transparent"}}
+                            >
+                              {waitEmoji}
+                            </span>
                           </div>
                         ):isOneday?(
                           <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,flexShrink:0}}>
