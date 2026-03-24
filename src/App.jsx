@@ -1504,7 +1504,24 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
   }
 
   function cancelBooking(bId){
-    setBookings(p=>p.map(b=>b.id===bId?{...b,status:"cancelled",cancelledBy:"member"}:b));
+    const cancelled=bookings.find(b=>b.id===bId);
+    const slotKey=cancelled?.timeSlot;
+    setBookings(p=>{
+      const next=p.map(b=>b.id===bId?{...b,status:"cancelled",cancelledBy:"member"}:b);
+      // 대기자 자동 전환 — 해당 슬롯 대기 1번
+      const waiters=next.filter(b=>b.date===cancelled.date&&b.timeSlot===slotKey&&b.status==="waiting").sort((a,b)=>a.id-b.id);
+      if(waiters.length>0){
+        const first=waiters[0];
+        // reserved 전환
+        const upgraded=next.map(b=>b.id===first.id?{...b,status:"reserved"}:b);
+        // 알림 생성
+        const nid=Math.max(...(upgraded.map(b=>b.id)),0)+Date.now();
+        const slotLabel=TIME_SLOTS.find(t=>t.key===slotKey)?.label||"";
+        setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(cancelled.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:first.memberId},...(prev||[])]);
+        return upgraded;
+      }
+      return next;
+    });
     if(!isOpen) setMembers(p=>p.map(m=>m.id===member.id?{...m,used:Math.max(0,m.used-1)}:m));
     setConfirmCancel(null);
   }
@@ -2187,33 +2204,65 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                 </div>
                 <div style={{minHeight:44}}>
                   {recs.length===0&&<div style={{padding:12,textAlign:"center",fontSize:12,color:"#c8c0b0"}}>없음</div>}
-                  {recs.map(rec=>{
+                  {(() => {
+                    const sorted = [...recs].sort((a,b)=>{
+                      const aOneday=!a.memberId, bOneday=!b.memberId;
+                      const aWait=a.status==="waiting", bWait=b.status==="waiting";
+                      if(aOneday&&!bOneday) return 1;
+                      if(!aOneday&&bOneday) return -1;
+                      if(aWait&&!bWait) return 1;
+                      if(!aWait&&bWait) return -1;
+                      return a.id-b.id;
+                    });
+                    const waiters=recs.filter(r=>r.status==="waiting").sort((a,b)=>a.id-b.id);
+                    return sorted.map(rec=>{
                     const isOneday=!rec.memberId;
                     const mem=isOneday?null:members.find(m=>m.id===rec.memberId);
+                    const isWaiting=rec.status==="waiting";
+                    const waitRank=isWaiting?waiters.findIndex(w=>w.id===rec.id)+1:0;
+                    const waitEmoji=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣"][waitRank-1]||`${waitRank}`;
                     const remCount=mem?Math.max(0,mem.total-usedAsOf(mem.id,date,bookings,members)):null;
                     const isDragging=dragId===rec.id;
-                    const showRemWarn=!isOneday&&remCount!==null&&remCount<=2;
-                    const remBg=undefined;
+                    const showRemWarn=!isOneday&&!isWaiting&&remCount!==null&&remCount<=2;
                     const remColor=showRemWarn?(remCount<=1?"#a83030":"#9a5a10"):undefined;
                     const cardColor=mem?.cardColor||"";
                     const isAttended=rec.confirmedAttend===true;
                     const isAbsent=rec.confirmedAttend===false;
+                    const rowBg=isAbsent?"#fff8f8":isWaiting?"#e8e8e8":cardColor?`${cardColor}22`:"#fff";
                     return(
-                      <div key={rec.id} draggable={!slotCl} onDragStart={e=>!slotCl&&onDragStart(e,rec.id)} onDragEnd={onDragEnd}
-                        style={{padding:"8px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:isDragging?0.4:isAbsent?0.5:1,background:isAbsent?"#fff8f8":cardColor?`${cardColor}22`:remBg||"#fff",cursor:slotCl?"default":"grab",WebkitUserSelect:"none",userSelect:"none"}}>
-                        {!slotCl&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
-                        <span style={{fontSize:15,flexShrink:0}}>{GE[mem?.gender]||"🧘🏿"}</span>
+                      <div key={rec.id} draggable={!slotCl&&!isWaiting} onDragStart={e=>!slotCl&&!isWaiting&&onDragStart(e,rec.id)} onDragEnd={onDragEnd}
+                        style={{padding:"8px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:isDragging?0.4:isAbsent?0.5:1,background:rowBg,cursor:slotCl||isWaiting?"default":"grab",WebkitUserSelect:"none",userSelect:"none"}}>
+                        {!slotCl&&!isWaiting&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
+                        {isWaiting&&<span style={{fontSize:11,color:"#888",flexShrink:0,width:14}}/>}
+                        <span style={{fontSize:15,flexShrink:0}}>{isOneday?"👤":GE[mem?.gender]||"🧘🏿"}</span>
                         <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
                           <span onClick={()=>!isOneday&&mem&&setQuickDetailM(mem)}
-                            style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:isOneday?"default":"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
+                            style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isWaiting?"#666":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:isOneday?"default":"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
                             {isOneday?rec.onedayName:mem.name}
                           </span>
                           {showRemWarn&&!isAbsent&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
                         </div>
-                        {/* 원데이: 1️⃣ 버튼 / 회원: 🕉 버튼 */}
-                        {isOneday?(
+                        {isWaiting?(
+                          <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
+                            <button onClick={()=>{
+                              // 수락 → reserved 전환 + 알림
+                              const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
+                              const nid=Date.now();
+                              setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"reserved"}:b));
+                              if(mem) setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
+                            }} style={{fontSize:11,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>수락</button>
+                            <button onClick={()=>{
+                              // 거절 → cancelled + 알림
+                              const slotLabel=TIME_SLOTS.find(t=>t.key===slot.key)?.label||"";
+                              const nid=Date.now()+1;
+                              setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelledBy:"admin"}:b));
+                              if(mem) setNotices(prev=>[{id:nid,title:"📢 대기 취소 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 취소되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(prev||[])]);
+                            }} style={{fontSize:11,background:"#f0ece4",color:"#c97474",border:"none",borderRadius:5,padding:"2px 7px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>거절</button>
+                            <span style={{fontSize:14,flexShrink:0}}>{waitEmoji}</span>
+                          </div>
+                        ):isOneday?(
                           <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,flexShrink:0}}>
-                            {isAttended ? (rec.walkIn ? "☑️" : "✅") : isAbsent ? "❌" : "1️⃣"}
+                            {isAttended ? (rec.walkIn ? "☑️" : "✅") : isAbsent ? "❌" : "👤"}
                           </button>
                         ):(
                           <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,opacity:isAbsent?0.7:1,flexShrink:0}}>
@@ -2222,7 +2271,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                         )}
                       </div>
                     );
-                  })}
+                  });})()}
                 </div>
               </div>
             );
