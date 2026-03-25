@@ -122,8 +122,18 @@ function usedAsOf(memberId, targetDate, bookings, members){
   const rh=member.renewalHistory||[];
   let startDate=member.startDate;
   for(let ri=0;ri<rh.length;ri++){const r=rh[ri];if(targetDate>=r.startDate&&targetDate<=r.endDate){startDate=r.startDate;break;}}
+  
   let cnt=0;
-  for(let i=0;i<bookings.length;i++){const b=bookings[i];if(b.memberId===memberId&&b.status!=="cancelled"&&b.date>=startDate&&b.date<=targetDate)cnt++;}
+  for(let i=0;i<bookings.length;i++){
+    const b=bookings[i];
+    // ✅ 수정: "cancelled"(취소)와 "waiting"(대기)은 횟수에서 제외하고, 
+    // 오직 "attended"나 "reserved"(확정된 것)만 카운트합니다.
+    if(b.memberId===memberId && 
+       (b.status==="attended" || b.status==="reserved") && 
+       b.date>=startDate && b.date<=targetDate) {
+      cnt++;
+    }
+  }
   return cnt;
 }
 
@@ -2480,7 +2490,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
         const qdl=calcDL(qm,closures);
         const qend=effEnd(qm,closures);
         const qexpired=qdl<0;
-        const qrem=qexpired?0:Math.max(0,qm.total-qm.used);
+        const qrem = qexpired ? 0 : Math.max(0, Number(qm.total) - Number(qm.used));
         const qstatus=getStatus(qm,closures);
         const qsc=SC[qstatus];
         const qtc=TYPE_CFG[qm.memberType]||TYPE_CFG["1month"];
