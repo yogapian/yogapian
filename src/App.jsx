@@ -528,7 +528,8 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
   const memberExpired=memberDl<0;
   const rem=memberExpired?0:Math.max(0,member.total-member.used);
 
-  function slotActiveCount(k){return dayActive.filter(b=>b.timeSlot===k&&b.status==="attended").length;}
+  // attended + reserved 모두 정원으로 카운트 (대기waiting 제외)
+  function slotActiveCount(k){return dayActive.filter(b=>b.timeSlot===k&&(b.status==="attended"||b.status==="reserved")).length;}
   function slotWaitCount(k){return dayActive.filter(b=>b.timeSlot===k&&b.status==="waiting").length;}
   function mySlot(k){return dayActive.find(b=>b.memberId===member.id&&b.timeSlot===k);}
   function waitingRank(k){
@@ -550,13 +551,17 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
     const cancelled = bookings.find(b=>b.id===bId);
     if(!cancelled) return;
     const slotKey = cancelled.timeSlot;
+    const slotLabel = TIME_SLOTS.find(t=>t.key===slotKey)?.label||"";
 
-    // 🔴 핵심 방어: 취소되는 자리가 '정원석'일 때만 승격 발동
+    // attended / reserved 상태일 때만 정원석 취소 → 대기 승격 & 횟수 환불
     const isAttendedCancelled = cancelled.status === "attended" || cancelled.status === "reserved";
-    // 🔴 핵심 방어: 취소하는 본인을 제외한 순수 대기자만 색출
-    const waiters = bookings.filter(b=>b.date===cancelled.date && b.timeSlot===slotKey && b.status==="waiting" && b.id!==bId).sort((a,b)=>a.id-b.id);
+    // 대기자: 본인 제외, id 오름차순 정렬 (순번 보장)
+    const waiters = bookings
+      .filter(b=>b.date===cancelled.date && b.timeSlot===slotKey && b.status==="waiting" && b.id!==bId)
+      .sort((a,b)=>a.id-b.id);
     const firstWaiter = isAttendedCancelled && waiters.length > 0 ? waiters[0] : null;
 
+    // 1) booking 상태 변경: 취소 + 대기 1번 승격
     setBookings(p => {
       const next = p.map(b => b.id === bId ? { ...b, status: "cancelled", cancelledBy: "member" } : b);
       if(firstWaiter){
@@ -565,16 +570,15 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
       return next;
     });
 
+    // 2) 대기→예약 승격자 알림 & 횟수 +1
     if(firstWaiter){
-      const slotLabel = TIME_SLOTS.find(t=>t.key===slotKey)?.label||"";
       const nid = Date.now();
       setNotices(prev=>[{id:nid, title:"📢 예약 확정 안내", content:`${fmt(cancelled.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...(prev||[])]);
-      
       if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId ? {...m, used: m.used+1} : m));
     }
 
-    // 정원석이 취소되었을 때만 횟수를 환불해 줌 (대기자 취소는 환불 없음)
-    if(isAttendedCancelled && !isOpen) {
+    // 3) 취소한 본인 횟수 환불: attended/reserved 상태였을 때만 (waiting 취소는 환불 없음)
+    if(isAttendedCancelled && cancelled.memberId && !isOpen){
       setMembers(p=>p.map(m=>m.id===cancelled.memberId ? {...m, used: Math.max(0, m.used-1)} : m));
     }
     setConfirmCancel(null);
@@ -786,9 +790,16 @@ function MemberView({member,bookings,setBookings,setMembers,specialSchedules,clo
   const isOff=status==="off";
   const closureExt=getClosureExtDays(m,closuresCxt);
 
-  // 개인 공지 팝업 — 읽지 않은 것만
-  const personalNotices=(notices||[]).filter(n=>n.targetMemberId===m.id&&!n.readBy?.includes(m.id));
-  const [popupNotice,setPopupNotice]=useState(personalNotices.length>0?personalNotices[0]:null);
+  // 개인 공지 팝업 — targetMemberId가 본인인 것만 (읽으면 notices에서 삭제)
+  const personalNotices=(notices||[]).filter(n=>n.targetMemberId===m.id);
+  // notices 변경될 때마다 팝업 자동 업데이트
+  const [popupNotice,setPopupNotice]=useState(null);
+  useEffect(()=>{
+    const pending=(notices||[]).filter(n=>n.targetMemberId===m.id);
+    if(pending.length>0 && !popupNotice){
+      setPopupNotice(pending[0]);
+    }
+  },[notices]); // eslint-disable-line
 
   function markRead(n){
     setNotices&&setNotices(p=>p.filter(x=>x.id!==n.id));
@@ -974,7 +985,7 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
 
     // 3. 정규 회원일 경우 사용 횟수 +1 (오픈클래스 제외)
     if (!isOpen) {
-      setMembers(prevM => prevM.map(m => m.id === waiter.id ? { ...m, used: m.used + 1 } : m));
+      setMembers(prevM => prevM.map(m => m.id === waiter.memberId ? { ...m, used: m.used + 1 } : m));
     }
 
     return { nextBookings: updatedBookings };
@@ -995,28 +1006,30 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
     onClose();
   }
 
-  // [삭제 처리] - 자리가 비므로 대기자 승격
-  function doDelete(){
+  // [공통 삭제 처리 내부 함수]
+  function _execDelete(sendNotice){
     const isReserved = rec.status === "attended" || rec.status === "reserved";
-    
     setBookings(p => {
-      // 본인 삭제 처리
       let next = p.map(b => b.id === rec.id ? { ...b, status: "cancelled", cancelNote: note, cancelledBy: "admin", confirmedAttend: false } : b);
-      
-      // 확정 예약자가 삭제되는 경우에만 대기자 승격
       if(isReserved) {
         const res = promoteWaiterLogic(next);
         next = res.nextBookings;
       }
       return next;
     });
-
-    // 본인이 회원인 경우 횟수 복구 (-1)
+    // 횟수 복구 (confirmed attended 또는 reserved 상태일 때만)
     if(isReserved && mem && !isOpen) {
       setMembers(p=>p.map(m=>m.id===mem.id ? {...m, used: Math.max(0, m.used-1)} : m));
     }
+    // 알림 발송 (sendNotice=true일 때만)
+    if(sendNotice && mem) {
+      const nid = Date.now();
+      setNotices(prev=>[{id:nid, title:"📢 예약 취소 안내", content:`${fmt(rec.date)} ${slotLabel} 수업 예약이 취소되었습니다.`, pinned:false, createdAt:TODAY_STR, targetMemberId:mem.id}, ...prev]);
+    }
     onClose();
   }
+  function doDelete(){ _execDelete(true); }      // 삭제+알림
+  function doDeleteSilent(){ _execDelete(false); } // 알림없이 삭제
 
   function doReset(){
     setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:null}:b));
@@ -1049,6 +1062,7 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
               <input style={{...S.inp,fontSize:12,marginBottom:10}} value={note} onChange={e=>setNote(e.target.value)} placeholder="불참 사유 (선택)"/>
               <div style={{display:"flex",gap:8,marginBottom:8}}>
                 <button onClick={()=>setConfirmDelete(false)} style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>취소</button>
+                <button onClick={doDeleteSilent} style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"1px solid #e0d8cc",borderRadius:10,padding:"10px 0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>알림없이 삭제</button>
                 <button onClick={doDelete} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>삭제+알림</button>
               </div>
             </>
@@ -1105,9 +1119,10 @@ function AdminCancelModal({booking,member,onClose,onConfirm}){
             placeholder="예: 노쇼 처리, 강사 사정 등"
           />
         </div>
-        <div style={S.modalBtns}>
+        <div style={{display:"flex",gap:8,marginTop:10}}>
           <button style={S.cancelBtn} onClick={onClose}>닫기</button>
-          <button style={{...S.saveBtn,background:"#c97474"}} onClick={()=>onConfirm(note)}>강제 취소</button>
+          <button style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"1px solid #e0d8cc",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}} onClick={()=>onConfirm(note,false)}>알림없이 취소</button>
+          <button style={{flex:1,...S.saveBtn,background:"#c97474",padding:"9px 0"}} onClick={()=>onConfirm(note,true)}>취소+알림</button>
         </div>
       </div>
     </div>
@@ -1155,13 +1170,14 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   const slots=getSlots();
   const dayActive=bookings.filter(b=>b.date===date&&b.status!=="cancelled");
 
-  function adminCancel(id, note){
+  function adminCancel(id, note, sendNotice=true){
     const b = bookings.find(bk=>bk.id===id);
     if(!b) return;
 
     const isAttendedCancelled = b.status === "attended" || b.status === "reserved";
     const waiters = bookings.filter(bk=>bk.date===b.date && bk.timeSlot===b.timeSlot && bk.status==="waiting" && bk.id!==id).sort((a,c)=>a.id-c.id);
     const firstWaiter = isAttendedCancelled && waiters.length > 0 ? waiters[0] : null;
+    const slotLabel = TIME_SLOTS.find(t=>t.key===b.timeSlot)?.label||"";
 
     setBookings(p => {
       const next = p.map(bk => bk.id === id ? { ...bk, status: "cancelled", cancelledBy: "admin", cancelNote: note } : bk);
@@ -1171,14 +1187,20 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
       return next;
     });
 
-    if(firstWaiter){
-      const slotLabel = TIME_SLOTS.find(t=>t.key===b.timeSlot)?.label||"";
-      const nid = Date.now();
-      setNotices(prev=>[{id:nid, title:"📢 예약 확정 안내", content:`${fmt(b.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...(prev||[])]);
+    // 취소된 회원에게 알림 발송 (sendNotice=true일 때)
+    if(sendNotice && b.memberId){
+      const nid1 = Date.now();
+      setNotices(prev=>[{id:nid1, title:"📢 예약 취소 안내", content:`${fmt(b.date)} ${slotLabel} 수업 예약이 취소되었습니다.${note?" ("+note+")":""}`, pinned:false, createdAt:TODAY_STR, targetMemberId:b.memberId}, ...prev]);
+    }
 
+    // 대기→예약 승격자에게 알림
+    if(firstWaiter){
+      const nid2 = Date.now()+1;
+      setNotices(prev=>[{id:nid2, title:"📢 예약 확정 안내", content:`${fmt(b.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...prev]);
       if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId ? {...m, used: m.used+1} : m));
     }
 
+    // 횟수 복구
     if(isAttendedCancelled && b.memberId && !isOpen) {
       setMembers(p=>p.map(m=>m.id===b.memberId ? {...m, used: Math.max(0, m.used-1)} : m));
     }
@@ -1224,7 +1246,8 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   }
   const toggleSp=sl=>setNewSp(f=>({...f,activeSlots:f.activeSlots.includes(sl)?f.activeSlots.filter(s=>s!==sl):[...f.activeSlots,sl]}));
 
-  const attendedDay=dayActive.filter(b=>b.status==="attended").length;
+  // attended + reserved 모두 출석 카운트 (대기 제외)
+  const attendedDay=dayActive.filter(b=>b.status==="attended"||b.status==="reserved").length;
 
   return(
     <div>
@@ -1349,12 +1372,12 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-                    <span style={{fontSize:12,color:slot.color,fontWeight:700}}>{recs.length}명</span>
+                    <span style={{fontSize:12,color:slot.color,fontWeight:700}}>{recs.filter(r=>r.status!=="waiting").length}명</span>
                     {!slotCl&&<button onClick={()=>{setAddModal(slot.key);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});}} style={{fontSize:11,background:slot.color,color:"#fff",border:"none",borderRadius:6,padding:"3px 9px",cursor:"pointer",fontFamily:FONT,fontWeight:700,minHeight:26}}>+ 추가</button>}
                   </div>
                 </div>
                 <div style={{minHeight:44}}>
-                  {recs.length===0&&<div style={{padding:12,textAlign:"center",fontSize:12,color:"#c8c0b0"}}>없음</div>}
+                  {recs.filter(r=>r.status!=="waiting").length===0&&recs.length===0&&<div style={{padding:12,textAlign:"center",fontSize:12,color:"#c8c0b0"}}>없음</div>}
                   {(() => {
                     const sorted = [...recs].sort((a,b)=>{
                       const aOneday=!a.memberId, bOneday=!b.memberId;
@@ -1656,6 +1679,8 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                   const nid=Date.now();
                   setBookings(p=>p.map(b=>b.id===waitPopup.rec.id?{...b,status:"reserved"}:b));
                   if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
+                  // 수락 시 횟수 차감 (오픈클래스 제외)
+                  if(waitPopup.mem && !isOpen) setMembers(p=>p.map(m=>m.id===waitPopup.mem.id?{...m,used:m.used+1}:m));
                   setWaitPopup(null);
                 }}>수락</button>
             </div>
@@ -1665,7 +1690,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
       )}
 
       {attendCheckModal&&<AttendCheckModal rec={attendCheckModal} members={members} isOpen={isOpen} bookings={bookings} setBookings={setBookings} setMembers={setMembers} notices={notices} setNotices={setNotices} onClose={()=>setAttendCheckModal(null)}/>}
-      {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={note=>adminCancel(cancelModal.id,note)}/>}
+      {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={(note,sendNotice)=>adminCancel(cancelModal.id,note,sendNotice)}/>}
 
       {showSpecialMgr&&(
         <div style={S.overlay} onClick={()=>closeSpecialMgr()}>
