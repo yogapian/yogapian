@@ -1023,7 +1023,9 @@ const INIT_BOOKINGS=[
   {id:1299,date:"2026-03-09",memberId:16,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1300,date:"2026-03-09",memberId:15,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1301,date:"2026-03-09",memberId:14,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
-  {id:1302,date:"2026-03-10",memberId:23,timeSlot:"lunch",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1302,date:"2026-03-10",memberId:12,timeSlot:"lunch",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1302,date:"2026-03-10",memberId:13,timeSlot:"lunch",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
+  {id:1302,date:"2026-03-10",memberId:23,timeSlot:"evening",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1303,date:"2026-03-11",memberId:8,timeSlot:"dawn",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1304,date:"2026-03-11",memberId:16,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
   {id:1305,date:"2026-03-11",memberId:10,timeSlot:"morning",walkIn:false,status:"attended",cancelNote:"",cancelledBy:""},
@@ -1913,44 +1915,82 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
   const slotLabel=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.label||"";
   const live=bookings.find(b=>b.id===rec.id)||rec;
 
-  function doAttend(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:true}:b));onClose();}
-  function doAbsent(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:false}:b));onClose();}
-  function doDelete(){
-    const isAttendedCancelled = rec.status === "attended" || rec.status === "reserved";
-    const waiters = bookings.filter(b=>b.date===rec.date && b.timeSlot===rec.timeSlot && b.status==="waiting" && b.id!==rec.id).sort((a,b)=>a.id-b.id);
-    const firstWaiter = isAttendedCancelled && waiters.length > 0 && mem ? waiters[0] : null;
+  // 공통 로직: 대기자 중 가장 빠른 순번 1명 찾기
+  const getFirstWaiter = (allBookings) => {
+    return allBookings
+      .filter(b => b.date === rec.date && b.timeSlot === rec.timeSlot && b.status === "waiting")
+      .sort((a, b) => a.id - b.id)[0];
+  };
 
+  // 공통 로직: 대기자를 예약으로 승격시키고 알림/횟수 처리
+  const promoteWaiterLogic = (nextBookings) => {
+    const waiter = getFirstWaiter(nextBookings);
+    if (!waiter) return { nextBookings };
+
+    // 1. 상태를 'attended'(예약확정)으로 변경
+    const updatedBookings = nextBookings.map(b => 
+      b.id === waiter.id ? { ...b, status: "attended" } : b
+    );
+
+    // 2. 알림 메시지 생성
+    const nid = Date.now();
+    setNotices(prev => [{
+      id: nid,
+      title: "📢 예약 확정 안내",
+      content: `${fmt(rec.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,
+      pinned: false, createdAt: TODAY_STR, targetMemberId: waiter.memberId
+    }, ...prev]);
+
+    // 3. 정규 회원일 경우 사용 횟수 +1 (오픈클래스 제외)
+    if (!isOpen) {
+      setMembers(prevM => prevM.map(m => m.id === waiter.id ? { ...m, used: m.used + 1 } : m));
+    }
+
+    return { nextBookings: updatedBookings };
+  };
+
+  function doAttend(){
+    setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:true}:b));
+    onClose();
+  }
+
+  // [불참 처리] - 자리가 비므로 대기자 승격
+  function doAbsent(){
     setBookings(p => {
-      const next = p.map(b => b.id === rec.id ? { ...b, status: "cancelled", cancelNote: note, cancelledBy: "admin", confirmedAttend: false } : b);
-      if(firstWaiter){
-        return next.map(b => b.id === firstWaiter.id ? { ...b, status: "attended" } : b);
+      let next = p.map(b => b.id === rec.id ? { ...b, confirmedAttend: false } : b);
+      const res = promoteWaiterLogic(next);
+      return res.nextBookings;
+    });
+    onClose();
+  }
+
+  // [삭제 처리] - 자리가 비므로 대기자 승격
+  function doDelete(){
+    const isReserved = rec.status === "attended" || rec.status === "reserved";
+    
+    setBookings(p => {
+      // 본인 삭제 처리
+      let next = p.map(b => b.id === rec.id ? { ...b, status: "cancelled", cancelNote: note, cancelledBy: "admin", confirmedAttend: false } : b);
+      
+      // 확정 예약자가 삭제되는 경우에만 대기자 승격
+      if(isReserved) {
+        const res = promoteWaiterLogic(next);
+        next = res.nextBookings;
       }
       return next;
     });
 
-    if(isAttendedCancelled && mem && !isOpen) {
+    // 본인이 회원인 경우 횟수 복구 (-1)
+    if(isReserved && mem && !isOpen) {
       setMembers(p=>p.map(m=>m.id===mem.id ? {...m, used: Math.max(0, m.used-1)} : m));
-    }
-
-    if(firstWaiter){
-      const slotLabel = TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.label||"";
-      const nid = Date.now()+2;
-      setNotices(prev=>[{id:nid, title:"📢 예약 확정 안내", content:`${fmt(rec.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...(prev||[])]);
-
-      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId ? {...m, used: m.used+1} : m));
-    }
-
-    if(mem && setNotices){
-      const slotLabel = TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.label||"";
-      const slotTime = TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.time||"";
-      const nid = Math.max(...(notices||[]).map(n=>n.id),0)+1;
-      const content = `${fmt(rec.date)} ${slotLabel} ${slotTime} 예약이 취소되었습니다.${note?`\n사유: ${note}`:""}`;
-      setNotices(p=>[{id:nid, title:`📢 예약 취소 안내`, content, pinned:false, createdAt:TODAY_STR, targetMemberId:mem.id}, ...(p||[])]);
     }
     onClose();
   }
 
-  function doReset(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:null}:b));onClose();}
+  function doReset(){
+    setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:null}:b));
+    onClose();
+  }
 
   return(
     <div style={S.overlay} onClick={onClose}>
@@ -1958,29 +1998,30 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
         <div style={S.modalHead}>
           <span style={{fontSize:20}}>📋</span>
           <div>
-            <div style={S.modalTitle}>{mem?mem.name:rec.onedayName}</div>
+            <div style={S.modalTitle}>{mem ? mem.name : rec.onedayName}</div>
             <div style={{fontSize:12,color:"#9a8e80",marginTop:2}}>{slotLabel} 출석 확인</div>
           </div>
         </div>
-        {live.confirmedAttend===true&&(
+
+        {live.confirmedAttend===true && (
           <div style={{textAlign:"center",marginBottom:12}}>
-           <div style={{fontSize:32,marginBottom:6}}>{live.walkIn ? "☑️" : "✅"}</div>
+            <div style={{fontSize:32,marginBottom:6}}>{live.walkIn ? "☑️" : "✅"}</div>
             <div style={{fontSize:13,color:"#9a8e80"}}>출석 확인됨 {live.walkIn ? "(워크인)" : ""}</div>
             <button onClick={doReset} style={{marginTop:10,background:"none",border:"none",fontSize:12,color:"#9a8e80",cursor:"pointer",fontFamily:FONT}}>↩ 되돌리기</button>
           </div>
         )}
-        {live.confirmedAttend===false&&(
-          confirmDelete?(
+
+        {live.confirmedAttend===false && (
+          confirmDelete ? (
             <>
               <div style={{textAlign:"center",fontSize:13,color:"#c97474",fontWeight:700,marginBottom:10}}>목록에서 삭제할까요?</div>
-<input style={{...S.inp,fontSize:12,marginBottom:10}} value={note} onChange={e=>setNote(e.target.value)} placeholder="불참 사유 (선택)"/>
-<div style={{display:"flex",gap:8,marginBottom:8}}>
-  <button onClick={()=>setConfirmDelete(false)} style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>취소</button>
-  <button onClick={doDelete} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>삭제+알림</button>
-</div>
-<button onClick={()=>{setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelNote:note,cancelledBy:"admin",confirmedAttend:false}:b));if(mem)setMembers(p=>p.map(m=>m.id===mem.id?{...m,used:Math.max(0,m.used-1)}:m));onClose();}} style={{width:"100%",background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT,marginBottom:4}}>알림없이 삭제</button>
+              <input style={{...S.inp,fontSize:12,marginBottom:10}} value={note} onChange={e=>setNote(e.target.value)} placeholder="불참 사유 (선택)"/>
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                <button onClick={()=>setConfirmDelete(false)} style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>취소</button>
+                <button onClick={doDelete} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>삭제+알림</button>
+              </div>
             </>
-          ):(
+          ) : (
             <div style={{textAlign:"center",marginBottom:12}}>
               <div style={{fontSize:32,marginBottom:6}}>❌</div>
               <div style={{fontSize:13,color:"#9a8e80",marginBottom:10}}>불참 처리됨</div>
@@ -1991,17 +2032,14 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
             </div>
           )
         )}
-        {(live.confirmedAttend===undefined||live.confirmedAttend===null)&&(
+
+        {(live.confirmedAttend===undefined || live.confirmedAttend===null) && (
           <div style={{display:"flex",gap:8,marginBottom:12}}>
             <button onClick={doAttend} style={{flex:1,background:"#eef5ee",color:"#2e6e44",border:"1.5px solid #7aaa7a",borderRadius:10,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>✅ 출석</button>
             <button onClick={()=>{
-              if(!mem){
-                // 원데이: 바로 불참(삭제)
-                setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:false,status:"cancelled",cancelledBy:"admin"}:b));
-                onClose();
-              } else {
-                doAbsent();
-              }
+              // 원데이(비회원)는 doDelete와 동일한 로직으로 처리하여 대기자 승격 유도
+              if(!mem) doDelete(); 
+              else doAbsent();
             }} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>❌ 불참</button>
           </div>
         )}
@@ -2017,12 +2055,24 @@ function AdminCancelModal({booking,member,onClose,onConfirm}){
   return(
     <div style={S.overlay} onClick={onClose}>
       <div style={{...S.modal,maxWidth:360}} onClick={e=>e.stopPropagation()}>
-        <div style={S.modalHead}><span style={{fontSize:20}}>⚠️</span><div><div style={S.modalTitle}>예약 강제 취소</div><div style={{fontSize:12,color:"#9a8e80",marginTop:2}}>{member?.name}</div></div></div>
+        <div style={S.modalHead}>
+          <span style={{fontSize:20}}>⚠️</span>
+          <div>
+            <div style={S.modalTitle}>예약 강제 취소</div>
+            <div style={{fontSize:12,color:"#9a8e80",marginTop:2}}>{member?.name}</div>
+          </div>
+        </div>
         <div style={{background:"#fdf3e3",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#8a5510",marginBottom:14}}>
           {fmtWithDow(booking.date)} {sl?.label} {sl?.time}<br/>취소 시 잔여 횟수가 복구됩니다.
         </div>
-        <div style={S.fg}><label style={S.lbl}>취소 사유 (선택)</label>
-          <textarea style={{...S.inp,height:80,resize:"none"}} value={note} onChange={e=>setNote(e.target.value)} placeholder="예: 노쇼 처리, 강사 사정 등"/>
+        <div style={S.fg}>
+          <label style={S.lbl}>취소 사유 (선택)</label>
+          <textarea 
+            style={{...S.inp,height:80,resize:"none"}} 
+            value={note} 
+            onChange={e=>setNote(e.target.value)} 
+            placeholder="예: 노쇼 처리, 강사 사정 등"
+          />
         </div>
         <div style={S.modalBtns}>
           <button style={S.cancelBtn} onClick={onClose}>닫기</button>
