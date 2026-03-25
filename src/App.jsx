@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback, useEffect, createContext, useContext } from "react";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 
 function debounce(fn, delay){
   let timer;
