@@ -158,7 +158,7 @@ const INIT_MEMBERS=[
   {id:9,gender:"F",name:"박소연",adminNickname:"",adminNote:"",phone4:"3217",firstDate:"2025-12-15",memberType:"3month",isNew:false,total:24,used:10,startDate:"2026-02-04",endDate:"2026-05-04",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-15",endDate:"2026-01-31",memberType:"1month",total:12,payment:"카드"},{id:2,startDate:"2026-02-04",endDate:"2026-05-04",memberType:"3month",total:24,payment:"카드"}]},
   {id:10,gender:"F",name:"박주희",adminNickname:"",adminNote:"",phone4:"4872",firstDate:"2025-11-25",memberType:"1month",isNew:false,total:8,used:6,startDate:"2026-03-03",endDate:"2026-03-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-11-25",endDate:"2025-12-31",memberType:"1month",total:12,payment:"현금"},{id:2,startDate:"2026-01-07",endDate:"2026-01-31",memberType:"1month",total:8,payment:"네이버"},{id:3,startDate:"2026-02-02",endDate:"2026-02-28",memberType:"1month",total:7,payment:"네이버"},{id:4,startDate:"2026-03-03",endDate:"2026-04-07",memberType:"1month",total:8,payment:"네이버"}]},
   {id:11,gender:"F",name:"손하윤",adminNickname:"",adminNote:"",phone4:"4929",firstDate:"2026-03-04",memberType:"1month",isNew:true,total:8,used:6,startDate:"2026-03-04",endDate:"2026-03-28",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-03-04",endDate:"2026-04-08",memberType:"1month",total:8,payment:"카드"}]},
-  {id:12,gender:"M",name:"유태균",adminNickname:"",adminNote:"",phone4:"7360",firstDate:"2026-01-02",memberType:"3month",isNew:false,total:18,used:15,startDate:"2026-01-02",endDate:"2026-04-02",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-02",endDate:"2026-04-02",memberType:"3month",total:18,payment:"3개월,카드"}]},
+  {id:12,gender:"M",name:"유태균",adminNickname:"",adminNote:"",phone4:"7360",firstDate:"2026-01-02",memberType:"3month",isNew:false,total:18,used:17,startDate:"2026-01-02",endDate:"2026-04-02",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2026-01-02",endDate:"2026-04-02",memberType:"3month",total:18,payment:"3개월,카드"}]},
   {id:13,gender:"F",name:"조진선",adminNickname:"",adminNote:"",phone4:"3508",firstDate:"2025-09-08",memberType:"3month",isNew:false,total:30,used:24,startDate:"2026-01-02",endDate:"2026-04-02",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-09-08",endDate:"2025-09-30",memberType:"1month",total:8,payment:"카드"},{id:2,startDate:"2025-10-01",endDate:"2025-10-31",memberType:"1month",total:8,payment:"카드"},{id:3,startDate:"2025-11-01",endDate:"2025-11-30",memberType:"1month",total:8,payment:"카드"},{id:4,startDate:"2025-12-01",endDate:"2025-12-31",memberType:"1month",total:12,payment:"카드"},{id:5,startDate:"2026-01-02",endDate:"2026-04-02",memberType:"3month",total:30,payment:"3개월,카드"}]},
   {id:14,gender:"M",name:"윤상섭",adminNickname:"",adminNote:"",phone4:"6937",firstDate:"2025-12-23",memberType:"3month",isNew:false,total:36,used:19,startDate:"2026-01-27",endDate:"2026-04-27",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-23",endDate:"2026-01-26",memberType:"1month",total:12,payment:"현금"},{id:2,startDate:"2026-01-27",endDate:"2026-04-27",memberType:"3month",total:36,payment:"현금"}]},
   {id:15,gender:"F",name:"정순주",adminNickname:"",adminNote:"",phone4:"4348",firstDate:"2025-12-23",memberType:"3month",isNew:false,total:24,used:16,startDate:"2026-01-26",endDate:"2026-04-26",extensionDays:0,holdingDays:0,holding:null,renewalHistory:[{id:1,startDate:"2025-12-23",endDate:"2026-01-25",memberType:"1month",total:8,payment:"현금"},{id:2,startDate:"2026-01-26",endDate:"2026-04-26",memberType:"3month",total:24,payment:"현금"}]},
@@ -1503,32 +1503,36 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
     if(!isWaiting&&!isOpen) setMembers(p=>p.map(m=>m.id===member.id?{...m,used:m.used+1}:m));
   }
 
-  ffunction cancelBooking(bId){
-    const cancelled=bookings.find(b=>b.id===bId);
-    const slotKey=cancelled?.timeSlot;
-    const waiters=bookings.filter(b=>b.date===cancelled.date&&b.timeSlot===slotKey&&b.status==="waiting").sort((a,b)=>a.id-b.id);
-    const firstWaiter=waiters.length>0?waiters[0]:null;
-    
-    setBookings(p=>{
-      const next=p.map(b=>b.id===bId?{...b,status:"cancelled",cancelledBy:"member"}:b);
+  function cancelBooking(bId){
+    const cancelled = bookings.find(b=>b.id===bId);
+    if(!cancelled) return;
+    const slotKey = cancelled.timeSlot;
+
+    // 🔴 핵심 방어: 취소되는 자리가 '정원석'일 때만 승격 발동
+    const isAttendedCancelled = cancelled.status === "attended" || cancelled.status === "reserved";
+    // 🔴 핵심 방어: 취소하는 본인을 제외한 순수 대기자만 색출
+    const waiters = bookings.filter(b=>b.date===cancelled.date && b.timeSlot===slotKey && b.status==="waiting" && b.id!==bId).sort((a,b)=>a.id-b.id);
+    const firstWaiter = isAttendedCancelled && waiters.length > 0 ? waiters[0] : null;
+
+    setBookings(p => {
+      const next = p.map(b => b.id === bId ? { ...b, status: "cancelled", cancelledBy: "member" } : b);
       if(firstWaiter){
-        return next.map(b=>b.id===firstWaiter.id?{...b,status:"attended"}:b);
+        return next.map(b => b.id === firstWaiter.id ? { ...b, status: "attended" } : b);
       }
       return next;
     });
-    
+
     if(firstWaiter){
-      const slotLabel=TIME_SLOTS.find(t=>t.key===slotKey)?.label||"";
-      const nid=Date.now();
-      setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(cancelled.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
+      const slotLabel = TIME_SLOTS.find(t=>t.key===slotKey)?.label||"";
+      const nid = Date.now();
+      setNotices(prev=>[{id:nid, title:"📢 예약 확정 안내", content:`${fmt(cancelled.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...(prev||[])]);
       
-      // 대기자 승격 시 수강권 1회 차감
-      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId?{...m,used:m.used+1}:m));
+      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId ? {...m, used: m.used+1} : m));
     }
-    
-    // 핵심 수정: 취소하는 예약이 '대기(waiting)' 상태가 아닐 때만 횟수를 환불함
-    if(cancelled && cancelled.status !== "waiting" && !isOpen) {
-      setMembers(p=>p.map(m=>m.id===member.id?{...m,used:Math.max(0,m.used-1)}:m));
+
+    // 정원석이 취소되었을 때만 횟수를 환불해 줌 (대기자 취소는 환불 없음)
+    if(isAttendedCancelled && !isOpen) {
+      setMembers(p=>p.map(m=>m.id===cancelled.memberId ? {...m, used: Math.max(0, m.used-1)} : m));
     }
     setConfirmCancel(null);
   }
@@ -1902,40 +1906,40 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
   function doAttend(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:true}:b));onClose();}
   function doAbsent(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:false}:b));onClose();}
   function doDelete(){
-    const waiters=bookings.filter(b=>b.date===rec.date&&b.timeSlot===rec.timeSlot&&b.status==="waiting").sort((a,b)=>a.id-b.id);
-    const firstWaiter=waiters.length>0&&mem?waiters[0]:null;
-    
-    setBookings(p=>{
-      const next=p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelNote:note,cancelledBy:"admin",confirmedAttend:false}:b);
+    const isAttendedCancelled = rec.status === "attended" || rec.status === "reserved";
+    const waiters = bookings.filter(b=>b.date===rec.date && b.timeSlot===rec.timeSlot && b.status==="waiting" && b.id!==rec.id).sort((a,b)=>a.id-b.id);
+    const firstWaiter = isAttendedCancelled && waiters.length > 0 && mem ? waiters[0] : null;
+
+    setBookings(p => {
+      const next = p.map(b => b.id === rec.id ? { ...b, status: "cancelled", cancelNote: note, cancelledBy: "admin", confirmedAttend: false } : b);
       if(firstWaiter){
-        return next.map(b=>b.id===firstWaiter.id?{...b,status:"attended"}:b);
+        return next.map(b => b.id === firstWaiter.id ? { ...b, status: "attended" } : b);
       }
       return next;
     });
-    
-    // 핵심 수정: 취소하는 예약이 '대기(waiting)' 상태가 아닐 때만 횟수를 환불함
-    if(rec && rec.status !== "waiting" && mem && !isOpen) {
-      setMembers(p=>p.map(m=>m.id===mem.id?{...m,used:Math.max(0,m.used-1)}:m));
+
+    if(isAttendedCancelled && mem && !isOpen) {
+      setMembers(p=>p.map(m=>m.id===mem.id ? {...m, used: Math.max(0, m.used-1)} : m));
     }
-    
+
     if(firstWaiter){
-      const slotLabel=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.label||"";
-      const nid=Date.now()+2;
-      setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(rec.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
-      
-      // 대기자 승격 시 수강권 1회 차감
-      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId?{...m,used:m.used+1}:m));
+      const slotLabel = TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.label||"";
+      const nid = Date.now()+2;
+      setNotices(prev=>[{id:nid, title:"📢 예약 확정 안내", content:`${fmt(rec.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...(prev||[])]);
+
+      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId ? {...m, used: m.used+1} : m));
     }
-    
-    if(mem&&setNotices){
-      const slotLabel=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.label||"";
-      const slotTime=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.time||"";
-      const nid=Math.max(...(notices||[]).map(n=>n.id),0)+1;
-      const content=`${fmt(rec.date)} ${slotLabel} ${slotTime} 예약이 취소되었습니다.${note?`\n사유: ${note}`:""}`;
-      setNotices(p=>[{id:nid,title:`📢 예약 취소 안내`,content,pinned:false,createdAt:TODAY_STR,targetMemberId:mem.id},...(p||[])]);
+
+    if(mem && setNotices){
+      const slotLabel = TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.label||"";
+      const slotTime = TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.time||"";
+      const nid = Math.max(...(notices||[]).map(n=>n.id),0)+1;
+      const content = `${fmt(rec.date)} ${slotLabel} ${slotTime} 예약이 취소되었습니다.${note?`\n사유: ${note}`:""}`;
+      setNotices(p=>[{id:nid, title:`📢 예약 취소 안내`, content, pinned:false, createdAt:TODAY_STR, targetMemberId:mem.id}, ...(p||[])]);
     }
     onClose();
   }
+
   function doReset(){setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:null}:b));onClose();}
 
   return(
@@ -2060,36 +2064,34 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
   const slots=getSlots();
   const dayActive=bookings.filter(b=>b.date===date&&b.status!=="cancelled");
 
-  function adminCancel(id,note){
-    const b=bookings.find(bk=>bk.id===id);
-    if(!b)return;
-    const currentBookings=bookings;
-    const waiters=currentBookings.filter(bk=>bk.date===b.date&&bk.timeSlot===b.timeSlot&&bk.status==="waiting").sort((a,c)=>a.id-c.id);
-    const firstWaiter=waiters.length>0?waiters[0]:null;
-    
-    setBookings(p=>{
-      const next=p.map(bk=>bk.id===id?{...bk,status:"cancelled",cancelledBy:"admin",cancelNote:note}:bk);
+  function adminCancel(id, note){
+    const b = bookings.find(bk=>bk.id===id);
+    if(!b) return;
+
+    const isAttendedCancelled = b.status === "attended" || b.status === "reserved";
+    const waiters = bookings.filter(bk=>bk.date===b.date && bk.timeSlot===b.timeSlot && bk.status==="waiting" && bk.id!==id).sort((a,c)=>a.id-c.id);
+    const firstWaiter = isAttendedCancelled && waiters.length > 0 ? waiters[0] : null;
+
+    setBookings(p => {
+      const next = p.map(bk => bk.id === id ? { ...bk, status: "cancelled", cancelledBy: "admin", cancelNote: note } : bk);
       if(firstWaiter){
-        return next.map(bk=>bk.id===firstWaiter.id?{...bk,status:"attended"}:bk);
+        return next.map(bk => bk.id === firstWaiter.id ? { ...bk, status: "attended" } : bk);
       }
       return next;
     });
-    
+
     if(firstWaiter){
-      const slotLabel=TIME_SLOTS.find(t=>t.key===b.timeSlot)?.label||"";
-      const nid=Date.now();
-      setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(b.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
-      
-      // 대기자 승격 시 수강권 1회 차감
-      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId?{...m,used:m.used+1}:m));
+      const slotLabel = TIME_SLOTS.find(t=>t.key===b.timeSlot)?.label||"";
+      const nid = Date.now();
+      setNotices(prev=>[{id:nid, title:"📢 예약 확정 안내", content:`${fmt(b.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...(prev||[])]);
+
+      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId ? {...m, used: m.used+1} : m));
     }
-    
-    // 핵심 수정: 취소하는 예약이 '대기(waiting)' 상태가 아닐 때만 횟수를 환불함
-    if(b && b.status !== "waiting" && b.memberId && !isOpen) {
-      setMembers(p=>p.map(m=>m.id===b.memberId?{...m,used:Math.max(0,m.used-1)}:m));
+
+    if(isAttendedCancelled && b.memberId && !isOpen) {
+      setMembers(p=>p.map(m=>m.id===b.memberId ? {...m, used: Math.max(0, m.used-1)} : m));
     }
     setCancelModal(null);
-  }
   }
 
   function addRecord(){
