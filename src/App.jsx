@@ -498,7 +498,7 @@ function MemberContactBar(){
   );
 }
 
-function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,onBack}){
+function MemberReservePage({member,bookings,setBookings,setMembers,setNotices,specialSchedules,closures,notices,onBack}){
   const [tab,setTab]=useState("reserve");
   const [selDate,setSelDate]=useState(TODAY_STR);
   const [showCal,setShowCal]=useState(false);
@@ -526,7 +526,7 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
   const closuresCxt=useClosures();
   const memberDl=calcDL(member,closuresCxt);
   const memberExpired=memberDl<0;
-  const rem=memberExpired?0:Math.max(0,member.total-member.used);
+  const rem=memberExpired?0:Math.max(0,member.total-usedAsOf(member.id,TODAY_STR,bookings,[member]));
 
   // attended + reserved 모두 정원으로 카운트 (대기waiting 제외)
   function slotActiveCount(k){return dayActive.filter(b=>b.timeSlot===k&&(b.status==="attended"||b.status==="reserved")).length;}
@@ -544,7 +544,6 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
     const nid=Math.max(...bookings.map(b=>b.id),0)+1;
     const bStatus=isWaiting?"waiting":"attended";
     setBookings(p=>[...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:bStatus,cancelNote:"",cancelledBy:""}]);
-    if(!isWaiting&&!isOpen) setMembers(p=>p.map(m=>m.id===member.id?{...m,used:m.used+1}:m));
   }
 
   function cancelBooking(bId){
@@ -570,16 +569,10 @@ function MemberReservePage({member,bookings,setBookings,setMembers,specialSchedu
       return next;
     });
 
-    // 2) 대기→예약 승격자 알림 & 횟수 +1
+    // 2) 대기→예약 승격자 알림
     if(firstWaiter){
       const nid = Date.now();
       setNotices(prev=>[{id:nid, title:"📢 예약 확정 안내", content:`${fmt(cancelled.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...(prev||[])]);
-      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId ? {...m, used: m.used+1} : m));
-    }
-
-    // 3) 취소한 본인 횟수 환불: attended/reserved 상태였을 때만 (waiting 취소는 환불 없음)
-    if(isAttendedCancelled && cancelled.memberId && !isOpen){
-      setMembers(p=>p.map(m=>m.id===cancelled.memberId ? {...m, used: Math.max(0, m.used-1)} : m));
     }
     setConfirmCancel(null);
   }
@@ -784,8 +777,9 @@ function MemberView({member,bookings,setBookings,setMembers,specialSchedules,clo
   const dl=calcDL(m,closuresCxt);
   const end=effEnd(m,closuresCxt);
   const expired=dl<0;
-  const rem=expired?0:Math.max(0,m.total-m.used);
-  const pct=expired?100:Math.round(m.used/Math.max(m.total,1)*100);
+  const usedCnt=usedAsOf(m.id,TODAY_STR,bookings,[m]);
+  const rem=expired?0:Math.max(0,m.total-usedCnt);
+  const pct=expired?100:Math.round(usedCnt/Math.max(m.total,1)*100);
   const barColor=expired?"#c97474":status==="hold"?"#6a7fc8":"#5a9e6a";
   const isOff=status==="off";
   const closureExt=getClosureExtDays(m,closuresCxt);
@@ -857,12 +851,12 @@ function MemberView({member,bookings,setBookings,setMembers,specialSchedules,clo
               <div style={{marginBottom:10}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
                   <span style={{fontSize:11,color:"#9a8e80"}}>등록 <b style={{color:"#3a4a3a"}}>{m.total}회</b></span>
-                  <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{m.used}</b></span>
+                  <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{usedCnt}</b></span>
                   <span style={{fontSize:13,fontWeight:700,color:rem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:20}}>{rem}</span>회</span>
                 </div>
                 <div style={{background:"#e8e4dc",borderRadius:8,height:20,overflow:"hidden"}}>
                   <div style={{height:"100%",width:`${pct}%`,background:barColor,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transition:"width .4s"}}>
-                    {pct>15&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{m.used}회</span>}
+                    {pct>15&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{usedCnt}회</span>}
                   </div>
                 </div>
               </div>
@@ -883,7 +877,7 @@ function MemberView({member,bookings,setBookings,setMembers,specialSchedules,clo
           )}
         </div>
       </div>
-      <MemberReservePage member={m} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} onBack={()=>{}}/>
+      <MemberReservePage member={m} bookings={bookings} setBookings={setBookings} setMembers={setMembers} setNotices={setNotices} specialSchedules={specialSchedules} closures={closures} notices={notices} onBack={()=>{}}/>
       <div style={{display:"flex",justifyContent:"center"}}>
         <MemberContactBar/>
       </div>
@@ -983,11 +977,6 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
       pinned: false, createdAt: TODAY_STR, targetMemberId: waiter.memberId
     }, ...prev]);
 
-    // 3. 정규 회원일 경우 사용 횟수 +1 (오픈클래스 제외)
-    if (!isOpen) {
-      setMembers(prevM => prevM.map(m => m.id === waiter.memberId ? { ...m, used: m.used + 1 } : m));
-    }
-
     return { nextBookings: updatedBookings };
   };
 
@@ -1017,10 +1006,6 @@ function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,no
       }
       return next;
     });
-    // 횟수 복구 (confirmed attended 또는 reserved 상태일 때만)
-    if(isReserved && mem && !isOpen) {
-      setMembers(p=>p.map(m=>m.id===mem.id ? {...m, used: Math.max(0, m.used-1)} : m));
-    }
     // 알림 발송 (sendNotice=true일 때만)
     if(sendNotice && mem) {
       const nid = Date.now();
@@ -1197,12 +1182,6 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
     if(firstWaiter){
       const nid2 = Date.now()+1;
       setNotices(prev=>[{id:nid2, title:"📢 예약 확정 안내", content:`${fmt(b.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...prev]);
-      if(!isOpen) setMembers(p=>p.map(m=>m.id===firstWaiter.memberId ? {...m, used: m.used+1} : m));
-    }
-
-    // 횟수 복구
-    if(isAttendedCancelled && b.memberId && !isOpen) {
-      setMembers(p=>p.map(m=>m.id===b.memberId ? {...m, used: Math.max(0, m.used-1)} : m));
     }
     setCancelModal(null);
   }
@@ -1215,7 +1194,6 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
     } else {
       if(!addForm.memberId)return;
       setBookings(p=>[...p,{id:nid,date,memberId:+addForm.memberId,timeSlot:addModal,walkIn:addForm.walkIn,status:"attended",cancelNote:"",cancelledBy:""}]);
-      if(!isOpen) setMembers(p=>p.map(m=>m.id===+addForm.memberId?{...m,used:m.used+1}:m));
     }
     setAddModal(null);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});
   }
@@ -1471,7 +1449,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
               <div style={S.fg}><label style={S.lbl}>회원 선택</label>
                 <select style={{...S.inp}} value={addForm.memberId} onChange={e=>setAddForm(f=>({...f,memberId:e.target.value}))}>
                   <option value="">-- 회원을 선택하세요 --</option>
-                  {avail(addModal).map(m=><option key={m.id} value={m.id}>{m.gender==="F"?"🧘🏻‍♀️":"🧘🏻‍♂️"} {m.name}{m.adminNickname?` (${m.adminNickname})`:""} (잔여 {m.total-m.used}회)</option>)}
+                  {avail(addModal).map(m=><option key={m.id} value={m.id}>{m.gender==="F"?"🧘🏻‍♀️":"🧘🏻‍♂️"} {m.name}{m.adminNickname?` (${m.adminNickname})`:""} (잔여 {m.total-usedAsOf(m.id,TODAY_STR,bookings,[m])}회)</option>)}
                 </select>
               </div>
             </>)}
@@ -1594,11 +1572,12 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
         const qdl=calcDL(qm,closures);
         const qend=effEnd(qm,closures);
         const qexpired=qdl<0;
-        const qrem = qexpired ? 0 : Math.max(0, Number(qm.total) - Number(qm.used));
+        const qusedCnt=usedAsOf(qm.id,TODAY_STR,bookings,[qm]);
+        const qrem = qexpired ? 0 : Math.max(0, Number(qm.total) - qusedCnt);
         const qstatus=getStatus(qm,closures);
         const qsc=SC[qstatus];
         const qtc=TYPE_CFG[qm.memberType]||TYPE_CFG["1month"];
-        const qpct=Math.min(100,Math.round(qm.used/Math.max(qm.total,1)*100));
+        const qpct=Math.min(100,Math.round(qusedCnt/Math.max(qm.total,1)*100));
         const qbarColor=qexpired?"#c97474":qstatus==="hold"?"#6a7fc8":"#5a9e6a";
         const qclosureExt=getClosureExtDays(qm,closures);
         return(
@@ -1623,7 +1602,7 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                 <div style={{marginBottom:10}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
                     <span style={{fontSize:11,color:"#9a8e80"}}>등록 <b style={{color:"#3a4a3a"}}>{qm.total}회</b></span>
-                    <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{qm.used}</b></span>
+                    <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{qusedCnt}</b></span>
                     <span style={{fontSize:13,fontWeight:700,color:qexpired?"#c97474":qrem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:22}}>{qrem}</span>회</span>
                   </div>
                   <div style={{background:"#e8e4dc",borderRadius:8,height:16,overflow:"hidden"}}>
@@ -1680,7 +1659,6 @@ function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedul
                   setBookings(p=>p.map(b=>b.id===waitPopup.rec.id?{...b,status:"reserved"}:b));
                   if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
                   // 수락 시 횟수 차감 (오픈클래스 제외)
-                  if(waitPopup.mem && !isOpen) setMembers(p=>p.map(m=>m.id===waitPopup.mem.id?{...m,used:m.used+1}:m));
                   setWaitPopup(null);
                 }}>수락</button>
             </div>
@@ -1985,12 +1963,11 @@ function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdj
   const [expandedRH,setExpandedRH]=useState(null);
   const [adjMode,setAdjMode]=useState(false);
   const [adjTotal,setAdjTotal]=useState(member.total);
-  const [adjUsed,setAdjUsed]=useState(member.used);
   const status=getStatus(member,closures),sc=SC[status];
   const end=effEnd(member,closures),dl=calcDL(member,closures);
   const expired=dl<0;
-  // 종료일 지나면 잔여 0 (#3)
-  const dispRem=expired?0:Math.max(0,member.total-member.used);
+  const dispUsed=usedAsOf(member.id,TODAY_STR,bookings,[member]);
+  const dispRem=expired?0:Math.max(0,member.total-dispUsed);
   const tc=TYPE_CFG[member.memberType]||TYPE_CFG["1month"];
   const curRecs=currentRecs(member,bookings);
   // #5: OFF 상태(종료)면 현재 period 없음 — 모두 과거형
@@ -2032,12 +2009,12 @@ function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdj
           {/* 잔여 횟수 직접 수정 */}
           {!adjMode&&(
             <div style={{marginBottom:10,textAlign:"right"}}>
-              <button onClick={()=>{setAdjTotal(member.total);setAdjUsed(member.used);setAdjMode(true);}} style={{fontSize:11,background:"#fdf3e3",color:"#9a5a10",border:"1px solid #e8c44a",borderRadius:7,padding:"4px 10px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>✏️ 잔여 횟수 수정</button>
+              <button onClick={()=>{setAdjTotal(member.total);setAdjMode(true);}} style={{fontSize:11,background:"#fdf3e3",color:"#9a5a10",border:"1px solid #e8c44a",borderRadius:7,padding:"4px 10px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>✏️ 등록 횟수 수정</button>
             </div>
           )}
           {adjMode&&(
             <div style={{background:"#fffaeb",border:"1px solid #e8c44a",borderRadius:10,padding:"12px 14px",marginBottom:12}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#7a5a10",marginBottom:10}}>✏️ 잔여 횟수 직접 수정</div>
+              <div style={{fontSize:12,fontWeight:700,color:"#7a5a10",marginBottom:10}}>✏️ 등록 횟수 직접 수정</div>
               <div style={{display:"flex",gap:14,marginBottom:10,flexWrap:"wrap"}}>
                 <div>
                   <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>등록 횟수 (total)</div>
@@ -2047,21 +2024,13 @@ function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdj
                     <button onClick={()=>setAdjTotal(t=>t+1)} style={{...S.stepper}}>+</button>
                   </div>
                 </div>
-                <div>
-                  <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>사용 횟수 (used)</div>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <button onClick={()=>setAdjUsed(u=>Math.max(0,u-1))} style={{...S.stepper}}>−</button>
-                    <span style={{fontSize:16,fontWeight:700,minWidth:28,textAlign:"center"}}>{adjUsed}</span>
-                    <button onClick={()=>setAdjUsed(u=>u+1)} style={{...S.stepper}}>+</button>
-                  </div>
-                </div>
                 <div style={{display:"flex",alignItems:"flex-end",paddingBottom:2}}>
-                  <div style={{fontSize:13,color:"#2e6e44",fontWeight:700}}>→ 잔여 {Math.max(0,adjTotal-adjUsed)}회</div>
+                  <div style={{fontSize:13,color:"#2e6e44",fontWeight:700}}>→ 잔여 {Math.max(0,adjTotal-dispUsed)}회</div>
                 </div>
               </div>
               <div style={{display:"flex",gap:7}}>
                 <button onClick={()=>setAdjMode(false)} style={S.cancelBtn}>취소</button>
-                <button onClick={()=>{onAdjust&&onAdjust(adjTotal,adjUsed);setAdjMode(false);}} style={{...S.saveBtn,background:"#e8a44a",fontSize:12}}>저장</button>
+                <button onClick={()=>{onAdjust&&onAdjust(adjTotal);setAdjMode(false);}} style={{...S.saveBtn,background:"#e8a44a",fontSize:12}}>저장</button>
               </div>
             </div>
           )}
@@ -2145,12 +2114,13 @@ function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdj
   );
 }
 
-function MemberCard({m,onEdit,onDel,onDetail}){
+function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const closures=useClosures();
   const dl=calcDL(m,closures);
   const expired=dl<0;
-  const rem=expired?0:Math.max(0,m.total-m.used);
-  const pct=expired?100:Math.round(m.used/m.total*100);
+  const usedCnt=usedAsOf(m.id,TODAY_STR,bookings,[m]);
+  const rem=expired?0:Math.max(0,m.total-usedCnt);
+  const pct=expired?100:Math.round(usedCnt/m.total*100);
   const status=getStatus(m,closures),sc=SC[status];
   const end=effEnd(m,closures);
   const closureExt=getClosureExtDays(m,closures);
@@ -2187,12 +2157,12 @@ function MemberCard({m,onEdit,onDel,onDetail}){
           <div style={{marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
               <span style={{fontSize:11,color:"#9a8e80"}}>등록 <b style={{color:"#3a4a3a"}}>{m.total}회</b></span>
-              <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{m.used}</b></span>
+              <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{usedCnt}</b></span>
               <span style={{fontSize:13,fontWeight:700,color:rem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:20}}>{rem}</span>회</span>
             </div>
             <div style={{background:"#e8e4dc",borderRadius:8,height:20,overflow:"hidden"}}>
               <div style={{height:"100%",width:`${pct}%`,background:barColor,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transition:"width .4s"}}>
-                {pct>15&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{m.used}회</span>}
+                {pct>15&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{usedCnt}회</span>}
               </div>
             </div>
           </div>
@@ -2240,7 +2210,7 @@ function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,sp
   function openAdd(){
     const autoEnd=endOfNextMonth(TODAY_STR);
     setEditId(null);
-    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,used:0,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[]});
+    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[]});
     setShowForm(true);
   }
   function openEdit(m){setEditId(m.id);setForm({...m});setShowForm(true);}
@@ -2248,12 +2218,12 @@ function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,sp
     if(!form.name||!form.startDate)return;
     let autoEnd = form.endDate;
     if(!autoEnd){autoEnd = form.memberType==="3month"?calc3MonthEnd(form.startDate, closures):endOfNextMonth(form.startDate);}
-    const e={...form,endDate:autoEnd,total:+form.total,used:+form.used,extensionDays:+(form.extensionDays||0),holdingDays:+(form.holdingDays||0),isNew:!!form.isNew};
+    const e={...form,endDate:autoEnd,total:+form.total,extensionDays:+(form.extensionDays||0),holdingDays:+(form.holdingDays||0),isNew:!!form.isNew};
     if(editId)setMembers(p=>p.map(m=>m.id===editId?{...m,...e}:m));
     else{const id=Math.max(...members.map(m=>m.id),0)+1;setMembers(p=>[...p,{id,...e,renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]}]);}
     setShowForm(false);
   }
-  function applyRenewal(mid,rf){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,used:0,memberType:rf.memberType,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[...(m.renewalHistory||[]),{id:(m.renewalHistory?.length||0)+1,...rf}]};}));setRenewT(null);setDetailM(null);}
+  function applyRenewal(mid,rf){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[...(m.renewalHistory||[]),{id:(m.renewalHistory?.length||0)+1,...rf}]};}));setRenewT(null);setDetailM(null);}
   function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(!hd)return{...m,holding:null,holdingDays:0};
 if(hd.resumed){
   // 복귀: holdingHistory에 이력 저장, holding 해제
@@ -2263,7 +2233,7 @@ if(hd.resumed){
 }
 // 홀딩 시작
 return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays:0};}));setHoldT(null);setDetailM(null);}
-  function applyAdjust(mid,newTotal,newUsed){setMembers(p=>p.map(m=>m.id!==mid?m:{...m,total:newTotal,used:newUsed}));}
+  function applyAdjust(mid,newTotal){setMembers(p=>p.map(m=>m.id!==mid?m:{...m,total:newTotal}));}
   const {dateTimeStr}=useClock();
 
   return(
@@ -2305,11 +2275,11 @@ return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays
         </div>
         <div style={S.grid}>
           {filtered.length===0&&<div style={S.empty}>조건에 맞는 회원이 없습니다.</div>}
-          {filtered.map(m=><MemberCard key={m.id} m={m} onDetail={()=>setDetailM(m)} onEdit={()=>openEdit(m)} onDel={()=>setDelT(m.id)}/>)}
+          {filtered.map(m=><MemberCard key={m.id} m={m} bookings={bookings} onDetail={()=>setDetailM(m)} onEdit={()=>openEdit(m)} onDel={()=>setDelT(m.id)}/>)}
         </div>
       </>)}
 
-      {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(t,u)=>applyAdjust(detailM.id,t,u)}/>}
+      {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(t)=>applyAdjust(detailM.id,t)}/>}
       {renewT&&<RenewalModal member={members.find(m=>m.id===renewT)} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)}/>}
       {holdT&&<HoldingModal member={members.find(m=>m.id===holdT)} onClose={()=>setHoldT(null)} onSave={hd=>applyHolding(holdT,hd)}/>}
       {showNotices&&<NoticeManager notices={notices} setNotices={setNotices} onClose={()=>setShowNotices(false)}/>}
@@ -2340,7 +2310,7 @@ return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays
             </div>
             <div style={S.fg}><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}><div onClick={()=>setForm(f=>({...f,isNew:!f.isNew}))} style={{width:36,height:20,borderRadius:10,background:form.isNew?"#4a6a4a":"#ddd",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}><div style={{position:"absolute",top:2,left:form.isNew?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/></div><span style={{color:"#4a4a4a"}}>신규 회원 (N 표시)</span></label></div>
             <div style={S.fg}><label style={S.lbl}>회원권</label><div style={{display:"flex",gap:10}}>{[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>setForm(f=>{const newEnd=v==="1month"?endOfNextMonth(f.startDate||TODAY_STR):calc3MonthEnd(f.startDate||TODAY_STR,closures);return{...f,memberType:v,total:v==="3month"?24:f.total,endDate:newEnd};})} style={{flex:1,padding:"9px 0",borderRadius:10,border:"1.5px solid",cursor:"pointer",fontSize:14,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}</div></div>
-            <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>총 회차</label><input style={S.inp} type="number" min="1" value={form.total||""} onChange={e=>setForm(f=>({...f,total:e.target.value}))}/></div><div style={{...S.fg,flex:1}}><label style={S.lbl}>사용 회차</label><input style={S.inp} type="number" min="0" value={form.used||0} onChange={e=>setForm(f=>({...f,used:e.target.value}))}/></div></div>
+            <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>총 회차</label><input style={S.inp} type="number" min="1" value={form.total||""} onChange={e=>setForm(f=>({...f,total:e.target.value}))}/></div></div>
             <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>최초 등록일</label><input style={S.inp} type="date" value={form.firstDate||""} onChange={e=>setForm(f=>({...f,firstDate:e.target.value}))}/></div></div>
             <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>현재 시작일</label><input style={S.inp} type="date" value={form.startDate||""} onChange={e=>{const sd=e.target.value;setForm(f=>({...f,startDate:sd,endDate:f.memberType==="1month"?endOfNextMonth(sd):calc3MonthEnd(sd,closures)}));}}/></div>
               <div style={{...S.fg,flex:1}}>
@@ -2561,7 +2531,6 @@ function toSnake(m) {
     member_type:      m.memberType ?? null,
     is_new:           m.isNew ?? false,
     total:            m.total ?? 0,
-    used:             m.used ?? 0,
     start_date:       m.startDate ?? null,
     end_date:         m.endDate ?? null,
     extension_days:   m.extensionDays ?? 0,
@@ -2583,7 +2552,6 @@ function fromSnakeMember(r) {
     memberType:     r.member_type ?? null,
     isNew:          r.is_new ?? false,
     total:          r.total ?? 0,
-    used:           r.used ?? 0,
     startDate:      r.start_date ?? null,
     endDate:        r.end_date ?? null,
     extensionDays:  r.extension_days ?? 0,
