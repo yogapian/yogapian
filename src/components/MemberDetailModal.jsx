@@ -19,9 +19,9 @@ export default function MemberDetailModal({member, bookings, onClose}){
   const reversedHistory = [...(member.renewalHistory||[])].reverse();
 
   return (
-    <div style={S.overlay} onClick={onClose}>
-      <div style={{...S.modal, maxWidth:440, maxHeight:"92vh", display:"flex", flexDirection:"column"}} onClick={e => e.stopPropagation()}>
-        <div style={{padding:"18px 18px 0", overflowY:"auto", flex:1}}>
+    <div style={{position:"fixed",inset:0,background:"rgba(40,35,25,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:"16px"}} onClick={onClose}>
+      <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:440,maxHeight:"88vh",display:"flex",flexDirection:"column",boxShadow:"0 8px 40px rgba(40,35,25,.22)",overflow:"hidden"}} onClick={e => e.stopPropagation()}>
+        <div style={{padding:"18px 18px 12px", overflowY:"auto", flex:1}}>
           {/* 헤더 */}
           <div style={{display:"flex", alignItems:"flex-start", gap:10, marginBottom:12}}>
             <span style={{fontSize:28}}>{GE[member.gender]}</span>
