@@ -29,7 +29,7 @@ function InlineCalendar({selDate, onSelect, bookings, member, closures, specialS
   const nextM = () => { if(month===11){setYear(y=>y+1);setMonth(0);}else setMonth(m=>m+1); };
 
   return (
-    <div style={{background:"#fff",borderRadius:13,border:"1px solid #e4e0d8",boxShadow:"0 2px 8px rgba(60,50,30,.06)",margin:"10px 14px 12px",overflow:"hidden"}}>
+    <div style={{background:"#fff",borderRadius:13,border:"1px solid #e4e0d8",boxShadow:"0 2px 8px rgba(60,50,30,.06)",margin:"6px 14px 8px",overflow:"hidden"}}>
       {/* 월 네비 */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px 6px"}}>
         <button onClick={prevM} style={{background:"none",border:"none",fontSize:22,color:"#555",cursor:"pointer",padding:"4px 10px",lineHeight:1}}>‹</button>
@@ -74,19 +74,23 @@ function InlineCalendar({selDate, onSelect, bookings, member, closures, specialS
 
           return (
             <div key={i} onClick={() => !unselectable && onSelect(ds)}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"3px 1px 2px",cursor:unselectable?"default":"pointer",userSelect:"none"}}>
+              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"3px 1px 2px",cursor:unselectable?"default":"pointer",userSelect:"none",position:"relative"}}>
+              {/* 휴강날짜 사선 오버레이 */}
+              {isClosure && !isSel && (
+                <div style={{position:"absolute",top:"4%",left:"6%",right:"6%",bottom:"10%",background:"linear-gradient(to bottom right,transparent calc(50% - 0.7px),rgba(201,116,116,0.55) 50%,transparent calc(50% + 0.7px))",pointerEvents:"none",zIndex:2}}/>
+              )}
               {/* 날짜 숫자 — 선택/오늘/출석 상태에 따라 배경 */}
-              <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:26,height:26,padding:"0 2px",borderRadius:"50%",fontSize:13,fontWeight:isSel||isToday?700:400,color:numColor,lineHeight:1,background:isSel?"#2e6e44":isAtt&&!isSel?"#e4f5eb":"transparent",border:isToday&&!isSel?"1.5px solid #2e6e44":"1.5px solid transparent"}}>
+              <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:26,height:26,padding:"0 2px",borderRadius:"50%",fontSize:13,fontWeight:isSel||isToday?700:400,color:numColor,lineHeight:1,background:isSel?"#2e6e44":isAtt&&!isSel?"#fef9c3":"transparent",border:isToday&&!isSel?"1.5px solid #2e6e44":"1.5px solid transparent"}}>
                 {day}
               </span>
               {/* 오늘 라벨 + 인디케이터 — 같은 위치 */}
               <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,marginTop:1,minHeight:10}}>
                 {isToday && <span style={{fontSize:8,color:"#2e6e44",fontWeight:600,lineHeight:1.2}}>오늘</span>}
                 {isWait && <span style={{fontSize:8,color:"#e8a020",lineHeight:1.2}}>▲</span>}
-                {isClosure && !isSel && <span style={{fontSize:7,color:"#c97474",fontWeight:700,lineHeight:1.2}}>휴강</span>}
-                {isPartial && <span style={{fontSize:7,color:"#e07050",fontWeight:700,lineHeight:1.2}}>부분</span>}
-                {isOpen && <span style={{fontSize:7,color:"#1a6e4a",fontWeight:700,lineHeight:1.2}}>오픈</span>}
-                {isSpecialDay && <span style={{fontSize:7,color:"#5a3a9a",fontWeight:700,lineHeight:1.2}}>집중</span>}
+                {isClosure && !isSel && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.3}}>휴강</span>}
+                {isPartial && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.3}}>부분</span>}
+                {isOpen && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.3}}>오픈</span>}
+                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.3}}>집중</span>}
                 {hasDailyNote && <span style={{fontSize:9,lineHeight:1}}>📢</span>}
               </div>
             </div>
@@ -222,8 +226,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       />
 
       {/* 선택 날짜 헤더 */}
-      <div style={{margin:"0 14px 10px",borderRadius:12,background:"#fff",border:`1.5px solid ${dayClosure?"#f0b0a0":isOpen?"#7acca0":special?.type==="special"?"#a090d0":"#e4e0d8"}`,overflow:"hidden"}}>
-        <div style={{padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"center",gap:7,flexWrap:"wrap"}}>
+      <div style={{margin:"0 14px 6px",borderRadius:12,background:"#fff",border:`1.5px solid ${dayClosure?"#f0b0a0":isOpen?"#7acca0":special?.type==="special"?"#a090d0":"#e4e0d8"}`,overflow:"hidden"}}>
+        <div style={{padding:"8px 14px",display:"flex",alignItems:"center",justifyContent:"center",gap:7,flexWrap:"wrap"}}>
           <span style={{fontSize:15,fontWeight:700,color:"#1e2e1e"}}>{fmtWithDow(selDate)}</span>
           {selDate===TODAY_STR&&<span style={{fontSize:11,background:"#2e6e44",color:"#fff",borderRadius:10,padding:"2px 8px",fontWeight:700}}>오늘</span>}
           {dayClosure&&<span style={{fontSize:11,background:"#fde8e8",color:"#a83030",borderRadius:10,padding:"2px 8px",fontWeight:700}}>휴강</span>}
@@ -233,7 +237,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
         </div>
       </div>
 
-      <div style={{padding:"0 14px 12px"}}>
+      <div style={{padding:"0 14px 8px"}}>
         {/* 과거 날짜 */}
         {!isFuture&&<div style={{textAlign:"center",padding:"32px 0",color:"#b0a090"}}><div style={{fontSize:28,marginBottom:8}}>📅</div><div style={{fontSize:13}}>과거 날짜는 예약할 수 없어요.</div></div>}
 
@@ -267,8 +271,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
           const isChg = isRegular&&DEFAULT_TIMES[slot.key]&&slot.time!==DEFAULT_TIMES[slot.key];
 
           return (
-            <div key={slot.key} style={{background:"#fff",borderRadius:12,marginBottom:8,border:`1.5px solid ${slCl?"#f0b0a0":isMyRes?"#2e6e44":isMyWait?"#e8c44a":"#e8e4dc"}`,overflow:"hidden",boxShadow:isMyRes?"0 0 0 3px rgba(46,110,68,.08)":isMyWait?"0 0 0 3px rgba(232,196,74,.12)":"none"}}>
-              <div style={{padding:"10px 12px",display:"flex",alignItems:"center",gap:9}}>
+            <div key={slot.key} style={{background:slCl?"#f5f0ee":slot.bg,borderRadius:12,marginBottom:6,border:`1.5px solid ${slCl?"#f0b0a0":isMyRes?"#2e6e44":isMyWait?"#e8c44a":"#e8e4dc"}`,overflow:"hidden",boxShadow:isMyRes?"0 0 0 3px rgba(46,110,68,.08)":isMyWait?"0 0 0 3px rgba(232,196,74,.12)":"none"}}>
+              <div style={{padding:"8px 10px",display:"flex",alignItems:"center",gap:9}}>
                 <div style={{width:36,height:36,borderRadius:10,background:slCl?"#f5f0ee":slot.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>{slot.icon}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",marginBottom:2}}>
