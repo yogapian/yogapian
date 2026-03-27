@@ -150,6 +150,9 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     .sort((a,b) => a.date.localeCompare(b.date)||(a.id-b.id))[0];
   const upcomingSlot = upcomingBooking ? TIME_SLOTS.find(t=>t.key===upcomingBooking.timeSlot) : null;
   const upcomingText = upcomingBooking ? `${fmtWithDow(upcomingBooking.date)} ${upcomingSlot?.label||''} ${upcomingSlot?.time||''}`.trim() : null;
+  const upcomingCap = upcomingBooking ? getSlotCapacity(upcomingBooking.date,upcomingBooking.timeSlot,specialSchedules,scheduleTemplate) : 0;
+  const upcomingCnt = upcomingBooking ? bookings.filter(b=>b.date===upcomingBooking.date&&b.timeSlot===upcomingBooking.timeSlot&&(b.status==="attended"||b.status==="reserved")).length : 0;
+  const upcomingWaitRank = (upcomingBooking?.status==="waiting") ? (()=>{const ws=bookings.filter(b=>b.date===upcomingBooking.date&&b.timeSlot===upcomingBooking.timeSlot&&b.status==="waiting").sort((a,b)=>a.id-b.id);return ws.findIndex(b=>b.id===upcomingBooking.id)+1;})() : 0;
 
   const getSlots = () => {
     if(!selDate) return [];
@@ -246,14 +249,19 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
       {/* ─── 다가오는 예약 카드 (항상 표시) ────────────────── */}
       <div style={{margin:"0 14px 10px",borderRadius:12,background:"#fff8ee",border:"1.5px solid #f0c888",padding:"11px 14px"}}>{/* ← 카드 배경(연한주황)/테두리색 */}
-        <div style={{fontSize:13,fontWeight:700,color:"#a06010",marginBottom:6}}>❗️다가오는 예약</div>{/* ← 타이틀 크기/색상 */}
+        <div style={{fontSize:13,fontWeight:700,color:"#a06010",marginBottom:4}}>❗️다가오는 예약</div>{/* ← 타이틀 크기/색상 */}
         {upcomingBooking ? (
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
-            <div style={{fontSize:11,color:"#7a5010",lineHeight:1.5,flex:1,minWidth:0,fontStyle:"italic"}}>{/* ← 예약정보 이탤릭·색상·크기 */}
-              {upcomingText}
-              {upcomingBooking.status==="waiting"&&(
-                <span style={{marginLeft:5,fontSize:10,color:"#9a5a10",background:"#fffaeb",borderRadius:6,padding:"1px 5px",fontWeight:700}}>대기</span>
-              )}
+            <div style={{flex:1,minWidth:0}}>
+              {/* ← 날짜·슬롯 텍스트: 이탤릭·색상·크기 */}
+              <div style={{fontSize:11,color:"#7a5010",fontStyle:"italic",lineHeight:1.3}}>{upcomingText}</div>
+              {/* ← 잔여석/대기순번 텍스트 색상·크기 */}
+              <div style={{fontSize:10,color:"#a07030",marginTop:2,lineHeight:1.3}}>
+                {upcomingBooking.status==="waiting"
+                  ? `대기 ${upcomingWaitRank}번째`
+                  : `잔여 ${Math.max(0,upcomingCap-upcomingCnt)}/${upcomingCap}석`
+                }
+              </div>
             </div>
             {/* ← 예약취소 버튼 색상/크기 */}
             <button onClick={()=>setConfirmCancel(upcomingBooking.id)} style={{flexShrink:0,background:"none",border:"1px solid #e8a0a0",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,color:"#c97474",cursor:"pointer",fontFamily:FONT}}>예약취소</button>
@@ -358,7 +366,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                     {/* 줄 1: 이모지 + 라벨·시간 + 잔여석 or 내예약 한 줄 */}
                     <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:5}}>
                       <span style={{fontSize:17,lineHeight:1,flexShrink:0}}>{/* ← 이모지 크기 */}{slot.icon}</span>
-                      <span style={{fontSize:11,fontWeight:700,color:slCl?"#9a8e80":slot.color,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{/* ← 라벨+시간 색상·크기 */}
+                      <span style={{fontSize:15,fontWeight:700,color:slCl?"#9a8e80":slot.color,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{/* ← 라벨+시간 색상·크기 */}
                         {slot.label}{" "}
                         {isChg
                           ? <><s style={{color:"#c0b0b0",fontWeight:400}}>{DEFAULT_TIMES[slot.key]}</s><span style={{color:"#c97474"}}> {slot.time}</span></>
@@ -368,9 +376,9 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                       {/* ← 오른쪽: 내 예약/대기 뱃지 or 잔여석 정보 */}
                       <span style={{flexShrink:0,paddingLeft:4}}>
                         {isMyRes
-                          ? <span style={{fontSize:9,background:"#e8f5ee",color:"#2e6e44",borderRadius:6,padding:"2px 6px",fontWeight:700}}>내 예약</span>/* ← 내예약 뱃지 색상 */
+                          ? <span style={{fontSize:10,background:"#e8f5ee",color:"#2e6e44",borderRadius:6,padding:"2px 6px",fontWeight:700}}>내 예약</span>/* ← 내예약 뱃지 색상 */
                           : isMyWait
-                          ? <span style={{fontSize:9,background:"#fffaeb",color:"#9a5a10",borderRadius:6,padding:"2px 6px",fontWeight:700}}>대기 {myRank}번</span>/* ← 대기 뱃지 색상 */
+                          ? <span style={{fontSize:10,background:"#fffaeb",color:"#9a5a10",borderRadius:6,padding:"2px 6px",fontWeight:700}}>대기 {myRank}번</span>/* ← 대기 뱃지 색상 */
                           : <span style={{fontSize:10,color:slCl?"#b0a090":isFull?"#c97474":remaining<=2?"#9a5a10":"#a0988e"}}>{/* ← 잔여석 색상: 마감=빨강/촉박=주황/여유=회색 */}
                               {slCl?`휴강`:isFull?`대기 ${waitCnt}명`:`${remaining}/${cap}`}
                             </span>
