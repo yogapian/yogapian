@@ -8,7 +8,7 @@ import { TODAY_STR } from "../constants.js";
 
 export default function RenewalModal({member,onClose,onSave}){
   const closures=useClosures();
-  const [form,setForm]=useState({startDate:TODAY_STR,endDate:"",total:member.memberType==="3month"?24:10,memberType:member.memberType,payment:""});
+  const [form,setForm]=useState({startDate:TODAY_STR,endDate:"",total:member.memberType==="3month"?24:10,memberType:member.memberType,payment:"",includePending:true});
   return(
     <div style={S.overlay} onClick={onClose}>
       <div style={{...S.modal,maxWidth:420}} onClick={e=>e.stopPropagation()}>
@@ -23,6 +23,15 @@ export default function RenewalModal({member,onClose,onSave}){
         </div>
         <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>시작일</label><input style={S.inp} type="date" value={form.startDate} onChange={e=>{const s=e.target.value;const autoEnd=form.memberType==="3month"?calc3MonthEnd(s,closures):endOfMonth(s);setForm(f=>({...f,startDate:s,endDate:autoEnd}));}}/></div><div style={{...S.fg,flex:1}}><label style={S.lbl}>종료일</label><input style={S.inp} type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/></div></div>
         <div style={S.fg}><label style={S.lbl}>총 회차</label><input style={S.inp} type="number" min="1" value={form.total} onChange={e=>setForm(f=>({...f,total:+e.target.value}))}/></div>
+        <div style={{...S.fg,background:"#fffaeb",borderRadius:9,padding:"10px 12px",border:"1px solid #e8c44a"}}>
+          <label style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer"}}>
+            <div onClick={()=>setForm(f=>({...f,includePending:!f.includePending}))} style={{width:36,height:20,borderRadius:10,background:form.includePending?"#9a5a10":"#ddd",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
+              <div style={{position:"absolute",top:2,left:form.includePending?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+            </div>
+            <span style={{fontSize:13,color:"#7a5a10",fontWeight:600}}>임시 1회 포함</span>
+            <span style={{fontSize:11,color:"#9a8e80"}}>— 임시 예약을 이번 회원권에 포함</span>
+          </label>
+        </div>
         <div style={S.modalBtns}><button style={S.cancelBtn} onClick={onClose}>취소</button><button style={{...S.saveBtn,opacity:form.endDate?1:0.5}} disabled={!form.endDate} onClick={()=>onSave(form)}>갱신</button></div>
       </div>
     </div>

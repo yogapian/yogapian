@@ -6,11 +6,13 @@ import { useClosures } from "../context.js";
 import { addDays } from "../utils.js";
 import S from "../styles.js";
 
-export default function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdjust}){
+export default function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdjust,onEdit,onDel}){
   const closures=useClosures();
   const [expandedRH,setExpandedRH]=useState(null);
   const [adjMode,setAdjMode]=useState(false);
   const [adjTotal,setAdjTotal]=useState(member.total);
+  const [adjStart,setAdjStart]=useState(member.startDate||"");
+  const [adjEnd,setAdjEnd]=useState(member.endDate||"");
   const status=getStatus(member,closures),sc=SC[status];
   const end=effEnd(member,closures),dl=calcDL(member,closures);
   const expired=dl<0;
@@ -55,28 +57,36 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
 
           {!adjMode&&(
             <div style={{marginBottom:10,textAlign:"right"}}>
-              <button onClick={()=>{setAdjTotal(member.total);setAdjMode(true);}} style={{fontSize:11,background:"#fdf3e3",color:"#9a5a10",border:"1px solid #e8c44a",borderRadius:7,padding:"4px 10px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>✏️ 등록 횟수 수정</button>
+              <button onClick={()=>{setAdjTotal(member.total);setAdjStart(member.startDate||"");setAdjEnd(member.endDate||"");setAdjMode(true);}} style={{fontSize:11,background:"#fdf3e3",color:"#9a5a10",border:"1px solid #e8c44a",borderRadius:7,padding:"4px 10px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>✏️ 횟수·기간 수정</button>
             </div>
           )}
           {adjMode&&(
             <div style={{background:"#fffaeb",border:"1px solid #e8c44a",borderRadius:10,padding:"12px 14px",marginBottom:12}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#7a5a10",marginBottom:10}}>✏️ 등록 횟수 직접 수정</div>
-              <div style={{display:"flex",gap:14,marginBottom:10,flexWrap:"wrap"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#7a5a10",marginBottom:10}}>✏️ 등록 횟수·기간 직접 수정</div>
+              <div style={{display:"flex",gap:14,marginBottom:10,flexWrap:"wrap",alignItems:"flex-start"}}>
                 <div>
-                  <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>등록 횟수 (total)</div>
+                  <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>등록 횟수</div>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <button onClick={()=>setAdjTotal(t=>Math.max(0,t-1))} style={{...S.stepper}}>−</button>
                     <span style={{fontSize:16,fontWeight:700,minWidth:28,textAlign:"center"}}>{adjTotal}</span>
                     <button onClick={()=>setAdjTotal(t=>t+1)} style={{...S.stepper}}>+</button>
                   </div>
+                  <div style={{fontSize:11,color:"#2e6e44",fontWeight:700,marginTop:4}}>잔여 {Math.max(0,adjTotal-dispUsed)}회</div>
                 </div>
-                <div style={{display:"flex",alignItems:"flex-end",paddingBottom:2}}>
-                  <div style={{fontSize:13,color:"#2e6e44",fontWeight:700}}>→ 잔여 {Math.max(0,adjTotal-dispUsed)}회</div>
+              </div>
+              <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:120}}>
+                  <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>시작일</div>
+                  <input type="date" value={adjStart} onChange={e=>setAdjStart(e.target.value)} style={{...S.inp,fontSize:13,padding:"7px 9px"}}/>
+                </div>
+                <div style={{flex:1,minWidth:120}}>
+                  <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>종료일</div>
+                  <input type="date" value={adjEnd} onChange={e=>setAdjEnd(e.target.value)} style={{...S.inp,fontSize:13,padding:"7px 9px"}}/>
                 </div>
               </div>
               <div style={{display:"flex",gap:7}}>
                 <button onClick={()=>setAdjMode(false)} style={S.cancelBtn}>취소</button>
-                <button onClick={()=>{onAdjust&&onAdjust(adjTotal);setAdjMode(false);}} style={{...S.saveBtn,background:"#e8a44a",fontSize:12}}>저장</button>
+                <button onClick={()=>{onAdjust&&onAdjust({total:adjTotal,startDate:adjStart,endDate:adjEnd});setAdjMode(false);}} style={{...S.saveBtn,background:"#e8a44a",fontSize:12}}>저장</button>
               </div>
             </div>
           )}
@@ -152,7 +162,11 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
             </div>
           )}
         </div>
-        <div style={{padding:"10px 18px",borderTop:"1px solid #f0ece4"}}><button style={{...S.cancelBtn,width:"100%",textAlign:"center"}} onClick={onClose}>닫기</button></div>
+        <div style={{padding:"10px 18px",borderTop:"1px solid #f0ece4",display:"flex",gap:7}}>
+          <button style={{...S.cancelBtn,flex:1,textAlign:"center"}} onClick={onClose}>닫기</button>
+          {onEdit&&<button style={{...S.editBtn,flex:1,textAlign:"center"}} onClick={()=>{onClose();onEdit();}}>✏️ 수정</button>}
+          {onDel&&<button style={{...S.delBtn,flex:1,textAlign:"center"}} onClick={()=>{onClose();onDel();}}>🗑 삭제</button>}
+        </div>
       </div>
     </div>
   );

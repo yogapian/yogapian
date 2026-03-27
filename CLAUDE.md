@@ -161,3 +161,11 @@ usedAsOf(memberId, targetDate, bookings, [member])
 ### 휴강
 - **정기 휴강**: 연장 없음 (`extensionOverride = 0`)
 - **별도 휴강**: 연장 있음 (`extensionOverride > 0`, 해당 일수만큼 종료일 연장)
+
+## 관리자 UI 정책
+- 회원카드: 수정/삭제 버튼은 상세보기(AdminDetailModal) 안에만 노출. MemberCard에는 상세보기 버튼만.
+- 필터 탭: ON / OFF / HOLD / RENEW (전체 탭 없음)
+- RENEW 조건: 잔여 0회 OR 기간 만료(`calcDL < 0`) OR `renewalPending:true` 인 booking 존재
+- 관리자 로그인(AdminApp 마운트) 시: `renewalPending:true` booking이 있는 회원 목록 팝업 1회 표시
+- 갱신 모달(RenewalModal): "임시 1회 포함 여부" 체크박스 (기본값 체크). 체크 시 `onSave`에 `includePending:true` 포함 → `applyRenewal`에서 해당 booking의 `renewalPending` 플래그 제거
+- 등록 횟수 및 기간 수동 수정: AdminDetailModal의 adjMode에서 total + startDate + endDate 함께 수정. `onAdjust({total, startDate, endDate})` 형태로 호출

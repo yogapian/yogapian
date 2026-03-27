@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { FONT, TODAY_STR, SC, GE, TYPE_CFG } from "../constants.js";
 import { fmt } from "../utils.js";
 import { endOfNextMonth, endOfMonth } from "../utils.js";
-import { getStatus, calc3MonthEnd } from "../memberCalc.js";
+import { getStatus, calc3MonthEnd, calcDL, usedAsOf } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import { useClock } from "../utils.js";
 import S from "../styles.js";
@@ -25,9 +25,12 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   const [holdT,setHoldT]=useState(null);
   const [delT,setDelT]=useState(null);
   const [showNotices,setShowNotices]=useState(false);
+  const [showPendingPopup,setShowPendingPopup]=useState(true);
 
-  const counts={all:members.length,on:members.filter(m=>getStatus(m,closures)==="on").length,hold:members.filter(m=>getStatus(m,closures)==="hold").length,off:members.filter(m=>getStatus(m,closures)==="off").length};
-  const filtered=useMemo(()=>members.filter(m=>{if(filter!=="all"&&getStatus(m,closures)!==filter)return false;if(search&&!m.name.includes(search))return false;return true;}).sort((a,b)=>a.name.localeCompare(b.name,"ko")),[members,filter,search,closures]);
+  const renewPendingMembers=useMemo(()=>members.filter(m=>bookings.some(b=>b.memberId===m.id&&b.renewalPending)),[members,bookings]);
+  const checkRenew=(m)=>{const dl=calcDL(m,closures);const used=usedAsOf(m.id,TODAY_STR,bookings,[m]);const rem=Math.max(0,m.total-used);return dl<0||rem===0||bookings.some(b=>b.memberId===m.id&&b.renewalPending);};
+  const counts={on:members.filter(m=>getStatus(m,closures)==="on").length,hold:members.filter(m=>getStatus(m,closures)==="hold").length,off:members.filter(m=>getStatus(m,closures)==="off").length,renew:members.filter(m=>checkRenew(m)).length};
+  const filtered=useMemo(()=>{const cr=(m)=>{const dl=calcDL(m,closures);const used=usedAsOf(m.id,TODAY_STR,bookings,[m]);const rem=Math.max(0,m.total-used);return dl<0||rem===0||bookings.some(b=>b.memberId===m.id&&b.renewalPending);};return members.filter(m=>{if(filter==="renew")return cr(m);if(filter!=="all"&&getStatus(m,closures)!==filter)return false;if(search&&!m.name.includes(search))return false;return true;}).sort((a,b)=>a.name.localeCompare(b.name,"ko"));},[members,filter,search,closures,bookings]);
 
   function openAdd(){
     const autoEnd=endOfNextMonth(TODAY_STR);
@@ -45,7 +48,11 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     else{const id=Math.max(...members.map(m=>m.id),0)+1;setMembers(p=>[...p,{id,...e,renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]}]);}
     setShowForm(false);
   }
-  function applyRenewal(mid,rf){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[...(m.renewalHistory||[]),{id:(m.renewalHistory?.length||0)+1,...rf}]};}));setRenewT(null);setDetailM(null);}
+  function applyRenewal(mid,rf){
+    setMembers(p=>p.map(m=>{if(m.id!==mid)return m;return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[...(m.renewalHistory||[]),{id:(m.renewalHistory?.length||0)+1,...rf}]};}));
+    if(rf.includePending)setBookings(p=>p.map(b=>b.memberId===mid&&b.renewalPending?{...b,renewalPending:false}:b));
+    setRenewT(null);setDetailM(null);
+  }
   function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(!hd)return{...m,holding:null,holdingDays:0};
     if(hd.resumed){
       const histEntry={startDate:m.holding?.startDate||hd.startDate,endDate:hd.endDate||TODAY_STR,workdays:hd.workdays};
@@ -53,11 +60,30 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       return{...m,holding:null,holdingDays:0,extensionDays:(m.extensionDays||0)+hd.workdays,holdingHistory:newHistory};
     }
     return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays:0};}));setHoldT(null);setDetailM(null);}
-  function applyAdjust(mid,newTotal){setMembers(p=>p.map(m=>m.id!==mid?m:{...m,total:newTotal}));}
+  function applyAdjust(mid,changes){setMembers(p=>p.map(m=>m.id!==mid?m:{...m,...changes}));}
   const {dateTimeStr}=useClock();
 
   return(
     <div style={S.page}>
+      {/* 임시예약 회원 팝업 (로그인 후 1회) */}
+      {showPendingPopup&&renewPendingMembers.length>0&&(
+        <div style={S.overlay} onClick={()=>setShowPendingPopup(false)}>
+          <div style={{...S.modal,maxWidth:360}} onClick={e=>e.stopPropagation()}>
+            <div style={S.modalHead}><span>🔔</span><div><div style={S.modalTitle}>갱신 대기 회원</div><div style={{fontSize:12,color:"#9a8e80"}}>임시 예약 처리된 회원입니다</div></div></div>
+            <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:16}}>
+              {renewPendingMembers.map(m=>(
+                <div key={m.id} onClick={()=>{setShowPendingPopup(false);setDetailM(m);}} style={{display:"flex",alignItems:"center",gap:8,background:"#fffaeb",borderRadius:9,padding:"9px 12px",border:"1px solid #e8c44a",cursor:"pointer"}}>
+                  <span style={{fontSize:16}}>{m.gender==="F"?"🧘🏻‍♀️":"🧘🏻‍♂️"}</span>
+                  <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e"}}>{m.name}</span>
+                  <span style={{marginLeft:"auto",fontSize:11,background:"#e8c44a",color:"#fff",borderRadius:8,padding:"2px 8px",fontWeight:700}}>갱신필요</span>
+                </div>
+              ))}
+            </div>
+            <button style={{...S.cancelBtn,width:"100%",textAlign:"center"}} onClick={()=>setShowPendingPopup(false)}>확인</button>
+          </div>
+        </div>
+      )}
+
       <div style={S.header}>
         <div>
           <div style={S.logoRow}>
@@ -86,8 +112,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
 
       {tab==="members"&&(<>
         <div style={S.pillRow}>
-          {[["all","전체"],["on","ON"],["hold","HOLD"],["off","OFF"]].map(([k,l])=>(
-            <button key={k} onClick={()=>setFilter(k)} style={{...S.pill,background:filter===k?"#4a6a4a":"#e8e4dc",color:filter===k?"#fff":"#7a6e60",fontWeight:filter===k?700:400}}>{l} <span style={{opacity:.75,fontSize:11}}>{counts[k]??0}</span></button>
+          {[["on","ON"],["hold","HOLD"],["off","OFF"],["renew","RENEW"]].map(([k,l])=>(
+            <button key={k} onClick={()=>setFilter(k)} style={{...S.pill,background:filter===k?k==="renew"?"#9a5a10":"#4a6a4a":"#e8e4dc",color:filter===k?"#fff":"#7a6e60",fontWeight:filter===k?700:400}}>{l} <span style={{opacity:.75,fontSize:11}}>{counts[k]??0}</span></button>
           ))}
         </div>
         <div style={S.toolbar}>
@@ -99,7 +125,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
         </div>
       </>)}
 
-      {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(t)=>applyAdjust(detailM.id,t)}/>}
+      {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(changes)=>applyAdjust(detailM.id,changes)} onEdit={()=>{const m=members.find(x=>x.id===detailM.id)||detailM;setDetailM(null);openEdit(m);}} onDel={()=>{const id=detailM.id;setDetailM(null);setDelT(id);}}/>}
       {renewT&&<RenewalModal member={members.find(m=>m.id===renewT)} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)}/>}
       {holdT&&<HoldingModal member={members.find(m=>m.id===holdT)} onClose={()=>setHoldT(null)} onSave={hd=>applyHolding(holdT,hd)}/>}
       {showNotices&&<NoticeManager notices={notices} setNotices={setNotices} onClose={()=>setShowNotices(false)}/>}

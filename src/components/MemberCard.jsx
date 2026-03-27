@@ -71,8 +71,6 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
 
       <div style={S.actions}>
         <button style={S.detailBtn} onClick={onDetail}>상세보기</button>
-        <button style={S.editBtn} onClick={onEdit}>수정</button>
-        <button style={S.delBtn} onClick={onDel}>삭제</button>
       </div>
     </div>
   );
