@@ -41,11 +41,19 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   const defaultTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"14:00",evening:"19:30"};
   const hasTimeChange=isRegular&&special?.activeSlots?.some(k=>special.customTimes?.[k]&&special.customTimes[k]!==defaultTimes[k]);
 
+  function getDowSlots(d,forDate){
+    if(Array.isArray(scheduleTemplate)&&scheduleTemplate.length>0){
+      return scheduleTemplate.filter(e=>e.days.includes(d)&&(!e.startDate||forDate>=e.startDate)&&(!e.endDate||forDate<=e.endDate)).map(e=>e.slotKey);
+    }
+    return Object.entries(scheduleTemplate?.[d]||{}).filter(([,v])=>v?.active).map(([k])=>k);
+  }
   const getSlots=()=>{
     if(isSpecial)return TIME_SLOTS.filter(s=>special.activeSlots.includes(s.key)).map(s=>({...s,time:special.customTimes?.[s.key]||s.time}));
     if(isWeekend)return[];
-    const templSlots=TIME_SLOTS.filter(s=>scheduleTemplate?.[dow]?.[s.key]?.active);
-    if(templSlots.length) return templSlots;
+    if(Array.isArray(scheduleTemplate)&&scheduleTemplate.length>0){
+      const active=scheduleTemplate.filter(e=>e.days.includes(dow)&&(!e.startDate||date>=e.startDate)&&(!e.endDate||date<=e.endDate));
+      if(active.length) return active.map(e=>{const base=TIME_SLOTS.find(t=>t.key===e.slotKey)||TIME_SLOTS[1];return{...base,time:e.time||base.time};});
+    }
     return TIME_SLOTS.filter(s=>SCHEDULE[dow]?.includes(s.key));
   };
   const slots=getSlots();
@@ -139,7 +147,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
           {slots.length>0&&<div style={{background:"#2e8a4a",color:"#fff",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:700}}>출석 {attendedDay}</div>}
           <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#3d5494",background:"#fff"}} onClick={()=>setShowTemplateMgr(true)}>📅 시간표</button>
           <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#8a5510",background:"#fff"}} onClick={()=>{
-            const _d1=new Date(date+"T00:00:00").getDay();const dowSlots=Object.entries(scheduleTemplate?.[_d1]||{}).filter(([,v])=>v?.active).map(([k])=>k);
+            const _d1=new Date(date+"T00:00:00").getDay();const dowSlots=getDowSlots(_d1,date);
             const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
             const spOnDate=specialSchedules.find(s=>s.date===date);
             if(spOnDate){
@@ -561,7 +569,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     <div key={t.v} onClick={()=>{
                       if(locked) return;
                       const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
-                      const _d2=new Date(newSp.date+"T00:00:00").getDay();const dowSlots=Object.entries(scheduleTemplate?.[_d2]||{}).filter(([,v])=>v?.active).map(([k])=>k);
+                      const _d2=new Date(newSp.date+"T00:00:00").getDay();const dowSlots=getDowSlots(_d2,newSp.date);
                       const newSlots=(t.v==="regular"&&originalType==="regular")?(dowSlots.length?dowSlots:[]):[];
                       setNewSp(f=>({...f,type:t.v,activeSlots:newSlots,customTimes:regularTimes}));
                     }}
@@ -577,7 +585,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
               <label style={S.lbl}>날짜</label>
               {(()=>{
                 function changeSpDate(val){
-                  const _d3=new Date(val+"T00:00:00").getDay();const dowSlots=Object.entries(scheduleTemplate?.[_d3]||{}).filter(([,v])=>v?.active).map(([k])=>k);
+                  const _d3=new Date(val+"T00:00:00").getDay();const dowSlots=getDowSlots(_d3,val);
                   const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
                   const existingOnDate=specialSchedules.find(s=>s.date===val);
                   if(existingOnDate){
@@ -653,7 +661,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
                   {TIME_SLOTS.filter(sl=>newSp.activeSlots.includes(sl.key)).map(sl=>{
                     const spDow=new Date(newSp.date+"T00:00:00").getDay();
-                    const templateCap=scheduleTemplate?.[spDow]?.[sl.key]??10;
+                    const templateCap=Array.isArray(scheduleTemplate)?(scheduleTemplate.find(e=>e.slotKey===sl.key&&e.days.includes(spDow))?.capacity??10):(scheduleTemplate?.[spDow]?.[sl.key]?.capacity??10);
                     const overrideCap=newSp.slotCapacity?.[sl.key];
                     return(
                       <div key={sl.key} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:sl.bg,borderRadius:9,border:`1px solid ${sl.color}33`}}>
@@ -720,42 +728,6 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                 </button>
               );
             })()}
-            <div style={{...S.fg,borderTop:"1px solid #e8e4dc",paddingTop:12}}>
-              <label style={{...S.lbl,color:"#3d5494"}}>기본 정원 (요일별 템플릿)</label>
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {[1,2,3,4,5].map(d=>{
-                  const slots=TIME_SLOTS.filter(sl=>(scheduleTemplate?.[d]?.[sl.key]!=null)||({1:["dawn","morning","lunch","evening"],2:["lunch","evening"],3:["dawn","morning","lunch","evening"],4:["lunch","evening"],5:["dawn","morning","evening"]}[d]||[]).includes(sl.key));
-                  if(!slots.length)return null;
-                  return(
-                    <div key={d} style={{background:"#f0f0f8",borderRadius:9,padding:"8px 10px"}}>
-                      <div style={{fontSize:12,fontWeight:700,color:"#3d5494",marginBottom:6}}>{DOW_KO[d]}요일</div>
-                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                        {slots.map(sl=>{
-                          const cur=scheduleTemplate?.[d]?.[sl.key]??10;
-                          return(
-                            <div key={sl.key} style={{display:"flex",alignItems:"center",gap:4,background:sl.bg,borderRadius:7,padding:"4px 8px",border:`1px solid ${sl.color}33`}}>
-                              <span style={{fontSize:12,color:sl.color,fontWeight:700}}>{sl.label}</span>
-                              <input type="number" min="1" max="99"
-                                value={cur}
-                                onChange={e=>{
-                                  const v=Number(e.target.value)||10;
-                                  setScheduleTemplate(prev=>{
-                                    const next={...prev};
-                                    next[d]={...(next[d]||{}),[sl.key]:v};
-                                    return next;
-                                  });
-                                }}
-                                onClick={e=>e.stopPropagation()}
-                                style={{...S.inp,width:46,padding:"2px 5px",fontSize:12,margin:0,textAlign:"center"}}/>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
             <div style={S.modalBtns}><button style={S.cancelBtn} onClick={()=>closeSpecialMgr()}>취소</button><button style={{...S.saveBtn,opacity:(newSp.type==="regular"||newSp.label)?1:0.5}} onClick={addSpecial} disabled={newSp.type!=="regular"&&!newSp.label}>저장</button></div>
           </div>
         </div>
@@ -763,7 +735,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
 
       {attendCheckModal&&<AttendCheckModal rec={attendCheckModal} members={members} isOpen={isOpen} bookings={bookings} setBookings={setBookings} setMembers={setMembers} notices={notices} setNotices={setNotices} onClose={()=>setAttendCheckModal(null)}/>}
       {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={(note,sendNotice)=>adminCancel(cancelModal.id,note,sendNotice)}/>}
-      {showTemplateMgr&&<ScheduleTemplateManager onClose={()=>setShowTemplateMgr(false)}/>}
+      {showTemplateMgr&&<ScheduleTemplateManager scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} onClose={()=>setShowTemplateMgr(false)}/>}
     </div>
   );
 }

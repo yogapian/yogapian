@@ -1,14 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
-import { _supabase } from "../db.js";
+import { useState } from "react";
 
 const FONT = "'Noto Sans KR','Apple SD Gothic Neo',sans-serif";
 
-const SLOTS = [
-  { key:"dawn",     label:"새벽" },
-  { key:"morning",  label:"오전" },
-  { key:"lunch",    label:"점심" },
-  { key:"afternoon",label:"오후" },
-  { key:"evening",  label:"저녁" },
+const SLOT_DEFS = [
+  { key:"dawn",      label:"새벽", icon:"🌅", time:"06:30" },
+  { key:"morning",   label:"오전", icon:"☀️",  time:"08:30" },
+  { key:"lunch",     label:"점심", icon:"🌤️", time:"11:50" },
+  { key:"afternoon", label:"오후", icon:"🌞", time:"14:00" },
+  { key:"evening",   label:"저녁", icon:"🌙", time:"19:30" },
 ];
 
 const DAYS = [
@@ -21,105 +20,77 @@ const DAYS = [
   { dow:0, label:"일", weekend:true },
 ];
 
-function makeEmpty() {
-  const t = {};
-  for (const d of DAYS) {
-    t[d.dow] = {};
-    for (const s of SLOTS) {
-      t[d.dow][s.key] = { active: false, capacity: 10 };
-    }
-  }
-  return t;
-}
+const EMPTY_FORM = {
+  slotKey: "morning",
+  days: [1, 2, 3, 4, 5],
+  time: "08:30",
+  capacity: 10,
+  startDate: "",
+  endDate: "",
+};
 
-function prevYM(ym) {
-  const [y, m] = ym.split("-").map(Number);
-  return m === 1 ? `${y-1}-12` : `${y}-${String(m-1).padStart(2,"0")}`;
-}
+export default function ScheduleTemplateManager({ scheduleTemplate, setScheduleTemplate, onClose }) {
+  const slots = Array.isArray(scheduleTemplate) ? scheduleTemplate : [];
 
-export default function ScheduleTemplateManager({ onClose }) {
-  const today = new Date();
-  const initYM = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [toast, setToast] = useState(null);
 
-  const [yearMonth, setYearMonth] = useState(initYM);
-  const [template, setTemplate] = useState(makeEmpty);
-  const [loading, setLoading]   = useState(false);
-  const [saving, setSaving]     = useState(false);
-  const [toast, setToast]       = useState(null); // {msg, ok}
-
-  const showToast = (msg, ok=true) => {
-    setToast({msg, ok});
+  function showToast(msg, ok=true) {
+    setToast({ msg, ok });
     setTimeout(() => setToast(null), 2200);
-  };
-
-  const loadTemplate = useCallback(async (ym) => {
-    setLoading(true);
-    const { data } = await _supabase
-      .from("schedule_templates")
-      .select("template")
-      .eq("year_month", ym)
-      .maybeSingle();
-    setTemplate(data?.template ? { ...makeEmpty(), ...data.template } : makeEmpty());
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { loadTemplate(yearMonth); }, [yearMonth, loadTemplate]);
-
-  function cell(dow, key) {
-    return template[dow]?.[key] ?? { active:false, capacity:10 };
   }
 
-  function toggleActive(dow, key) {
-    setTemplate(t => ({
-      ...t,
-      [dow]: { ...t[dow], [key]: { ...cell(dow,key), active:!cell(dow,key).active } }
+  function openAdd() {
+    setEditId(null);
+    setForm(EMPTY_FORM);
+    setShowForm(true);
+  }
+
+  function openEdit(s) {
+    setEditId(s.id);
+    setForm({ slotKey:s.slotKey, days:[...s.days], time:s.time, capacity:s.capacity, startDate:s.startDate||"", endDate:s.endDate||"" });
+    setShowForm(true);
+  }
+
+  function saveForm() {
+    if (!form.days.length || !form.time) return;
+    const entry = {
+      id: editId || Date.now(),
+      slotKey: form.slotKey,
+      days: [...form.days].sort((a,b)=>a-b),
+      time: form.time,
+      capacity: form.capacity,
+      startDate: form.startDate || null,
+      endDate: form.endDate || null,
+    };
+    setScheduleTemplate(prev => {
+      const arr = Array.isArray(prev) ? prev : [];
+      return editId ? arr.map(s => s.id === editId ? entry : s) : [...arr, entry];
+    });
+    setShowForm(false);
+    showToast(editId ? "수정됐어요 ✓" : "추가됐어요 ✓");
+  }
+
+  function deleteSlot(id) {
+    setScheduleTemplate(prev => (Array.isArray(prev) ? prev : []).filter(s => s.id !== id));
+    showToast("삭제됐어요");
+  }
+
+  function toggleDay(dow) {
+    setForm(f => ({
+      ...f,
+      days: f.days.includes(dow) ? f.days.filter(d => d !== dow) : [...f.days, dow],
     }));
   }
 
-  function setCapacity(dow, key, val) {
-    const n = Math.max(0, Math.min(99, parseInt(val)||0));
-    setTemplate(t => ({
-      ...t,
-      [dow]: { ...t[dow], [key]: { ...cell(dow,key), capacity:n } }
-    }));
+  // 요일 표시 (월화수... 순서로 정렬해서)
+  function dayLabel(days) {
+    return DAYS.filter(d => days.includes(d.dow)).map(d => d.label).join(" ");
   }
 
-  async function handleSave() {
-    setSaving(true);
-    const { error } = await _supabase
-      .from("schedule_templates")
-      .upsert({ year_month: yearMonth, template }, { onConflict:"year_month" });
-    setSaving(false);
-    showToast(error ? "저장 실패" : "저장됐어요 ✓", !error);
-  }
-
-  async function handleCopyPrev() {
-    const prev = prevYM(yearMonth);
-    const { data } = await _supabase
-      .from("schedule_templates")
-      .select("template")
-      .eq("year_month", prev)
-      .maybeSingle();
-    if (data?.template) {
-      setTemplate({ ...makeEmpty(), ...data.template });
-      showToast(`${prev} 데이터를 불러왔어요`);
-    } else {
-      showToast(`${prev} 데이터가 없습니다`, false);
-    }
-  }
-
-  // 월 이동
-  function moveMonth(dir) {
-    const [y, m] = yearMonth.split("-").map(Number);
-    let ny = y, nm = m + dir;
-    if(nm > 12){ ny++; nm=1; }
-    if(nm < 1){ ny--; nm=12; }
-    setYearMonth(`${ny}-${String(nm).padStart(2,"0")}`);
-  }
-
-  const activeCount = DAYS.reduce((acc, d) =>
-    acc + SLOTS.filter(s => cell(d.dow, s.key).active).length, 0
-  );
+  const canSave = form.days.length > 0 && form.time;
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(40,35,25,.45)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,padding:0}} onClick={onClose}>
@@ -129,111 +100,145 @@ export default function ScheduleTemplateManager({ onClose }) {
         <div style={{background:"#fff",borderBottom:"1px solid #e8e4dc",padding:"14px 18px 10px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
           <span style={{fontSize:18}}>📅</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e"}}>수업 시간표 기본 설정</div>
-            <div style={{fontSize:11,color:"#9a8e80",marginTop:1}}>월별 요일·시간대별 운영 여부와 정원을 설정하세요</div>
+            <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e"}}>시간표 기본 설정</div>
+            <div style={{fontSize:11,color:"#9a8e80",marginTop:1}}>반복 요일·시간·정원을 설정하세요</div>
           </div>
           <button onClick={onClose} style={{background:"#f0ece4",border:"none",borderRadius:8,width:30,height:30,cursor:"pointer",fontSize:15,color:"#9a8e80",fontFamily:FONT}}>×</button>
         </div>
 
-        {/* 월 선택 */}
-        <div style={{background:"#fff",borderBottom:"1px solid #f0ece4",padding:"10px 18px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-          <button onClick={()=>moveMonth(-1)} style={{background:"none",border:"none",fontSize:20,color:"#555",cursor:"pointer",padding:"2px 8px",lineHeight:1,fontFamily:FONT}}>‹</button>
-          <div style={{flex:1,textAlign:"center"}}>
-            <span style={{fontSize:17,fontWeight:700,color:"#1e2e1e"}}>{yearMonth.replace("-","년 ")}월</span>
-            <span style={{fontSize:11,color:"#a09080",marginLeft:8}}>운영중 {activeCount}개 슬롯</span>
-          </div>
-          <button onClick={()=>moveMonth(1)} style={{background:"none",border:"none",fontSize:20,color:"#555",cursor:"pointer",padding:"2px 8px",lineHeight:1,fontFamily:FONT}}>›</button>
-        </div>
+        {/* 목록 + 폼 */}
+        <div style={{flex:1,overflowY:"auto",padding:"14px 16px 4px"}}>
 
-        {/* 그리드 */}
-        <div style={{flex:1,overflowY:"auto",padding:"14px 12px 4px"}}>
-          {loading ? (
-            <div style={{textAlign:"center",padding:"40px 0",color:"#9a8e80",fontSize:14}}>불러오는 중…</div>
-          ) : (
-            <div style={{overflowX:"auto"}}>
-              <table style={{borderCollapse:"collapse",width:"100%",minWidth:460}}>
-                <thead>
-                  <tr>
-                    <th style={{width:52,padding:"6px 4px",fontSize:11,color:"#9a8e80",fontWeight:600,textAlign:"center",borderBottom:"2px solid #e8e4dc"}}></th>
-                    {DAYS.map(d=>(
-                      <th key={d.dow} style={{padding:"6px 3px",fontSize:12,fontWeight:700,textAlign:"center",color:d.weekend?"#e05050":"#1e2e1e",borderBottom:"2px solid #e8e4dc",minWidth:60}}>
-                        {d.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {SLOTS.map((s,si)=>(
-                    <tr key={s.key} style={{background:si%2===0?"#fff":"#fafaf7"}}>
-                      <td style={{padding:"8px 6px",fontSize:12,fontWeight:700,color:"#7a6e60",textAlign:"center",borderRight:"1.5px solid #e8e4dc",whiteSpace:"nowrap"}}>{s.label}</td>
-                      {DAYS.map(d=>{
-                        const c = cell(d.dow, s.key);
-                        return (
-                          <td key={d.dow} style={{padding:"6px 4px",textAlign:"center",borderRight:"1px solid #f0ece4"}}>
-                            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                              {/* 운영 여부 토글 */}
-                              <div
-                                onClick={()=>toggleActive(d.dow, s.key)}
-                                style={{width:32,height:18,borderRadius:9,background:c.active?"#4a6a4a":"#d8d4cc",position:"relative",cursor:"pointer",transition:"background .15s",flexShrink:0}}
-                              >
-                                <div style={{position:"absolute",top:2,left:c.active?15:2,width:14,height:14,borderRadius:"50%",background:"#fff",transition:"left .15s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
-                              </div>
-                              {/* 정원 입력 */}
-                              <input
-                                type="number"
-                                min={0}
-                                max={99}
-                                value={c.capacity}
-                                disabled={!c.active}
-                                onChange={e=>setCapacity(d.dow, s.key, e.target.value)}
-                                style={{width:40,textAlign:"center",border:`1px solid ${c.active?"#c8d8c8":"#e8e4dc"}`,borderRadius:6,padding:"3px 2px",fontSize:12,fontWeight:600,color:c.active?"#2e5c3e":"#b0a090",background:c.active?"#f0f8f0":"#f5f3ef",fontFamily:FONT,outline:"none"}}
-                              />
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
+          {/* 기존 슬롯 목록 */}
+          {slots.length === 0 && !showForm && (
+            <div style={{textAlign:"center",padding:"48px 0 32px",color:"#9a8e80"}}>
+              <div style={{fontSize:38,marginBottom:10}}>📭</div>
+              <div style={{fontSize:14,fontWeight:700}}>등록된 수업이 없어요</div>
+              <div style={{fontSize:12,marginTop:4}}>아래 버튼으로 수업을 추가하세요</div>
+            </div>
+          )}
+
+          {slots.map(s => {
+            const def = SLOT_DEFS.find(t => t.key === s.slotKey);
+            return (
+              <div key={s.id} style={{background:"#fff",borderRadius:12,padding:"12px 14px",marginBottom:10,border:"1px solid #e8e4dc",display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:24,flexShrink:0}}>{def?.icon||"🧘"}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
+                    <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e"}}>{def?.label||s.slotKey}</span>
+                    <span style={{fontSize:14,fontWeight:700,color:"#4a6a4a"}}>{s.time}</span>
+                    <span style={{fontSize:12,background:"#eef5ee",color:"#2e6e44",borderRadius:5,padding:"1px 8px",fontWeight:600}}>{s.capacity}명</span>
+                  </div>
+                  <div style={{fontSize:12,color:"#7a6e60"}}>
+                    {dayLabel(s.days)}
+                    {(s.startDate||s.endDate)&&(
+                      <span style={{marginLeft:8,color:"#9a8e80",fontSize:11}}>
+                        {s.startDate||"∞"} ~ {s.endDate||"∞"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:6,flexShrink:0}}>
+                  <button onClick={()=>openEdit(s)} style={{background:"#f0ece4",border:"none",borderRadius:7,padding:"5px 11px",fontSize:12,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>수정</button>
+                  <button onClick={()=>deleteSlot(s.id)} style={{background:"#fff0f0",border:"none",borderRadius:7,padding:"5px 11px",fontSize:12,color:"#c97474",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>삭제</button>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* 추가/수정 폼 */}
+          {showForm && (
+            <div style={{background:"#fff",borderRadius:14,padding:"16px",marginBottom:12,border:"2px solid #4a6a4a"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#1e2e1e",marginBottom:14}}>{editId?"✏️ 수업 수정":"➕ 수업 추가"}</div>
+
+              {/* 수업 종류 */}
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11,color:"#9a8e80",marginBottom:7,fontWeight:600}}>수업 종류</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {SLOT_DEFS.map(t=>(
+                    <button key={t.key} onClick={()=>setForm(f=>({...f,slotKey:t.key,time:t.time}))}
+                      style={{border:`1.5px solid ${form.slotKey===t.key?"#4a6a4a":"#e0d8cc"}`,borderRadius:9,padding:"7px 13px",background:form.slotKey===t.key?"#eef5ee":"#faf8f5",color:form.slotKey===t.key?"#2e5c3e":"#7a6e60",cursor:"pointer",fontFamily:FONT,fontSize:12,fontWeight:form.slotKey===t.key?700:400,display:"flex",alignItems:"center",gap:5}}>
+                      <span>{t.icon}</span><span>{t.label}</span>
+                    </button>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
 
-              {/* 범례 */}
-              <div style={{display:"flex",gap:14,padding:"12px 4px 4px",flexWrap:"wrap"}}>
-                <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#9a8e80"}}>
-                  <div style={{width:24,height:14,borderRadius:7,background:"#4a6a4a"}}/>
-                  <span>운영</span>
+              {/* 반복 요일 */}
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11,color:"#9a8e80",marginBottom:7,fontWeight:600}}>반복 요일</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {DAYS.map(d=>{
+                    const on=form.days.includes(d.dow);
+                    return(
+                      <button key={d.dow} onClick={()=>toggleDay(d.dow)}
+                        style={{width:38,height:38,borderRadius:"50%",border:`1.5px solid ${on?"#4a6a4a":"#e0d8cc"}`,background:on?"#4a6a4a":"#faf8f5",color:on?"#fff":d.weekend?"#e05050":"#3a4a3a",cursor:"pointer",fontFamily:FONT,fontSize:13,fontWeight:700,flexShrink:0}}>
+                        {d.label}
+                      </button>
+                    );
+                  })}
                 </div>
-                <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#9a8e80"}}>
-                  <div style={{width:24,height:14,borderRadius:7,background:"#d8d4cc"}}/>
-                  <span>미운영</span>
+                {form.days.length===0&&<div style={{fontSize:11,color:"#c97474",marginTop:5}}>요일을 하나 이상 선택하세요</div>}
+              </div>
+
+              {/* 시간 + 정원 */}
+              <div style={{display:"flex",gap:12,marginBottom:14}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:11,color:"#9a8e80",marginBottom:5,fontWeight:600}}>시간</div>
+                  <input type="time" value={form.time} onChange={e=>setForm(f=>({...f,time:e.target.value}))}
+                    style={{width:"100%",padding:"10px 12px",border:"1.5px solid #ddd",borderRadius:9,fontSize:15,fontWeight:700,fontFamily:FONT,color:"#1e2e1e",background:"#fafaf8",outline:"none"}}/>
                 </div>
-                <div style={{fontSize:11,color:"#9a8e80"}}>숫자 = 정원 (명)</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:11,color:"#9a8e80",marginBottom:5,fontWeight:600}}>정원</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",border:"1.5px solid #ddd",borderRadius:9,background:"#fafaf8"}}>
+                    <button onClick={()=>setForm(f=>({...f,capacity:Math.max(1,f.capacity-1)}))} style={{background:"#f0ece4",border:"none",borderRadius:6,width:28,height:28,cursor:"pointer",fontSize:16,color:"#4a4a4a",fontFamily:FONT,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>−</button>
+                    <span style={{flex:1,textAlign:"center",fontSize:16,fontWeight:700,color:"#1e2e1e"}}>{form.capacity}</span>
+                    <button onClick={()=>setForm(f=>({...f,capacity:Math.min(99,f.capacity+1)}))} style={{background:"#f0ece4",border:"none",borderRadius:6,width:28,height:28,cursor:"pointer",fontSize:16,color:"#4a4a4a",fontFamily:FONT,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 적용 기간 */}
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:11,color:"#9a8e80",marginBottom:5,fontWeight:600}}>
+                  적용 기간 <span style={{fontWeight:400}}>(선택 — 비우면 무기한 적용)</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))}
+                    style={{flex:1,padding:"9px 10px",border:"1.5px solid #ddd",borderRadius:9,fontSize:13,fontFamily:FONT,outline:"none",color:"#1e2e1e"}}/>
+                  <span style={{fontSize:12,color:"#9a8e80",flexShrink:0}}>~</span>
+                  <input type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}
+                    style={{flex:1,padding:"9px 10px",border:"1.5px solid #ddd",borderRadius:9,fontSize:13,fontFamily:FONT,outline:"none",color:"#1e2e1e"}}/>
+                </div>
+              </div>
+
+              {/* 저장/취소 */}
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>setShowForm(false)}
+                  style={{flex:1,background:"#f0ece4",color:"#7a6e60",border:"none",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>
+                  취소
+                </button>
+                <button onClick={saveForm} disabled={!canSave}
+                  style={{flex:2,background:canSave?"#4a6a4a":"#c0bdb0",color:"#fff",border:"none",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:canSave?"pointer":"default",fontFamily:FONT}}>
+                  저장
+                </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* 하단 버튼 */}
+        {/* 하단 */}
         <div style={{background:"#fff",borderTop:"1px solid #e8e4dc",padding:"12px 18px",display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
-          <button
-            onClick={handleCopyPrev}
-            style={{background:"#f0ece4",color:"#7a6e60",border:"none",borderRadius:9,padding:"9px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}
-          >
-            ← 이전 달에서 가져오기
-          </button>
-          <div style={{flex:1}}/>
-          {toast&&(
-            <span style={{fontSize:12,color:toast.ok?"#2e6e44":"#c97474",fontWeight:600,transition:"opacity .3s"}}>
-              {toast.msg}
-            </span>
+          {toast
+            ? <span style={{flex:1,fontSize:12,fontWeight:600,color:toast.ok?"#2e6e44":"#c97474"}}>{toast.msg}</span>
+            : <div style={{flex:1}}/>
+          }
+          {!showForm&&(
+            <button onClick={openAdd}
+              style={{background:"#4a6a4a",color:"#fff",border:"none",borderRadius:9,padding:"10px 22px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
+              + 수업 추가
+            </button>
           )}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{background:saving?"#a0a090":"#4a6a4a",color:"#fff",border:"none",borderRadius:9,padding:"9px 22px",fontSize:13,fontWeight:700,cursor:saving?"default":"pointer",fontFamily:FONT,opacity:saving?0.8:1}}
-          >
-            {saving?"저장 중…":"저장"}
-          </button>
         </div>
       </div>
     </div>

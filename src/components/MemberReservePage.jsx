@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Agentation } from "agentation";
-import { FONT, TODAY_STR, TIME_SLOTS, DOW_KO, KR_HOLIDAYS } from "../constants.js";
+import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, DOW_KO, KR_HOLIDAYS } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays, toDateStr } from "../utils.js";
 import { calcDL, getClosureExtDays, usedAsOf, getSlotCapacity, holdingElapsed } from "../memberCalc.js";
 import { useClosures } from "../context.js";
@@ -123,7 +123,11 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const getSlots = () => {
     if(isSpecial) return TIME_SLOTS.filter(s=>special.activeSlots.includes(s.key)).map(s=>({...s, time:special.customTimes?.[s.key]||s.time}));
     if(isWeekend) return [];
-    return TIME_SLOTS.filter(s=>scheduleTemplate?.[dow]?.[s.key]?.active);
+    if(Array.isArray(scheduleTemplate)&&scheduleTemplate.length>0){
+      const active=scheduleTemplate.filter(e=>e.days.includes(dow)&&(!e.startDate||selDate>=e.startDate)&&(!e.endDate||selDate<=e.endDate));
+      if(active.length) return active.map(e=>{const base=TIME_SLOTS.find(t=>t.key===e.slotKey)||TIME_SLOTS[1];return{...base,time:e.time||base.time};});
+    }
+    return TIME_SLOTS.filter(s=>SCHEDULE[dow]?.includes(s.key));
   };
   const slots = getSlots();
   const dayActive = bookings.filter(b=>b.date===selDate&&b.status!=="cancelled");
