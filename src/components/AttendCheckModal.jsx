@@ -36,7 +36,7 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
   };
 
   function doAttend(){
-    setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:true}:b));
+    setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"attended",confirmedAttend:true}:b));
     onClose();
   }
 
@@ -69,7 +69,7 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
   function doDeleteSilent(){ _execDelete(false); }
 
   function doReset(){
-    setBookings(p=>p.map(b=>b.id===rec.id?{...b,confirmedAttend:null}:b));
+    setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"reserved",confirmedAttend:null}:b));
     onClose();
   }
 
