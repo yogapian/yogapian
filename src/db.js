@@ -152,22 +152,22 @@ export function fromSnakeClosure(r) {
 // ---------- DB 직접 조작 함수들 ----------
 
 export async function dbLoadAll() {
-  const [mRes, bRes, nRes, sRes, cRes, tmplRes] = await Promise.all([
+  const [mRes, bRes, nRes, sRes, cRes] = await Promise.all([
     _supabase.from("members").select("*").order("id"),
     _supabase.from("bookings").select("*").order("id"),
     _supabase.from("notices").select("*").order("id", { ascending: false }),
     _supabase.from("special_schedules").select("*").order("date"),
     _supabase.from("closures").select("*").order("date"),
-    _supabase.from("appdata").select("value").eq("key", "schedule_template").maybeSingle(),
   ]);
   let scheduleTemplate = {};
   try {
+    const tmplRes = await _supabase.from("appdata").select("value").eq("key", "schedule_template").maybeSingle();
     if (tmplRes.data?.value) {
       scheduleTemplate = typeof tmplRes.data.value === "string"
         ? JSON.parse(tmplRes.data.value)
         : tmplRes.data.value;
     }
-  } catch(e) { console.warn("schedule_template parse error:", e); }
+  } catch(e) { console.warn("schedule_template load error:", e); }
   return {
     members:          (mRes.data || []).map(fromSnakeMember),
     bookings:         (bRes.data || []).map(fromSnakeBooking),
