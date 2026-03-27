@@ -127,7 +127,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       const active=scheduleTemplate.filter(e=>e.days.includes(dow)&&(!e.startDate||selDate>=e.startDate)&&(!e.endDate||selDate<=e.endDate));
       if(active.length) return active.map(e=>{const base=TIME_SLOTS.find(t=>t.key===e.slotKey)||TIME_SLOTS[1];return{...base,time:e.time||base.time};});
     }
-    return TIME_SLOTS.filter(s=>SCHEDULE[dow]?.includes(s.key));
+    if(selDate<"2026-05-01") return TIME_SLOTS.filter(s=>SCHEDULE[dow]?.includes(s.key));
+    return [];
   };
   const slots = getSlots();
   const dayActive = bookings.filter(b=>b.date===selDate&&b.status!=="cancelled");

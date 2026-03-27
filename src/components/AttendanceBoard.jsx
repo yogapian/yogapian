@@ -41,11 +41,14 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   const defaultTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"14:00",evening:"19:30"};
   const hasTimeChange=isRegular&&special?.activeSlots?.some(k=>special.customTimes?.[k]&&special.customTimes[k]!==defaultTimes[k]);
 
+  const LEGACY_END="2026-05-01"; // 이 날짜부터는 SCHEDULE 하드코딩 fallback 미적용
   function getDowSlots(d,forDate){
     if(Array.isArray(scheduleTemplate)&&scheduleTemplate.length>0){
-      return scheduleTemplate.filter(e=>e.days.includes(d)&&(!e.startDate||forDate>=e.startDate)&&(!e.endDate||forDate<=e.endDate)).map(e=>e.slotKey);
+      const res=scheduleTemplate.filter(e=>e.days.includes(d)&&(!e.startDate||forDate>=e.startDate)&&(!e.endDate||forDate<=e.endDate)).map(e=>e.slotKey);
+      if(res.length) return res;
     }
-    return Object.entries(scheduleTemplate?.[d]||{}).filter(([,v])=>v?.active).map(([k])=>k);
+    if(forDate<LEGACY_END) return SCHEDULE[d]||[];
+    return [];
   }
   const getSlots=()=>{
     if(isSpecial)return TIME_SLOTS.filter(s=>special.activeSlots.includes(s.key)).map(s=>({...s,time:special.customTimes?.[s.key]||s.time}));
@@ -54,7 +57,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
       const active=scheduleTemplate.filter(e=>e.days.includes(dow)&&(!e.startDate||date>=e.startDate)&&(!e.endDate||date<=e.endDate));
       if(active.length) return active.map(e=>{const base=TIME_SLOTS.find(t=>t.key===e.slotKey)||TIME_SLOTS[1];return{...base,time:e.time||base.time};});
     }
-    return TIME_SLOTS.filter(s=>SCHEDULE[dow]?.includes(s.key));
+    if(date<LEGACY_END) return TIME_SLOTS.filter(s=>SCHEDULE[dow]?.includes(s.key));
+    return [];
   };
   const slots=getSlots();
   const dayActive=bookings.filter(b=>b.date===date&&b.status!=="cancelled");
