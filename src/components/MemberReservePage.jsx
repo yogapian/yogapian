@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Agentation } from "agentation";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
 import { calcDL, getClosureExtDays, usedAsOf, getSlotCapacity } from "../memberCalc.js";
@@ -266,6 +267,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
           </div>
         </div>
       )}
+      {process.env.NODE_ENV === "development" && <Agentation />}
     </div>
   );
 }
