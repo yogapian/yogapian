@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
-import { getStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, calc3MonthEnd, getSlotCapacity } from "../memberCalc.js";
+import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, calc3MonthEnd, getSlotCapacity } from "../memberCalc.js";
 import S from "../styles.js";
 import CalendarPicker from "./CalendarPicker.jsx";
 import AttendCheckModal from "./AttendCheckModal.jsx";
@@ -98,7 +98,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   }
 
   const slotMids=k=>dayActive.filter(b=>b.timeSlot===k&&b.memberId).map(b=>b.memberId);
-  const avail=k=>members.filter(m=>!slotMids(k).includes(m.id)&&getStatus(m,closures)!=="off").sort((a,b)=>a.name.localeCompare(b.name,"ko"));
+  const avail=k=>members.filter(m=>!slotMids(k).includes(m.id)&&getDisplayStatus(m,closures,bookings)!=="off").sort((a,b)=>a.name.localeCompare(b.name,"ko"));
 
   function addSpecial(){
     if(!newSp.date)return;
@@ -448,7 +448,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         const qexpired=qdl<0;
         const qusedCnt=usedAsOf(qm.id,TODAY_STR,bookings,[qm]);
         const qrem = qexpired ? 0 : Math.max(0, Number(qm.total) - qusedCnt);
-        const qstatus=getStatus(qm,closures);
+        const qstatus=getDisplayStatus(qm,closures,bookings);
         const qsc=SC[qstatus];
         const qtc=TYPE_CFG[qm.memberType]||TYPE_CFG["1month"];
         const qpct=Math.min(100,Math.round(qusedCnt/Math.max(qm.total,1)*100));

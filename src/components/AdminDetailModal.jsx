@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, fmtWithDow } from "../utils.js";
-import { getStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, holdingElapsed, periodRecs, currentRecs } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, holdingElapsed, periodRecs, currentRecs } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import { addDays } from "../utils.js";
 import S from "../styles.js";
@@ -13,7 +13,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
   const [adjTotal,setAdjTotal]=useState(member.total);
   const [adjStart,setAdjStart]=useState(member.startDate||"");
   const [adjEnd,setAdjEnd]=useState(member.endDate||"");
-  const status=getStatus(member,closures),sc=SC[status];
+  const status=getDisplayStatus(member,closures,bookings),sc=SC[status]||SC["on"];
   const end=effEnd(member,closures),dl=calcDL(member,closures);
   const expired=dl<0;
   const dispUsed=usedAsOf(member.id,TODAY_STR,bookings,[member]);

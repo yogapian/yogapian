@@ -78,6 +78,19 @@ export const getStatus=(m, closures=[])=>{
   return"on";
 };
 
+// 관리자 UI용 표시 상태 (RENEW 포함, manualStatus 우선)
+export function getDisplayStatus(m, closures=[], bookings=[]) {
+  if(m.manualStatus) return m.manualStatus;
+  if(m.holding) return "hold";
+  const dl = calcDL(m, closures);
+  if(dl >= 0) {
+    if(bookings.some(b=>b.memberId===m.id&&b.renewalPending)) return "renew";
+    return "on";
+  }
+  if(dl >= -30) return "renew"; // 만료 후 30일 이내
+  return "off";
+}
+
 export function getSlotCapacity(date, slotKey, specialSchedules, scheduleTemplate) {
   const special = specialSchedules.find(s => s.date === date);
   if (special?.slotCapacity?.[slotKey] != null) {

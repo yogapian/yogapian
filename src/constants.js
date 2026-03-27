@@ -33,7 +33,7 @@ export const TODAY_STR=`${_now.getFullYear()}-${String(_now.getMonth()+1).padSta
 export const TODAY=new Date(_now.getFullYear(),_now.getMonth(),_now.getDate());
 export const ADMIN_PIN="0066";
 
-export const SC={on:{label:"ON",bg:"#e8f0e8",color:"#2e6e44",dot:"#3d8a55"},off:{label:"OFF",bg:"#f5eeee",color:"#8e3030",dot:"#c97474"},hold:{label:"HOLD",bg:"#edf0f8",color:"#3d5494",dot:"#6a7fc8"}};
+export const SC={on:{label:"ON",bg:"#e8f0e8",color:"#2e6e44",dot:"#3d8a55"},off:{label:"OFF",bg:"#f5eeee",color:"#8e3030",dot:"#c97474"},hold:{label:"HOLD",bg:"#edf0f8",color:"#3d5494",dot:"#6a7fc8"},renew:{label:"RENEW",bg:"#fdf3e3",color:"#9a5a10",dot:"#e8a44a"}};
 export const GE={F:"🧘🏻‍♀️",M:"🧘🏻‍♂️"};
 export const TYPE_CFG={"1month":{label:"1개월",bg:"#e0f2e9",color:"#1e6040"},"3month":{label:"3개월",bg:"#ede9fe",color:"#5b30b8"}};
 

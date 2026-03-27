@@ -1,6 +1,6 @@
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt } from "../utils.js";
-import { getStatus, calcDL, effEnd, getClosureExtDays, usedAsOf } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 
@@ -11,7 +11,7 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const usedCnt=usedAsOf(m.id,TODAY_STR,bookings,[m]);
   const rem=expired?0:Math.max(0,m.total-usedCnt);
   const pct=expired?100:Math.round(usedCnt/m.total*100);
-  const status=getStatus(m,closures),sc=SC[status];
+  const status=getDisplayStatus(m,closures,bookings),sc=SC[status]||SC["on"];
   const end=effEnd(m,closures);
   const closureExt=getClosureExtDays(m,closures);
   const tc=TYPE_CFG[m.memberType]||TYPE_CFG["1month"];

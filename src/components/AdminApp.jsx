@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { FONT, TODAY_STR, SC, GE, TYPE_CFG } from "../constants.js";
 import { fmt } from "../utils.js";
 import { endOfNextMonth, endOfMonth } from "../utils.js";
-import { getStatus, calc3MonthEnd, calcDL, usedAsOf } from "../memberCalc.js";
+import { getDisplayStatus, calc3MonthEnd } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import { useClock } from "../utils.js";
 import S from "../styles.js";
@@ -28,22 +28,30 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   const [showPendingPopup,setShowPendingPopup]=useState(true);
 
   const renewPendingMembers=useMemo(()=>members.filter(m=>bookings.some(b=>b.memberId===m.id&&b.renewalPending)),[members,bookings]);
-  const checkRenew=(m)=>{const dl=calcDL(m,closures);const used=usedAsOf(m.id,TODAY_STR,bookings,[m]);const rem=Math.max(0,m.total-used);return dl<0||rem===0||bookings.some(b=>b.memberId===m.id&&b.renewalPending);};
-  const counts={on:members.filter(m=>getStatus(m,closures)==="on").length,hold:members.filter(m=>getStatus(m,closures)==="hold").length,off:members.filter(m=>getStatus(m,closures)==="off").length,renew:members.filter(m=>checkRenew(m)).length};
-  const filtered=useMemo(()=>{const cr=(m)=>{const dl=calcDL(m,closures);const used=usedAsOf(m.id,TODAY_STR,bookings,[m]);const rem=Math.max(0,m.total-used);return dl<0||rem===0||bookings.some(b=>b.memberId===m.id&&b.renewalPending);};return members.filter(m=>{if(filter==="renew")return cr(m);if(filter!=="all"&&getStatus(m,closures)!==filter)return false;if(search&&!m.name.includes(search))return false;return true;}).sort((a,b)=>a.name.localeCompare(b.name,"ko"));},[members,filter,search,closures,bookings]);
+  const gds=(m)=>getDisplayStatus(m,closures,bookings);
+  const counts={total:members.length,on:members.filter(m=>gds(m)==="on").length,renew:members.filter(m=>gds(m)==="renew").length,hold:members.filter(m=>gds(m)==="hold").length,off:members.filter(m=>gds(m)==="off").length};
+  const filtered=useMemo(()=>{const gd=(m)=>getDisplayStatus(m,closures,bookings);return members.filter(m=>{if(filter!=="total"&&gd(m)!==filter)return false;if(search&&!m.name.includes(search))return false;return true;}).sort((a,b)=>a.name.localeCompare(b.name,"ko"));},[members,filter,search,closures,bookings]);
 
   function openAdd(){
     const autoEnd=endOfNextMonth(TODAY_STR);
     setEditId(null);
-    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[]});
+    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone1:"010",phone2:"",phone3:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[],manualStatus:null});
     setShowForm(true);
   }
-  function openEdit(m){setEditId(m.id);setForm({...m});setShowForm(true);}
+  function openEdit(m){
+    const parts=(m.phone||"").split("-");
+    setEditId(m.id);
+    setForm({...m,phone1:parts[0]||"010",phone2:parts[1]||"",phone3:parts[2]||m.phone4||"",manualStatus:m.manualStatus||null});
+    setShowForm(true);
+  }
   function saveForm(){
-    if(!form.name||!form.startDate)return;
+    if(!form.name)return;
+    if(!editId&&!form.startDate)return;
     let autoEnd = form.endDate;
-    if(!autoEnd){autoEnd = form.memberType==="3month"?calc3MonthEnd(form.startDate, closures):endOfNextMonth(form.startDate);}
-    const e={...form,endDate:autoEnd,total:+form.total,extensionDays:+(form.extensionDays||0),holdingDays:+(form.holdingDays||0),isNew:!!form.isNew};
+    if(!editId&&!autoEnd){autoEnd=form.memberType==="3month"?calc3MonthEnd(form.startDate,closures):endOfNextMonth(form.startDate);}
+    const phone=`${form.phone1||"010"}-${form.phone2||""}-${form.phone3||""}`;
+    const phone4=form.phone3||form.phone4||"";
+    const e={...form,phone,phone4,endDate:autoEnd||form.endDate,total:+form.total,extensionDays:+(form.extensionDays||0),holdingDays:+(form.holdingDays||0),isNew:!!form.isNew,manualStatus:form.manualStatus||null};
     if(editId)setMembers(p=>p.map(m=>m.id===editId?{...m,...e}:m));
     else{const id=Math.max(...members.map(m=>m.id),0)+1;setMembers(p=>[...p,{id,...e,renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]}]);}
     setShowForm(false);
@@ -112,8 +120,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
 
       {tab==="members"&&(<>
         <div style={S.pillRow}>
-          {[["on","ON"],["hold","HOLD"],["off","OFF"],["renew","RENEW"]].map(([k,l])=>(
-            <button key={k} onClick={()=>setFilter(k)} style={{...S.pill,background:filter===k?k==="renew"?"#9a5a10":"#4a6a4a":"#e8e4dc",color:filter===k?"#fff":"#7a6e60",fontWeight:filter===k?700:400}}>{l} <span style={{opacity:.75,fontSize:11}}>{counts[k]??0}</span></button>
+          {[["total","Total","#4a4a4a"],["on","ON","#4a6a4a"],["renew","RENEW","#9a5a10"],["hold","HOLD","#3d5494"],["off","OFF","#8e3030"]].map(([k,l,ac])=>(
+            <button key={k} onClick={()=>setFilter(k)} style={{...S.pill,background:filter===k?ac:"#e8e4dc",color:filter===k?"#fff":"#7a6e60",fontWeight:filter===k?700:400}}>{l} <span style={{opacity:.75,fontSize:11}}>{counts[k]??0}</span></button>
           ))}
         </div>
         <div style={S.toolbar}>
@@ -132,45 +140,95 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
 
       {showForm&&(
         <div style={S.overlay} onClick={()=>setShowForm(false)}>
-          <div style={{...S.modal,maxWidth:460,maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
-            <div style={S.modalHead}><span>{editId?"✏️":"🌱"}</span><span style={S.modalTitle}>{editId?"회원 수정":"신규 회원 추가"}</span></div>
-            <div style={S.fg}><label style={S.lbl}>성별</label><div style={{display:"flex",gap:10}}>{[["F","🧘🏻‍♀️","여성"],["M","🧘🏻‍♂️","남성"]].map(([v,emoji,label])=>(<button key={v} onClick={()=>setForm(f=>({...f,gender:v}))} style={{flex:1,padding:"11px 0",borderRadius:10,border:"1.5px solid",cursor:"pointer",borderColor:form.gender===v?"#4a7a5a":"#e0d8cc",background:form.gender===v?"#eef5ee":"#faf8f5",color:form.gender===v?"#2e5c3e":"#9a8e80",fontSize:22,display:"flex",flexDirection:"column",alignItems:"center",gap:3,fontFamily:FONT}}><span>{emoji}</span><span style={{fontSize:11,fontWeight:600}}>{label}</span></button>))}</div></div>
-            <div style={S.fg}><label style={S.lbl}>이름</label><input style={S.inp} value={form.name||""} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="회원 이름"/></div>
-            <div style={S.fg}><label style={S.lbl}>전화번호 뒷 4자리</label><input style={S.inp} value={form.phone4||""} onChange={e=>setForm(f=>({...f,phone4:e.target.value.replace(/\D/g,"").slice(0,4)}))} placeholder="0000" maxLength={4} type="tel"/></div>
-            <div style={{background:"#f5f9f5",borderRadius:10,padding:"12px 14px",marginBottom:12,border:"1px dashed #b8d8b8"}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#3d6e45",marginBottom:7}}>👀 어드민 전용</div>
-              <div style={S.fg}><label style={S.lbl}>별명 (구별용)</label><input style={S.inp} value={form.adminNickname||""} onChange={e=>setForm(f=>({...f,adminNickname:e.target.value}))} placeholder="예: 1호/저녁반"/></div>
-              <div style={S.fg}>
-                <label style={S.lbl}>카드 색상 <span style={{fontWeight:400,color:"#9a8e80"}}>(동명이인 구별용)</span></label>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <input type="color" value={form.cardColor||"#cccccc"} onChange={e=>setForm(f=>({...f,cardColor:e.target.value}))} style={{width:44,height:36,border:"1.5px solid #e0d8cc",borderRadius:8,cursor:"pointer",padding:2,background:"none"}}/>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          <div style={{...S.modal,maxWidth:460,maxHeight:"92vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={{...S.modalHead,marginBottom:10}}><span>{editId?"✏️":"🌱"}</span><span style={S.modalTitle}>{editId?"회원 수정":"신규 회원 추가"}</span></div>
+
+            {/* 성별 + 이름 한 줄 */}
+            <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:10}}>
+              <div style={{display:"flex",gap:4,flexShrink:0}}>
+                {[["F","♀"],["M","♂"]].map(([v,icon])=>(
+                  <button key={v} onClick={()=>setForm(f=>({...f,gender:v}))} style={{width:36,height:36,borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:15,fontFamily:FONT,lineHeight:1,borderColor:form.gender===v?"#4a7a5a":"#e0d8cc",background:form.gender===v?"#eef5ee":"#faf8f5",color:form.gender===v?"#2e5c3e":"#9a8e80",fontWeight:form.gender===v?700:400}}>{icon}</button>
+                ))}
+              </div>
+              <input style={{...S.inp,marginBottom:0,flex:1}} value={form.name||""} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="회원 이름"/>
+            </div>
+
+            {/* 전화번호 3칸 */}
+            <div style={{...S.fg}}>
+              <label style={S.lbl}>전화번호</label>
+              <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                <input style={{...S.inp,width:52,textAlign:"center",padding:"8px 4px"}} value={form.phone1||"010"} onChange={e=>setForm(f=>({...f,phone1:e.target.value.slice(0,3)}))} maxLength={3}/>
+                <span style={{color:"#c0b0b0",flexShrink:0}}>-</span>
+                <input style={{...S.inp,flex:1,textAlign:"center",padding:"8px 4px"}} value={form.phone2||""} onChange={e=>setForm(f=>({...f,phone2:e.target.value.replace(/\D/g,"").slice(0,4)}))} maxLength={4} placeholder="0000" type="tel"/>
+                <span style={{color:"#c0b0b0",flexShrink:0}}>-</span>
+                <input style={{...S.inp,flex:1,textAlign:"center",padding:"8px 4px"}} value={form.phone3||""} onChange={e=>{const v=e.target.value.replace(/\D/g,"").slice(0,4);setForm(f=>({...f,phone3:v,phone4:v}));}} maxLength={4} placeholder="0000" type="tel"/>
+              </div>
+              <div style={{fontSize:10,color:"#9a8e80",marginTop:3}}>마지막 4자리가 로그인 비밀번호로 설정됩니다</div>
+            </div>
+
+            {/* 어드민 전용 */}
+            <div style={{background:"#f5f9f5",borderRadius:9,padding:"10px 12px",marginBottom:10,border:"1px dashed #b8d8b8"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#3d6e45",marginBottom:6}}>👀 어드민 전용</div>
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                <div style={{flex:1}}><label style={S.lbl}>별명</label><input style={S.inp} value={form.adminNickname||""} onChange={e=>setForm(f=>({...f,adminNickname:e.target.value}))} placeholder="1호/저녁반"/></div>
+                <div style={{flex:1}}><label style={S.lbl}>메모</label><input style={S.inp} value={form.adminNote||""} onChange={e=>setForm(f=>({...f,adminNote:e.target.value}))} placeholder="특이사항"/></div>
+              </div>
+              <div style={{marginBottom:8}}>
+                <label style={S.lbl}>카드 색상</label>
+                <div style={{display:"flex",alignItems:"center",gap:7}}>
+                  <input type="color" value={form.cardColor||"#cccccc"} onChange={e=>setForm(f=>({...f,cardColor:e.target.value}))} style={{width:36,height:30,border:"1.5px solid #e0d8cc",borderRadius:6,cursor:"pointer",padding:2,background:"none"}}/>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                     {["#e05050","#2255cc","#e8820a","#9b30d0","#1a8a5a","#d4387a","#3d7ab5","#c0922a"].map(c=>(
-                      <div key={c} onClick={()=>setForm(f=>({...f,cardColor:c}))} style={{width:22,height:22,borderRadius:"50%",background:c,cursor:"pointer",border:form.cardColor===c?"3px solid #333":"2px solid transparent"}}/>
+                      <div key={c} onClick={()=>setForm(f=>({...f,cardColor:c}))} style={{width:20,height:20,borderRadius:"50%",background:c,cursor:"pointer",border:form.cardColor===c?"3px solid #333":"2px solid transparent"}}/>
                     ))}
                   </div>
-                  {form.cardColor&&<button onClick={()=>setForm(f=>({...f,cardColor:""}))} style={{background:"none",border:"none",fontSize:11,color:"#9a8e80",cursor:"pointer",fontFamily:FONT}}>초기화</button>}
+                  {form.cardColor&&<button onClick={()=>setForm(f=>({...f,cardColor:""}))} style={{background:"none",border:"none",fontSize:10,color:"#9a8e80",cursor:"pointer",fontFamily:FONT}}>초기화</button>}
                 </div>
               </div>
-              <div style={{marginBottom:0}}><label style={S.lbl}>메모</label><input style={S.inp} value={form.adminNote||""} onChange={e=>setForm(f=>({...f,adminNote:e.target.value}))} placeholder="특이사항"/></div>
-            </div>
-            <div style={S.fg}><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}><div onClick={()=>setForm(f=>({...f,isNew:!f.isNew}))} style={{width:36,height:20,borderRadius:10,background:form.isNew?"#4a6a4a":"#ddd",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}><div style={{position:"absolute",top:2,left:form.isNew?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/></div><span style={{color:"#4a4a4a"}}>신규 회원 (N 표시)</span></label></div>
-            <div style={S.fg}><label style={S.lbl}>회원권</label><div style={{display:"flex",gap:10}}>{[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>setForm(f=>{const newEnd=v==="1month"?endOfNextMonth(f.startDate||TODAY_STR):calc3MonthEnd(f.startDate||TODAY_STR,closures);return{...f,memberType:v,total:v==="3month"?24:f.total,endDate:newEnd};})} style={{flex:1,padding:"9px 0",borderRadius:10,border:"1.5px solid",cursor:"pointer",fontSize:14,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}</div></div>
-            <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>총 회차</label><input style={S.inp} type="number" min="1" value={form.total||""} onChange={e=>setForm(f=>({...f,total:e.target.value}))}/></div></div>
-            <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>최초 등록일</label><input style={S.inp} type="date" value={form.firstDate||""} onChange={e=>setForm(f=>({...f,firstDate:e.target.value}))}/></div></div>
-            <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>현재 시작일</label><input style={S.inp} type="date" value={form.startDate||""} onChange={e=>{const sd=e.target.value;setForm(f=>({...f,startDate:sd,endDate:f.memberType==="1month"?endOfNextMonth(sd):calc3MonthEnd(sd,closures)}));}}/></div>
-              <div style={{...S.fg,flex:1}}>
-                <label style={S.lbl}>종료일{form.memberType==="3month"&&<span style={{fontSize:10,color:"#7a9a7a",marginLeft:4}}>자동계산</span>}</label>
-                {form.memberType==="3month"?(
-                  <div style={{...S.inp,background:"#f0f8f0",color:"#3a4a3a",cursor:"default",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                    <span>{form.endDate?fmt(form.endDate):"-"}</span>
-                    <span style={{fontSize:10,color:"#7a9a7a"}}>60평일 기준</span>
-                  </div>
-                ):(
-                  <input style={S.inp} type="date" value={form.endDate||""} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/>
-                )}
+              <div>
+                <label style={S.lbl}>상태 수동 설정</label>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                  {[["","자동","#888"],["on","ON","#4a7a5a"],["renew","RENEW","#9a5a10"],["hold","HOLD","#3d5494"],["off","OFF","#a83030"]].map(([v,l,ac])=>{
+                    const active=(form.manualStatus||"")===v;
+                    return(<button key={v} onClick={()=>setForm(f=>({...f,manualStatus:v||null}))} style={{padding:"4px 10px",borderRadius:7,border:`1.5px solid ${active?ac:"#e0d8cc"}`,cursor:"pointer",fontSize:11,fontFamily:FONT,background:active?ac:"#faf8f5",color:active?"#fff":"#9a8e80",fontWeight:active?700:400}}>{l}</button>);
+                  })}
+                </div>
               </div>
             </div>
+
+            {/* 신규 회원 토글 */}
+            <div style={{...S.fg,marginBottom:10}}>
+              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
+                <div onClick={()=>setForm(f=>({...f,isNew:!f.isNew}))} style={{width:36,height:20,borderRadius:10,background:form.isNew?"#4a6a4a":"#ddd",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
+                  <div style={{position:"absolute",top:2,left:form.isNew?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+                </div>
+                <span style={{color:"#4a4a4a"}}>신규 회원 (N 표시)</span>
+              </label>
+            </div>
+
+            {/* 회원권 섹션 — 신규 추가 시에만 표시 */}
+            {!editId&&(<>
+              <div style={S.fg}><label style={S.lbl}>회원권</label><div style={{display:"flex",gap:8}}>{[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>setForm(f=>{const newEnd=v==="1month"?endOfNextMonth(f.startDate||TODAY_STR):calc3MonthEnd(f.startDate||TODAY_STR,closures);return{...f,memberType:v,total:v==="3month"?24:f.total,endDate:newEnd};})} style={{flex:1,padding:"8px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}</div></div>
+              <div style={{display:"flex",gap:10}}>
+                <div style={{...S.fg,flex:1}}><label style={S.lbl}>총 회차</label><input style={S.inp} type="number" min="1" value={form.total||""} onChange={e=>setForm(f=>({...f,total:e.target.value}))}/></div>
+                <div style={{...S.fg,flex:1}}><label style={S.lbl}>최초 등록일</label><input style={S.inp} type="date" value={form.firstDate||""} onChange={e=>setForm(f=>({...f,firstDate:e.target.value}))}/></div>
+              </div>
+              <div style={{display:"flex",gap:10}}>
+                <div style={{...S.fg,flex:1}}><label style={S.lbl}>시작일</label><input style={S.inp} type="date" value={form.startDate||""} onChange={e=>{const sd=e.target.value;setForm(f=>({...f,startDate:sd,endDate:f.memberType==="1month"?endOfNextMonth(sd):calc3MonthEnd(sd,closures)}));}}/></div>
+                <div style={{...S.fg,flex:1}}>
+                  <label style={S.lbl}>종료일{form.memberType==="3month"&&<span style={{fontSize:10,color:"#7a9a7a",marginLeft:3}}>자동</span>}</label>
+                  {form.memberType==="3month"?(
+                    <div style={{...S.inp,background:"#f0f8f0",color:"#3a4a3a",cursor:"default",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <span>{form.endDate?fmt(form.endDate):"-"}</span>
+                      <span style={{fontSize:10,color:"#7a9a7a"}}>60평일</span>
+                    </div>
+                  ):(
+                    <input style={S.inp} type="date" value={form.endDate||""} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/>
+                  )}
+                </div>
+              </div>
+            </>)}
+
             <div style={S.modalBtns}><button style={S.cancelBtn} onClick={()=>setShowForm(false)}>취소</button><button style={S.saveBtn} onClick={saveForm}>저장</button></div>
           </div>
         </div>
