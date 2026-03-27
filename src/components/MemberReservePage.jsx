@@ -183,7 +183,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
   function doReserve(slotKey, isWaiting, renewalPending){
     const nid = Math.max(...bookings.map(b=>b.id),0)+1;
-    setBookings(p=>[...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"attended",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}]);
+    setBookings(p=>[...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}]);
     setPendingSlot(null); setRenewPopup(null);
   }
 
@@ -245,8 +245,17 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       {/* ─── 다가오는 예약 카드 ─────────────────────────────── */}
       {upcomingBooking&&(
         <div style={{margin:"0 14px 10px",borderRadius:12,background:"#fff8ee",border:"1.5px solid #f0c888",padding:"11px 14px"}}>{/* ← 카드 배경(연한주황)/테두리색 */}
-          <div style={{fontSize:13,fontWeight:700,color:"#a06010",marginBottom:4}}>❗️다가오는 예약</div>{/* ← 타이틀 크기/색상 */}
-          <div style={{fontSize:11,fontStyle:"italic",color:"#7a5010"}}>{upcomingText}</div>{/* ← 예약정보 크기/이탤릭/색상 */}
+          <div style={{fontSize:13,fontWeight:700,color:"#a06010",marginBottom:6}}>❗️다가오는 예약</div>{/* ← 타이틀 크기/색상 */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+            <div style={{fontSize:11,color:"#7a5010",lineHeight:1.5,flex:1,minWidth:0}}>
+              {upcomingText}{/* ← 예약정보 텍스트 색상/크기 */}
+              {upcomingBooking.status==="waiting"&&(
+                <span style={{marginLeft:5,fontSize:10,color:"#9a5a10",background:"#fffaeb",borderRadius:6,padding:"1px 5px",fontWeight:700}}>대기</span>
+              )}
+            </div>
+            {/* ← 예약취소 버튼 색상/크기 */}
+            <button onClick={()=>setConfirmCancel(upcomingBooking.id)} style={{flexShrink:0,background:"none",border:"1px solid #e8a0a0",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,color:"#c97474",cursor:"pointer",fontFamily:FONT}}>예약취소</button>
+          </div>
         </div>
       )}
 
@@ -339,57 +348,43 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                   overflow: "hidden",
                   boxShadow: isMyRes?"0 0 0 2px rgba(46,110,68,.1)":isMyWait?"0 0 0 2px rgba(232,196,74,.15)":"none" /* ← 예약됨·대기 강조 그림자 */
                 }}>
-                  <div style={{padding:"10px 8px 8px",textAlign:"center"}}>{/* ← 카드 내부 패딩 / 중앙정렬 */}
+                  <div style={{padding:"8px 7px 7px"}}>{/* ← 카드 내부 패딩 */}
 
-                    {/* 슬롯 이모지 아이콘 */}
-                    <div style={{fontSize:20,marginBottom:5}}>{slot.icon}</div>{/* ← 이모지 크기 */}
-
-                    {/* 라벨 + 시간 (한 줄, 동일 컬러) */}
-                    <div style={{
-                      fontSize:  13,                                  /* ← 라벨+시간 폰트 크기 */
-                      fontWeight: 700,
-                      color: slCl?"#9a8e80":slot.color,               /* ← 라벨·시간 컬러 = slot.color로 통일 */
-                      marginBottom: 4,
-                      whiteSpace: "nowrap"
-                    }}>
-                      {slot.label}{" "}
-                      {isChg
-                        ? <><s style={{color:"#c0b0b0",fontWeight:400}}>{DEFAULT_TIMES[slot.key]}</s><span style={{color:"#c97474"}}> {slot.time}</span></>
-                        : slot.time
-                      }
+                    {/* 줄 1: 뱃지 + 이모지 + 라벨·시간 한 줄 */}
+                    <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:4,minWidth:0}}>
+                      {/* ← 내 예약/대기 뱃지: 이모지 앞에 표시 */}
+                      {isMyRes&&<span style={{fontSize:8,background:"#e8f5ee",color:"#2e6e44",borderRadius:6,padding:"1px 5px",fontWeight:700,flexShrink:0}}>내 예약</span>}
+                      {isMyWait&&<span style={{fontSize:8,background:"#fffaeb",color:"#9a5a10",borderRadius:6,padding:"1px 5px",fontWeight:700,flexShrink:0}}>대기 {myRank}번</span>}
+                      <span style={{fontSize:17,lineHeight:1,flexShrink:0}}>{/* ← 이모지 크기 */}{slot.icon}</span>
+                      <span style={{fontSize:11,fontWeight:700,color:slCl?"#9a8e80":slot.color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{/* ← 라벨+시간 크기·색상 */}
+                        {slot.label}{" "}
+                        {isChg
+                          ? <><s style={{color:"#c0b0b0",fontWeight:400}}>{DEFAULT_TIMES[slot.key]}</s><span style={{color:"#c97474"}}> {slot.time}</span></>
+                          : slot.time
+                        }
+                      </span>
                     </div>
 
-                    {/* 잔여석 / 마감 정보 */}
+                    {/* 줄 2: 잔여석 / 마감 정보 */}
                     <div style={{
-                      fontSize: 10,                                   /* ← 잔여석 폰트 크기 */
-                      color: slCl?"#b0a090":isFull&&!myB?"#c97474":remaining<=2&&!myB?"#9a5a10":"#a0988e", /* ← 마감=빨강 / 촉박=주황 / 여유=회색 */
-                      marginBottom: 6
+                      fontSize:10,                                    /* ← 잔여석 폰트 크기 */
+                      color:slCl?"#b0a090":isFull&&!myB?"#c97474":remaining<=2&&!myB?"#9a5a10":"#a0988e", /* ← 마감=빨강/촉박=주황/여유=회색 */
+                      marginBottom:5
                     }}>
                       {slCl?`🔕 휴강`:isFull&&!myB?`마감·대기 ${waitCnt}명`:`잔여 ${remaining}/${cap}석`}
                     </div>
 
-                    {/* 내 예약 / 대기 뱃지 */}
-                    {(isMyRes||isMyWait)&&(
-                      <div style={{marginBottom:5}}>
-                        {isMyRes&&<span style={{fontSize:9,background:"#e8f5ee",color:"#2e6e44",borderRadius:8,padding:"1px 6px",fontWeight:700}}>내 예약</span>}{/* ← 내예약 뱃지 색상 */}
-                        {isMyWait&&<span style={{fontSize:9,background:"#fffaeb",color:"#9a5a10",borderRadius:8,padding:"1px 6px",fontWeight:700}}>대기 {myRank}번째</span>}
-                      </div>
-                    )}
-
-                    {/* 액션 버튼 */}
+                    {/* 줄 3: 액션 버튼 */}
                     {slCl?(
-                      <span style={{fontSize:10,color:"#9a8e80",fontWeight:700}}>휴강</span>
+                      <span style={{fontSize:10,color:"#9a8e80",fontWeight:700,display:"block",textAlign:"center"}}>휴강</span>
                     ):isMyRes?(
-                      /* ← 취소버튼 스타일 */
-                      <button onClick={()=>setConfirmCancel(myB.id)} style={{width:"100%",background:"none",border:"1px solid #e8a0a0",borderRadius:7,padding:"5px 0",fontSize:11,fontWeight:700,color:"#c97474",cursor:"pointer",fontFamily:FONT}}>취소</button>
+                      <button onClick={()=>setConfirmCancel(myB.id)} style={{width:"100%",background:"none",border:"1px solid #e8a0a0",borderRadius:7,padding:"5px 0",fontSize:11,fontWeight:700,color:"#c97474",cursor:"pointer",fontFamily:FONT}}>취소</button>/* ← 취소버튼 스타일 */
                     ):isMyWait?(
                       <button onClick={()=>setConfirmCancel(myB.id)} style={{width:"100%",background:"none",border:"1px solid #e8c44a",borderRadius:7,padding:"5px 0",fontSize:11,fontWeight:700,color:"#9a5a10",cursor:"pointer",fontFamily:FONT}}>대기취소</button>
                     ):isFull?(
-                      /* ← 대기버튼 배경색 */
-                      <button onClick={()=>tryReserve(slot.key,true)} style={{width:"100%",background:"#fdf3e3",border:"1px solid #e8c44a",borderRadius:7,padding:"5px 0",fontSize:11,fontWeight:700,color:"#9a5a10",cursor:"pointer",fontFamily:FONT}}>대기</button>
+                      <button onClick={()=>tryReserve(slot.key,true)} style={{width:"100%",background:"#fdf3e3",border:"1px solid #e8c44a",borderRadius:7,padding:"5px 0",fontSize:11,fontWeight:700,color:"#9a5a10",cursor:"pointer",fontFamily:FONT}}>대기</button>/* ← 대기버튼 배경색 */
                     ):(
-                      /* ← 예약버튼 배경색 */
-                      <button onClick={()=>tryReserve(slot.key)} style={{width:"100%",background:"#2e6e44",border:"none",borderRadius:7,padding:"5px 0",fontSize:11,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:FONT}}>예약</button>
+                      <button onClick={()=>tryReserve(slot.key)} style={{width:"100%",background:"#2e6e44",border:"none",borderRadius:7,padding:"5px 0",fontSize:11,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:FONT}}>예약</button>/* ← 예약버튼 배경색 */
                     )}
                   </div>
 
