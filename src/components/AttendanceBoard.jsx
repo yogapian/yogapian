@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { FONT, TODAY_STR, TIME_SLOTS, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
+import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
 import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, calc3MonthEnd, getSlotCapacity } from "../memberCalc.js";
 import S from "../styles.js";
 import CalendarPicker from "./CalendarPicker.jsx";
 import AttendCheckModal from "./AttendCheckModal.jsx";
 import AdminCancelModal from "./AdminCancelModal.jsx";
+import ScheduleTemplateManager from "./ScheduleTemplateManager.jsx";
 
 export default function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedules,setSpecialSchedules,closures,setClosures,notices,setNotices,scheduleTemplate,setScheduleTemplate,onMemberClick}){
   const [date,setDate]=useState(TODAY_STR);
@@ -27,6 +28,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   const [quickDetailM,setQuickDetailM]=useState(null);
   const [openWaitActionId, setOpenWaitActionId] = useState(null);
   const [waitPopup, setWaitPopup] = useState(null);
+  const [showTemplateMgr, setShowTemplateMgr] = useState(false);
 
   const dow=parseLocal(date).getDay();
   const special=specialSchedules.find(s=>s.date===date);
@@ -42,7 +44,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   const getSlots=()=>{
     if(isSpecial)return TIME_SLOTS.filter(s=>special.activeSlots.includes(s.key)).map(s=>({...s,time:special.customTimes?.[s.key]||s.time}));
     if(isWeekend)return[];
-    return TIME_SLOTS.filter(s=>scheduleTemplate?.[dow]?.[s.key]?.active);
+    const templSlots=TIME_SLOTS.filter(s=>scheduleTemplate?.[dow]?.[s.key]?.active);
+    if(templSlots.length) return templSlots;
+    return TIME_SLOTS.filter(s=>SCHEDULE[dow]?.includes(s.key));
   };
   const slots=getSlots();
   const dayActive=bookings.filter(b=>b.date===date&&b.status!=="cancelled");
@@ -133,6 +137,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
           {slots.length>0&&<div style={{background:"#2e8a4a",color:"#fff",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:700}}>출석 {attendedDay}</div>}
+          <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#3d5494",background:"#fff"}} onClick={()=>setShowTemplateMgr(true)}>📅 시간표</button>
           <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#8a5510",background:"#fff"}} onClick={()=>{
             const _d1=new Date(date+"T00:00:00").getDay();const dowSlots=Object.entries(scheduleTemplate?.[_d1]||{}).filter(([,v])=>v?.active).map(([k])=>k);
             const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
@@ -758,6 +763,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
 
       {attendCheckModal&&<AttendCheckModal rec={attendCheckModal} members={members} isOpen={isOpen} bookings={bookings} setBookings={setBookings} setMembers={setMembers} notices={notices} setNotices={setNotices} onClose={()=>setAttendCheckModal(null)}/>}
       {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={(note,sendNotice)=>adminCancel(cancelModal.id,note,sendNotice)}/>}
+      {showTemplateMgr&&<ScheduleTemplateManager onClose={()=>setShowTemplateMgr(false)}/>}
     </div>
   );
 }
