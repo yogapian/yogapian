@@ -63,7 +63,7 @@ export function usedAsOf(memberId, targetDate, bookings, members){
   for(let i=0;i<bookings.length;i++){
     const b=bookings[i];
     if(b.memberId===memberId &&
-       (b.status==="attended" || b.status==="reserved") &&
+       b.status==="attended" &&
        b.date>=startDate && b.date<=targetDate) {
       cnt++;
     }

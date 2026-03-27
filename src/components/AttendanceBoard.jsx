@@ -642,51 +642,23 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     const defTime={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"}[sl.key]||sl.time;
                     const curTime=newSp.customTimes[sl.key]||defTime;
                     const isChanged=on&&newSp.type==="regular"&&defTime&&curTime!==defTime;
-                    return(
-                      <div key={sl.key} style={{border:`1.5px solid ${on?sl.color:"#e0d8cc"}`,borderRadius:10,padding:"8px 12px",background:on?sl.bg:"#faf8f5",cursor:"pointer",display:"flex",alignItems:"center",gap:8}} onClick={()=>toggleSp(sl.key)}>
-                        <span style={{fontSize:15,flexShrink:0}}>{sl.icon}</span>
-                        <div style={{fontWeight:700,color:sl.color,fontSize:13,width:28,flexShrink:0}}>{sl.label}</div>
-                        {on
-                          ? <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
-                              {isChanged&&<span style={{fontSize:11,textDecoration:"line-through",color:"#b0a0a0"}}>{defTime}</span>}
-                              <input key={sl.key+"_"+curTime} type="text" style={{...S.inp,padding:"4px 8px",fontSize:12,flex:1,margin:0,color:isChanged?"#c97474":"inherit",fontWeight:isChanged?700:400}} defaultValue={curTime} onBlur={e=>{e.stopPropagation();const v=e.target.value;setNewSp(f=>({...f,customTimes:{...f.customTimes,[sl.key]:v}}));}} onClick={e=>e.stopPropagation()} onFocus={e=>{e.stopPropagation();e.target.select();}} placeholder="HH:MM"/>
-                            </div>
-                          : <span style={{fontSize:11,color:"#b0a090",flex:1}}>{defTime||"직접 입력"}</span>
-                        }
-                        <span style={{fontSize:12,color:on?sl.color:"#c0b8b0",flexShrink:0}}>{on?"✓":"—"}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            {newSp.activeSlots.length>0&&!closures.some(cl=>cl.date===newSp.date&&!cl.timeSlot)&&(
-              <div style={S.fg}>
-                <label style={S.lbl}>이 날 수업별 정원 <span style={{fontWeight:400,color:"#9a8e80"}}>(비우면 기본값 사용)</span></label>
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {TIME_SLOTS.filter(sl=>newSp.activeSlots.includes(sl.key)).map(sl=>{
                     const spDow=new Date(newSp.date+"T00:00:00").getDay();
                     const templateCap=Array.isArray(scheduleTemplate)?(scheduleTemplate.find(e=>e.slotKey===sl.key&&e.days.includes(spDow))?.capacity??10):(scheduleTemplate?.[spDow]?.[sl.key]?.capacity??10);
                     const overrideCap=newSp.slotCapacity?.[sl.key];
                     return(
-                      <div key={sl.key} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:sl.bg,borderRadius:9,border:`1px solid ${sl.color}33`}}>
-                        <span style={{fontSize:14,flexShrink:0}}>{sl.icon}</span>
-                        <span style={{fontSize:13,fontWeight:700,color:sl.color,width:28,flexShrink:0}}>{sl.label}</span>
-                        <span style={{fontSize:11,color:"#9a8e80",flex:1}}>기본 {templateCap}명</span>
-                        <input type="number" min="1" max="99" placeholder={String(templateCap)}
-                          value={overrideCap!=null?overrideCap:""}
-                          onChange={e=>{
-                            const v=e.target.value;
-                            setNewSp(f=>{
-                              const sc={...f.slotCapacity};
-                              if(v==="")delete sc[sl.key];
-                              else sc[sl.key]=Number(v);
-                              return{...f,slotCapacity:sc};
-                            });
-                          }}
-                          onClick={e=>e.stopPropagation()}
-                          style={{...S.inp,width:60,padding:"4px 8px",fontSize:12,margin:0,textAlign:"center"}}/>
-                        <span style={{fontSize:11,color:"#9a8e80",flexShrink:0}}>명</span>
+                      <div key={sl.key} style={{border:`1.5px solid ${on?sl.color:"#e0d8cc"}`,borderRadius:10,padding:"8px 12px",background:on?sl.bg:"#faf8f5",cursor:"pointer",display:"flex",alignItems:"center",gap:8}} onClick={()=>toggleSp(sl.key)}>
+                        <span style={{fontSize:15,flexShrink:0}}>{sl.icon}</span>
+                        <div style={{fontWeight:700,color:sl.color,fontSize:13,width:28,flexShrink:0}}>{sl.label}</div>
+                        {on ? (<>
+                          {isChanged&&<span style={{fontSize:10,textDecoration:"line-through",color:"#b0a0a0",flexShrink:0}}>{defTime}</span>}
+                          <input key={sl.key+"_t_"+curTime} type="text" style={{...S.inp,padding:"4px 6px",fontSize:12,width:60,margin:0,color:isChanged?"#c97474":"inherit",fontWeight:isChanged?700:400,flexShrink:0}} defaultValue={curTime} onBlur={e=>{e.stopPropagation();const v=e.target.value;setNewSp(f=>({...f,customTimes:{...f.customTimes,[sl.key]:v}}));}} onClick={e=>e.stopPropagation()} onFocus={e=>{e.stopPropagation();e.target.select();}} placeholder="HH:MM"/>
+                          <input key={sl.key+"_c"} type="number" min="1" max="99" placeholder={String(templateCap)} value={overrideCap!=null?overrideCap:""} onChange={e=>{e.stopPropagation();const v=e.target.value;setNewSp(f=>{const sc={...f.slotCapacity};if(v==="")delete sc[sl.key];else sc[sl.key]=Number(v);return{...f,slotCapacity:sc};});}} onClick={e=>e.stopPropagation()} style={{...S.inp,width:48,padding:"4px 6px",fontSize:12,margin:0,textAlign:"center",flexShrink:0}}/>
+                          <span style={{fontSize:11,color:sl.color,flexShrink:0}}>명</span>
+                        </>) : (<>
+                          <span style={{fontSize:11,color:"#b0a090",flex:1}}>{defTime||"직접 입력"}</span>
+                          <span style={{fontSize:11,color:"#c0b8b0",flexShrink:0}}>{templateCap}명</span>
+                        </>)}
+                        <span style={{fontSize:12,color:on?sl.color:"#c0b8b0",flexShrink:0}}>{on?"✓":"—"}</span>
                       </div>
                     );
                   })}
