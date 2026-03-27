@@ -71,7 +71,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
         <NoticeBoard notices={notices} member={member}/>
 
         {/* 회원 카드 — 클릭 시 상세 모달 */}
-        <div style={{...S.card, opacity:isOff?0.82:1, marginBottom:12, cursor:"pointer"}} onClick={() => setShowDetail(true)}>
+        <div style={{...S.card, opacity:isOff?0.82:1, marginBottom:12}}>
           <div style={{...S.cardTop}}>
             <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",flex:1,minWidth:0}}>
               <span style={{fontSize:20,lineHeight:1,flexShrink:0}}>{GE[m.gender]}</span>
@@ -82,7 +82,6 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
               <span style={{...S.statusBadge,background:sc.bg,color:sc.color}}><span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block",marginRight:4}}/>{sc.label}</span>
-              <span style={{fontSize:11,color:"#b0a090"}}>›</span>
             </div>
           </div>
           {m.adminNote && <div style={{fontSize:11,color:"#9a5a10",background:"#fffaeb",borderRadius:6,padding:"3px 8px",marginBottom:7,border:"1px dashed #e8c44a"}}>📝 {m.adminNote}</div>}
@@ -119,6 +118,9 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
               </div>
             </>
           )}
+          <div style={{...S.actions, marginTop:8}}>
+            <button style={S.detailBtn} onClick={() => setShowDetail(true)}>상세보기</button>
+          </div>
         </div>
       </div>
 

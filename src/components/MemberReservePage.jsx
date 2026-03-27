@@ -19,31 +19,31 @@ function InlineCalendar({selDate, onSelect, bookings, member, closures, specialS
   const cells = [...Array(firstDay).fill(null), ...Array.from({length:daysInMonth}, (_,i) => i+1)];
   const ymStr = `${year}-${String(month+1).padStart(2,'0')}`;
 
-  // 이 달의 내 예약 맵
   const myMonthBookings = bookings.filter(b => b.memberId===member.id && b.date.startsWith(ymStr));
   const attendedSet = new Set(myMonthBookings.filter(b=>b.status==="attended"||b.status==="reserved").map(b=>parseLocal(b.date).getDate()));
   const waitingSet  = new Set(myMonthBookings.filter(b=>b.status==="waiting").map(b=>parseLocal(b.date).getDate()));
   const closureSet  = new Set(closures.filter(cl=>cl.date.startsWith(ymStr)&&!cl.timeSlot).map(cl=>parseLocal(cl.date).getDate()));
+  const partialSet  = new Set(closures.filter(cl=>cl.date.startsWith(ymStr)&&cl.timeSlot).map(cl=>parseLocal(cl.date).getDate()));
 
   const prevM = () => { if(month===0){setYear(y=>y-1);setMonth(11);}else setMonth(m=>m-1); };
   const nextM = () => { if(month===11){setYear(y=>y+1);setMonth(0);}else setMonth(m=>m+1); };
 
   return (
-    <div style={{background:"#fff", borderBottom:"1px solid #f0ece4"}}>
+    <div style={{background:"#fff",borderRadius:13,border:"1px solid #e4e0d8",boxShadow:"0 2px 8px rgba(60,50,30,.06)",margin:"10px 14px 12px",overflow:"hidden"}}>
       {/* 월 네비 */}
-      <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px 8px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px 6px"}}>
         <button onClick={prevM} style={{background:"none",border:"none",fontSize:22,color:"#555",cursor:"pointer",padding:"4px 10px",lineHeight:1}}>‹</button>
         <span style={{fontSize:15,fontWeight:700,color:"#1e2e1e"}}>{year}년 {month+1}월</span>
         <button onClick={nextM} style={{background:"none",border:"none",fontSize:22,color:"#555",cursor:"pointer",padding:"4px 10px",lineHeight:1}}>›</button>
       </div>
       {/* 요일 헤더 */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"0 8px",marginBottom:4}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"0 6px 2px"}}>
         {DOW_KO.map((d,i) => (
           <div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:i===0?"#e05050":i===6?"#4a70d0":"#9a8e80",padding:"2px 0"}}>{d}</div>
         ))}
       </div>
       {/* 날짜 셀 */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"0 8px 12px",gap:"2px 0"}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"0 4px 10px"}}>
         {cells.map((day, i) => {
           if(!day) return <div key={i}/>;
           const ds = toDateStr(year, month, day);
@@ -52,19 +52,21 @@ function InlineCalendar({selDate, onSelect, bookings, member, closures, specialS
           const isToday = ds === TODAY_STR;
           const isSel = ds === selDate;
           const isClosure = closureSet.has(day);
+          const isPartial = partialSet.has(day) && !isClosure;
           const isHol = !!KR_HOLIDAYS[ds];
           const sp = specialSchedules.find(s=>s.date===ds);
-          // 수업 없는 날 판정
           const hasSlots = sp ? sp.activeSlots?.length > 0 : (dow!==0 && dow!==6);
           const noClass = !isPast && !hasSlots && !isClosure;
           const unselectable = isClosure || noClass || isPast;
-
           const isAtt = attendedSet.has(day);
           const isWait = waitingSet.has(day) && !isAtt;
+          const isOpen = !isPast && !isClosure && sp?.type==="open";
+          const isSpecialDay = !isPast && !isClosure && sp?.type==="special";
+          const hasDailyNote = !isPast && !isClosure && sp?.dailyNote?.trim();
 
           let numColor = "#1e2e1e";
           if(isSel) numColor = "#fff";
-          else if(isPast) numColor = isClosure?"#c0b0b0":"#c8c0b0";
+          else if(isPast) numColor = "#c8c0b0";
           else if(isClosure) numColor = "#c97474";
           else if(isHol||dow===0) numColor = "#e05050";
           else if(dow===6) numColor = "#4a70d0";
@@ -72,13 +74,25 @@ function InlineCalendar({selDate, onSelect, bookings, member, closures, specialS
 
           return (
             <div key={i} onClick={() => !unselectable && onSelect(ds)}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px 4px",borderRadius:10,cursor:unselectable?"default":"pointer",background:isSel?"#2e6e44":isToday?"#f0f8f0":"transparent",minHeight:48,userSelect:"none"}}>
-              <span style={{fontSize:13,fontWeight:isSel||isToday?700:400,color:numColor,lineHeight:1.2}}>{day}</span>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,marginTop:2}}>
-                {isAtt && <span style={{width:6,height:6,borderRadius:"50%",background:isSel?"rgba(255,255,255,.85)":"#4a9e68",display:"block"}}/>}
-                {isWait && <span style={{fontSize:9,color:isSel?"rgba(255,255,255,.85)":"#e8a020",lineHeight:1}}>▲</span>}
-                {isClosure && !isSel && <span style={{fontSize:8,color:"#c97474",lineHeight:1}}>휴</span>}
-                {!isPast && !isClosure && sp?.type==="open" && !isAtt && !isWait && <span style={{fontSize:7,color:isSel?"rgba(255,255,255,.7)":"#1a6e4a",lineHeight:1}}>오픈</span>}
+              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"2px 1px 3px",cursor:unselectable?"default":"pointer",userSelect:"none"}}>
+              {/* 날짜 원 */}
+              <div style={{width:34,height:34,borderRadius:"50%",background:isSel?"#2e6e44":"transparent",border:isToday&&!isSel?"2px solid #2e6e44":"2px solid transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <span style={{fontSize:13,fontWeight:isSel||isToday?700:400,color:numColor,lineHeight:1}}>{day}</span>
+              </div>
+              {/* 오늘 라벨 (모든 셀에 공간 확보, 오늘만 표시) */}
+              <span style={{fontSize:8,lineHeight:1,marginTop:1,fontWeight:600,color:isToday?(isSel?"rgba(255,255,255,.75)":"#2e6e44"):"transparent"}}>오늘</span>
+              {/* 예약 인디케이터 */}
+              <div style={{display:"flex",alignItems:"center",gap:2,marginTop:1,height:8}}>
+                {isAtt && <span style={{width:5,height:5,borderRadius:"50%",background:isSel?"rgba(255,255,255,.85)":"#4a9e68",display:"block",flexShrink:0}}/>}
+                {isWait && !isAtt && <span style={{fontSize:8,color:isSel?"rgba(255,255,255,.85)":"#e8a020",lineHeight:1}}>▲</span>}
+              </div>
+              {/* 특수 배지 */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,minHeight:10}}>
+                {isClosure && !isSel && <span style={{fontSize:7,color:"#c97474",fontWeight:700,lineHeight:1.2}}>휴강</span>}
+                {isPartial && <span style={{fontSize:7,color:"#e07050",fontWeight:700,lineHeight:1.2}}>부분</span>}
+                {isOpen && <span style={{fontSize:7,color:"#1a6e4a",fontWeight:700,lineHeight:1.2}}>오픈</span>}
+                {isSpecialDay && <span style={{fontSize:7,color:"#5a3a9a",fontWeight:700,lineHeight:1.2}}>집중</span>}
+                {hasDailyNote && <span style={{fontSize:9,lineHeight:1}}>📢</span>}
               </div>
             </div>
           );
@@ -188,7 +202,6 @@ export default function MemberReservePage({member,bookings,setBookings,setNotice
       {/* 선택 날짜 헤더 */}
       <div style={{padding:"14px 16px 10px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid #f0ece4",background:"#fafaf7"}}>
         <span style={{fontSize:15,fontWeight:700,color:"#1e2e1e"}}>{fmtWithDow(selDate)}</span>
-        {selDate===TODAY_STR&&<span style={{fontSize:11,background:"#2e6e44",color:"#fff",borderRadius:10,padding:"2px 8px",fontWeight:700}}>오늘</span>}
         {dayClosure&&<span style={{fontSize:11,background:"#fde8e8",color:"#a83030",borderRadius:10,padding:"2px 8px",fontWeight:700}}>휴강</span>}
         {!dayClosure&&isOpen&&<span style={{fontSize:11,background:"#d8f5ec",color:"#1a6e4a",borderRadius:10,padding:"2px 8px",fontWeight:700}}>오픈</span>}
         {!dayClosure&&isSpecial&&special?.type==="special"&&<span style={{fontSize:11,background:"#ede8fa",color:"#5a3a9a",borderRadius:10,padding:"2px 8px",fontWeight:700}}>집중</span>}
