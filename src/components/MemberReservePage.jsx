@@ -149,10 +149,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     )
     .sort((a,b) => a.date.localeCompare(b.date)||(a.id-b.id))[0];
   const upcomingSlot = upcomingBooking ? TIME_SLOTS.find(t=>t.key===upcomingBooking.timeSlot) : null;
-  const upcomingText = upcomingBooking ? (()=>{
-    const d = parseLocal(upcomingBooking.date);
-    return `${d.getFullYear()}년 ${fmtWithDow(upcomingBooking.date)} ${upcomingSlot?.label||''} ${upcomingSlot?.time||''}`.trim();
-  })() : null;
+  const upcomingText = upcomingBooking ? `${fmtWithDow(upcomingBooking.date)} ${upcomingSlot?.label||''} ${upcomingSlot?.time||''}`.trim() : null;
 
   const getSlots = () => {
     if(!selDate) return [];
@@ -252,8 +249,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
         <div style={{fontSize:13,fontWeight:700,color:"#a06010",marginBottom:6}}>❗️다가오는 예약</div>{/* ← 타이틀 크기/색상 */}
         {upcomingBooking ? (
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
-            <div style={{fontSize:11,color:"#7a5010",lineHeight:1.5,flex:1,minWidth:0}}>
-              {upcomingText}{/* ← 예약정보 텍스트 색상/크기 */}
+            <div style={{fontSize:11,color:"#7a5010",lineHeight:1.5,flex:1,minWidth:0,fontStyle:"italic"}}>{/* ← 예약정보 이탤릭·색상·크기 */}
+              {upcomingText}
               {upcomingBooking.status==="waiting"&&(
                 <span style={{marginLeft:5,fontSize:10,color:"#9a5a10",background:"#fffaeb",borderRadius:6,padding:"1px 5px",fontWeight:700}}>대기</span>
               )}
@@ -358,31 +355,30 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                 }}>
                   <div style={{padding:"8px 7px 7px"}}>{/* ← 카드 내부 패딩 */}
 
-                    {/* 줄 1: 뱃지 + 이모지 + 라벨·시간 한 줄 */}
-                    <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:4,minWidth:0}}>
-                      {/* ← 내 예약/대기 뱃지: 이모지 앞에 표시 */}
-                      {isMyRes&&<span style={{fontSize:8,background:"#e8f5ee",color:"#2e6e44",borderRadius:6,padding:"1px 5px",fontWeight:700,flexShrink:0}}>내 예약</span>}
-                      {isMyWait&&<span style={{fontSize:8,background:"#fffaeb",color:"#9a5a10",borderRadius:6,padding:"1px 5px",fontWeight:700,flexShrink:0}}>대기 {myRank}번</span>}
+                    {/* 줄 1: 이모지 + 라벨·시간 + 잔여석 or 내예약 한 줄 */}
+                    <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:5}}>
                       <span style={{fontSize:17,lineHeight:1,flexShrink:0}}>{/* ← 이모지 크기 */}{slot.icon}</span>
-                      <span style={{fontSize:11,fontWeight:700,color:slCl?"#9a8e80":slot.color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{/* ← 라벨+시간 크기·색상 */}
+                      <span style={{fontSize:11,fontWeight:700,color:slCl?"#9a8e80":slot.color,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{/* ← 라벨+시간 색상·크기 */}
                         {slot.label}{" "}
                         {isChg
                           ? <><s style={{color:"#c0b0b0",fontWeight:400}}>{DEFAULT_TIMES[slot.key]}</s><span style={{color:"#c97474"}}> {slot.time}</span></>
                           : slot.time
                         }
                       </span>
+                      {/* ← 오른쪽: 내 예약/대기 뱃지 or 잔여석 정보 */}
+                      <span style={{flexShrink:0,paddingLeft:4}}>
+                        {isMyRes
+                          ? <span style={{fontSize:9,background:"#e8f5ee",color:"#2e6e44",borderRadius:6,padding:"2px 6px",fontWeight:700}}>내 예약</span>/* ← 내예약 뱃지 색상 */
+                          : isMyWait
+                          ? <span style={{fontSize:9,background:"#fffaeb",color:"#9a5a10",borderRadius:6,padding:"2px 6px",fontWeight:700}}>대기 {myRank}번</span>/* ← 대기 뱃지 색상 */
+                          : <span style={{fontSize:10,color:slCl?"#b0a090":isFull?"#c97474":remaining<=2?"#9a5a10":"#a0988e"}}>{/* ← 잔여석 색상: 마감=빨강/촉박=주황/여유=회색 */}
+                              {slCl?`휴강`:isFull?`대기 ${waitCnt}명`:`${remaining}/${cap}`}
+                            </span>
+                        }
+                      </span>
                     </div>
 
-                    {/* 줄 2: 잔여석 / 마감 정보 */}
-                    <div style={{
-                      fontSize:10,                                    /* ← 잔여석 폰트 크기 */
-                      color:slCl?"#b0a090":isFull&&!myB?"#c97474":remaining<=2&&!myB?"#9a5a10":"#a0988e", /* ← 마감=빨강/촉박=주황/여유=회색 */
-                      marginBottom:5
-                    }}>
-                      {slCl?`🔕 휴강`:isFull&&!myB?`마감·대기 ${waitCnt}명`:`잔여 ${remaining}/${cap}석`}
-                    </div>
-
-                    {/* 줄 3: 액션 버튼 */}
+                    {/* 줄 2: 액션 버튼 */}
                     {slCl?(
                       <span style={{fontSize:10,color:"#9a8e80",fontWeight:700,display:"block",textAlign:"center"}}>휴강</span>
                     ):isMyRes?(
