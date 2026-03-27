@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
+import { FONT, TODAY_STR, TIME_SLOTS, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
 import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, calc3MonthEnd, getSlotCapacity } from "../memberCalc.js";
 import S from "../styles.js";
@@ -42,7 +42,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   const getSlots=()=>{
     if(isSpecial)return TIME_SLOTS.filter(s=>special.activeSlots.includes(s.key)).map(s=>({...s,time:special.customTimes?.[s.key]||s.time}));
     if(isWeekend)return[];
-    return TIME_SLOTS.filter(s=>SCHEDULE[dow]?.includes(s.key));
+    return TIME_SLOTS.filter(s=>scheduleTemplate?.[dow]?.[s.key]?.active);
   };
   const slots=getSlots();
   const dayActive=bookings.filter(b=>b.date===date&&b.status!=="cancelled");
@@ -134,7 +134,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
           {slots.length>0&&<div style={{background:"#2e8a4a",color:"#fff",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:700}}>출석 {attendedDay}</div>}
           <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#8a5510",background:"#fff"}} onClick={()=>{
-            const dowSlots=SCHEDULE[new Date(date+"T00:00:00").getDay()]||[];
+            const _d1=new Date(date+"T00:00:00").getDay();const dowSlots=Object.entries(scheduleTemplate?.[_d1]||{}).filter(([,v])=>v?.active).map(([k])=>k);
             const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
             const spOnDate=specialSchedules.find(s=>s.date===date);
             if(spOnDate){
@@ -556,7 +556,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     <div key={t.v} onClick={()=>{
                       if(locked) return;
                       const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
-                      const dowSlots=SCHEDULE[new Date(newSp.date+"T00:00:00").getDay()]||[];
+                      const _d2=new Date(newSp.date+"T00:00:00").getDay();const dowSlots=Object.entries(scheduleTemplate?.[_d2]||{}).filter(([,v])=>v?.active).map(([k])=>k);
                       const newSlots=(t.v==="regular"&&originalType==="regular")?(dowSlots.length?dowSlots:[]):[];
                       setNewSp(f=>({...f,type:t.v,activeSlots:newSlots,customTimes:regularTimes}));
                     }}
@@ -572,7 +572,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
               <label style={S.lbl}>날짜</label>
               {(()=>{
                 function changeSpDate(val){
-                  const dowSlots=SCHEDULE[new Date(val+"T00:00:00").getDay()]||[];
+                  const _d3=new Date(val+"T00:00:00").getDay();const dowSlots=Object.entries(scheduleTemplate?.[_d3]||{}).filter(([,v])=>v?.active).map(([k])=>k);
                   const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
                   const existingOnDate=specialSchedules.find(s=>s.date===val);
                   if(existingOnDate){

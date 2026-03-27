@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Agentation } from "agentation";
-import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, DOW_KO, KR_HOLIDAYS } from "../constants.js";
+import { FONT, TODAY_STR, TIME_SLOTS, DOW_KO, KR_HOLIDAYS } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays, toDateStr } from "../utils.js";
 import { calcDL, getClosureExtDays, usedAsOf, getSlotCapacity, holdingElapsed } from "../memberCalc.js";
 import { useClosures } from "../context.js";
@@ -123,7 +123,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const getSlots = () => {
     if(isSpecial) return TIME_SLOTS.filter(s=>special.activeSlots.includes(s.key)).map(s=>({...s, time:special.customTimes?.[s.key]||s.time}));
     if(isWeekend) return [];
-    return TIME_SLOTS.filter(s=>SCHEDULE[dow]?.includes(s.key));
+    return TIME_SLOTS.filter(s=>scheduleTemplate?.[dow]?.[s.key]?.active);
   };
   const slots = getSlots();
   const dayActive = bookings.filter(b=>b.date===selDate&&b.status!=="cancelled");
