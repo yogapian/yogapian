@@ -150,7 +150,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
           {slots.length>0&&<div style={{background:"#2e8a4a",color:"#fff",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:700}}>출석 {attendedDay}</div>}
           <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#3d5494",background:"#fff"}} onClick={()=>setShowTemplateMgr(true)}>📅 시간표</button>
-          <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#8a5510",background:"#fff"}} onClick={()=>{
+          <button disabled={date<TODAY_STR} style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:date<TODAY_STR?"#c0b8b0":"#8a5510",background:"#fff",cursor:date<TODAY_STR?"default":"pointer",opacity:date<TODAY_STR?0.5:1}} onClick={()=>{
+            if(date<TODAY_STR)return;
             const _d1=new Date(date+"T00:00:00").getDay();const dowSlots=getDowSlots(_d1,date);
             const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
             const spOnDate=specialSchedules.find(s=>s.date===date);
@@ -291,7 +292,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                               {isOneday?rec.onedayName:mem.name}
                             </span>
                             {!isOneday&&rec.renewalPending&&<span style={{fontSize:10,background:"#fdf3e3",color:"#9a5a10",borderRadius:5,padding:"1px 6px",fontWeight:700,flexShrink:0}}>갱신</span>}
-                            {showRemWarn&&!isAbsent&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
+                            {showRemWarn&&!isAbsent&&!rec.renewalPending&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
                           </div>
                           {isWaiting?(
                             <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
