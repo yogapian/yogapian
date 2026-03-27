@@ -85,6 +85,8 @@ export function getDisplayStatus(m, closures=[], bookings=[]) {
   const dl = calcDL(m, closures);
   if(dl >= 0) {
     if(bookings.some(b=>b.memberId===m.id&&b.renewalPending)) return "renew";
+    const used = usedAsOf(m.id, TODAY_STR, bookings, [m]);
+    if(Math.max(0, m.total - used) === 0) return "renew"; // 종료일 남았는데 잔여 0
     return "on";
   }
   if(dl >= -30) return "renew"; // 만료 후 30일 이내

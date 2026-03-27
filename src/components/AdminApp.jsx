@@ -27,7 +27,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   const [showNotices,setShowNotices]=useState(false);
   const [showPendingPopup,setShowPendingPopup]=useState(true);
 
-  const renewPendingMembers=useMemo(()=>members.filter(m=>bookings.some(b=>b.memberId===m.id&&b.renewalPending)),[members,bookings]);
+  const renewPendingMembers=useMemo(()=>members.filter(m=>bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.date===TODAY_STR)),[members,bookings]);
   const gds=(m)=>getDisplayStatus(m,closures,bookings);
   const counts={total:members.length,on:members.filter(m=>gds(m)==="on").length,renew:members.filter(m=>gds(m)==="renew").length,hold:members.filter(m=>gds(m)==="hold").length,off:members.filter(m=>gds(m)==="off").length};
   const filtered=useMemo(()=>{const gd=(m)=>getDisplayStatus(m,closures,bookings);return members.filter(m=>{if(filter!=="total"&&gd(m)!==filter)return false;if(search&&!m.name.includes(search))return false;return true;}).sort((a,b)=>a.name.localeCompare(b.name,"ko"));},[members,filter,search,closures,bookings]);
@@ -35,13 +35,12 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   function openAdd(){
     const autoEnd=endOfNextMonth(TODAY_STR);
     setEditId(null);
-    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone1:"010",phone2:"",phone3:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[],manualStatus:null});
+    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[],manualStatus:null});
     setShowForm(true);
   }
   function openEdit(m){
-    const parts=(m.phone||"").split("-");
     setEditId(m.id);
-    setForm({...m,phone1:parts[0]||"010",phone2:parts[1]||"",phone3:parts[2]||m.phone4||"",manualStatus:m.manualStatus||null});
+    setForm({...m,phone:m.phone||"",phone4:m.phone4||"",manualStatus:m.manualStatus||null});
     setShowForm(true);
   }
   function saveForm(){
@@ -49,8 +48,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     if(!editId&&!form.startDate)return;
     let autoEnd = form.endDate;
     if(!editId&&!autoEnd){autoEnd=form.memberType==="3month"?calc3MonthEnd(form.startDate,closures):endOfNextMonth(form.startDate);}
-    const phone=`${form.phone1||"010"}-${form.phone2||""}-${form.phone3||""}`;
-    const phone4=form.phone3||form.phone4||"";
+    const phone=form.phone||"";
+    const phone4=(phone.replace(/\D/g,"")).slice(-4)||form.phone4||"";
     const e={...form,phone,phone4,endDate:autoEnd||form.endDate,total:+form.total,extensionDays:+(form.extensionDays||0),holdingDays:+(form.holdingDays||0),isNew:!!form.isNew,manualStatus:form.manualStatus||null};
     if(editId)setMembers(p=>p.map(m=>m.id===editId?{...m,...e}:m));
     else{const id=Math.max(...members.map(m=>m.id),0)+1;setMembers(p=>[...p,{id,...e,renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]}]);}
@@ -146,24 +145,18 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
             {/* 성별 + 이름 한 줄 */}
             <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:10}}>
               <div style={{display:"flex",gap:4,flexShrink:0}}>
-                {[["F","♀"],["M","♂"]].map(([v,icon])=>(
-                  <button key={v} onClick={()=>setForm(f=>({...f,gender:v}))} style={{width:36,height:36,borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:15,fontFamily:FONT,lineHeight:1,borderColor:form.gender===v?"#4a7a5a":"#e0d8cc",background:form.gender===v?"#eef5ee":"#faf8f5",color:form.gender===v?"#2e5c3e":"#9a8e80",fontWeight:form.gender===v?700:400}}>{icon}</button>
+                {[["F",GE.F],["M",GE.M]].map(([v,icon])=>(
+                  <button key={v} onClick={()=>setForm(f=>({...f,gender:v}))} style={{width:36,height:36,borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:18,fontFamily:FONT,lineHeight:1,borderColor:form.gender===v?"#4a7a5a":"#e0d8cc",background:form.gender===v?"#eef5ee":"#faf8f5"}}>{icon}</button>
                 ))}
               </div>
               <input style={{...S.inp,marginBottom:0,flex:1}} value={form.name||""} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="회원 이름"/>
             </div>
 
-            {/* 전화번호 3칸 */}
+            {/* 전화번호 단일 입력 */}
             <div style={{...S.fg}}>
               <label style={S.lbl}>전화번호</label>
-              <div style={{display:"flex",gap:5,alignItems:"center"}}>
-                <input style={{...S.inp,width:52,textAlign:"center",padding:"8px 4px"}} value={form.phone1||"010"} onChange={e=>setForm(f=>({...f,phone1:e.target.value.slice(0,3)}))} maxLength={3}/>
-                <span style={{color:"#c0b0b0",flexShrink:0}}>-</span>
-                <input style={{...S.inp,flex:1,textAlign:"center",padding:"8px 4px"}} value={form.phone2||""} onChange={e=>setForm(f=>({...f,phone2:e.target.value.replace(/\D/g,"").slice(0,4)}))} maxLength={4} placeholder="0000" type="tel"/>
-                <span style={{color:"#c0b0b0",flexShrink:0}}>-</span>
-                <input style={{...S.inp,flex:1,textAlign:"center",padding:"8px 4px"}} value={form.phone3||""} onChange={e=>{const v=e.target.value.replace(/\D/g,"").slice(0,4);setForm(f=>({...f,phone3:v,phone4:v}));}} maxLength={4} placeholder="0000" type="tel"/>
-              </div>
-              <div style={{fontSize:10,color:"#9a8e80",marginTop:3}}>마지막 4자리가 로그인 비밀번호로 설정됩니다</div>
+              <input style={S.inp} type="tel" value={form.phone||""} onChange={e=>{const v=e.target.value;const p4=v.replace(/\D/g,"").slice(-4);setForm(f=>({...f,phone:v,phone4:p4}));}} placeholder="010-0000-0000"/>
+              {form.phone&&<div style={{fontSize:10,color:"#9a8e80",marginTop:3}}>로그인 비밀번호: <b style={{color:"#4a4a4a"}}>{form.phone4||"-"}</b></div>}
             </div>
 
             {/* 어드민 전용 */}

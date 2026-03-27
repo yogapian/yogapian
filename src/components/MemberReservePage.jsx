@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Agentation } from "agentation";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, DOW_KO, KR_HOLIDAYS } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays, toDateStr } from "../utils.js";
-import { calcDL, getClosureExtDays, usedAsOf, getSlotCapacity } from "../memberCalc.js";
+import { calcDL, getClosureExtDays, usedAsOf, getSlotCapacity, holdingElapsed } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 
@@ -97,7 +97,7 @@ function InlineCalendar({selDate, onSelect, bookings, member, closures, specialS
   );
 }
 
-export default function MemberReservePage({member,bookings,setBookings,setNotices,specialSchedules,closures,scheduleTemplate}){
+export default function MemberReservePage({member,bookings,setBookings,setMembers,setNotices,specialSchedules,closures,scheduleTemplate}){
   const [selDate, setSelDate] = useState(TODAY_STR);
   const [confirmCancel, setConfirmCancel] = useState(null);
   const [pendingSlot, setPendingSlot] = useState(null);
@@ -171,12 +171,40 @@ export default function MemberReservePage({member,bookings,setBookings,setNotice
     setConfirmCancel(null);
   }
 
-  // 잔여 상태 색상
-  const remColor = memberExpired||rem===0?"#c97474":rem===1?"#9a5a10":"#2e6e44";
-  const remBg = memberExpired||rem===0?"#fef5f5":rem===1?"#fffaeb":"#f5fbf5";
+  function resumeHolding(){
+    if(!member.holding||!setMembers) return;
+    const startStr = member.holding.startDate;
+    let count = 0;
+    let cur = parseLocal(startStr);
+    const end = parseLocal(TODAY_STR);
+    while(cur < end){ const dow=cur.getDay(); if(dow!==0&&dow!==6) count++; cur.setDate(cur.getDate()+1); }
+    setMembers(p=>p.map(m=>{
+      if(m.id!==member.id) return m;
+      const hist={startDate:m.holding.startDate,endDate:TODAY_STR,workdays:count};
+      return{...m,holding:null,holdingDays:0,extensionDays:(m.extensionDays||0)+count,holdingHistory:[...(m.holdingHistory||[]),hist]};
+    }));
+  }
 
   return (
     <div style={{maxWidth:520,margin:"0 auto",width:"100%",fontFamily:FONT,paddingBottom:80}}>
+
+      {/* 홀딩 배너 */}
+      {member.holding&&(
+        <div style={{margin:"0 14px 12px",borderRadius:12,background:"#edf0f8",border:"1.5px solid #a0b0d0",padding:"12px 14px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:20,flexShrink:0}}>⏸️</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#3d5494"}}>홀딩 중</div>
+              <div style={{fontSize:11,color:"#5a5a7a",marginTop:2}}>{fmt(member.holding.startDate)} 시작 · {holdingElapsed(member.holding)}일 경과</div>
+            </div>
+            {member.memberType==="3month"?(
+              <button onClick={resumeHolding} style={{background:"#3d5494",color:"#fff",border:"none",borderRadius:9,padding:"7px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT,flexShrink:0}}>복귀하기</button>
+            ):(
+              <span style={{fontSize:11,color:"#c97474",fontWeight:600,flexShrink:0}}>1개월권은 홀딩 불가</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 풀 달력 */}
       <InlineCalendar
@@ -210,8 +238,11 @@ export default function MemberReservePage({member,bookings,setBookings,setNotice
         {isFuture&&isSpecial&&!isOpen&&special?.type==="special"&&<div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"11px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:20}}>⚡️</span><div><div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>집중수련</div><div style={{fontSize:11,color:"#7a5aaa",marginTop:2}}>{special.label}</div>{special.feeNote&&<div style={{fontSize:11,color:"#6a4aaa"}}>{special.feeNote}</div>}</div></div>}
         {isFuture&&dayClosure&&<div style={{background:"#fff3f0",border:"1px solid #f0b0a0",borderRadius:12,padding:"12px 16px",display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:20}}>🔕</span><div><div style={{fontSize:13,fontWeight:700,color:"#8e3030"}}>전체 휴강</div><div style={{fontSize:12,color:"#9a5a50",marginTop:2}}>{dayClosure.reason}</div></div></div>}
 
+        {/* 홀딩 중 예약 불가 안내 */}
+        {isFuture&&member.holding&&!dayClosure&&<div style={{textAlign:"center",padding:"24px 0",color:"#5a5a7a"}}><div style={{fontSize:24,marginBottom:6}}>⏸️</div><div style={{fontSize:13}}>홀딩 기간 중 예약할 수 없어요.</div><div style={{fontSize:11,color:"#9a8e80",marginTop:4}}>위 배너에서 복귀하기 버튼을 눌러주세요.</div></div>}
+
         {/* 타임슬롯 카드 */}
-        {isFuture&&!dayClosure&&slots.filter(slot=>{
+        {isFuture&&!member.holding&&!dayClosure&&slots.filter(slot=>{
           if(selDate!==TODAY_STR) return true;
           const now=new Date();
           const H={dawn:6,morning:8,lunch:11,afternoon:14,evening:19}[slot.key]||0;

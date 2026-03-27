@@ -273,6 +273,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                               style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isWaiting?"#666":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:isOneday?"default":"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
                               {isOneday?rec.onedayName:mem.name}
                             </span>
+                            {!isOneday&&rec.renewalPending&&<span style={{fontSize:10,background:"#fdf3e3",color:"#9a5a10",borderRadius:5,padding:"1px 6px",fontWeight:700,flexShrink:0}}>갱신</span>}
                             {showRemWarn&&!isAbsent&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
                           </div>
                           {isWaiting?(

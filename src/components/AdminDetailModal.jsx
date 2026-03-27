@@ -95,6 +95,12 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
             {[["최초등록",fmt(member.firstDate||member.startDate),"#7a6e60"],["현재시작",fmt(member.startDate),"#7a6e60"],["종료일",fmt(end),dl<0?"#c97474":dl<=7?"#9a5a10":"#3a4a3a"]].map(([l,v,c])=>(
               <div key={l} style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:"#9a8e80"}}>{l}</span><span style={{color:c,fontWeight:700}}>{v}</span></div>
             ))}
+            {member.phone&&(
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:0,marginTop:4,paddingTop:4,borderTop:"1px solid #ece8e0"}}>
+                <span style={{color:"#9a8e80"}}>전화번호</span>
+                <a href={`tel:${member.phone.replace(/\D/g,"")}`} style={{color:"#3d5494",fontWeight:700,textDecoration:"none"}}>{member.phone}</a>
+              </div>
+            )}
           </div>
 
           {member.holding&&<div style={{background:"#edf0f8",borderRadius:9,padding:"10px 12px",marginBottom:12,fontSize:12}}><div style={{fontWeight:700,color:"#3d5494",marginBottom:3}}>⏸️ 홀딩 중</div><div style={{color:"#5a5a7a"}}>{fmt(member.holding.startDate)} ~ 복귀 미정 ({holdingElapsed(member.holding)}일 경과)</div></div>}
