@@ -74,20 +74,16 @@ function InlineCalendar({selDate, onSelect, bookings, member, closures, specialS
 
           return (
             <div key={i} onClick={() => !unselectable && onSelect(ds)}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"2px 1px 3px",cursor:unselectable?"default":"pointer",userSelect:"none"}}>
-              {/* 날짜 원 */}
-              <div style={{width:34,height:34,borderRadius:"50%",background:isSel?"#2e6e44":"transparent",border:isToday&&!isSel?"2px solid #2e6e44":"2px solid transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                <span style={{fontSize:13,fontWeight:isSel||isToday?700:400,color:numColor,lineHeight:1}}>{day}</span>
-              </div>
-              {/* 오늘 라벨 (모든 셀에 공간 확보, 오늘만 표시) */}
-              <span style={{fontSize:8,lineHeight:1,marginTop:1,fontWeight:600,color:isToday?(isSel?"rgba(255,255,255,.75)":"#2e6e44"):"transparent"}}>오늘</span>
-              {/* 예약 인디케이터 */}
-              <div style={{display:"flex",alignItems:"center",gap:2,marginTop:1,height:8}}>
-                {isAtt && <span style={{width:5,height:5,borderRadius:"50%",background:isSel?"rgba(255,255,255,.85)":"#4a9e68",display:"block",flexShrink:0}}/>}
-                {isWait && !isAtt && <span style={{fontSize:8,color:isSel?"rgba(255,255,255,.85)":"#e8a020",lineHeight:1}}>▲</span>}
-              </div>
-              {/* 특수 배지 */}
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,minHeight:10}}>
+              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"3px 1px 2px",cursor:unselectable?"default":"pointer",userSelect:"none"}}>
+              {/* 날짜 숫자 — 선택/오늘/출석 상태에 따라 배경 */}
+              <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:26,height:26,padding:"0 2px",borderRadius:"50%",fontSize:13,fontWeight:isSel||isToday?700:400,color:numColor,lineHeight:1,background:isSel?"#2e6e44":isAtt&&!isSel?"#e4f5eb":"transparent",border:isToday&&!isSel?"1.5px solid #2e6e44":"1.5px solid transparent"}}>
+                {day}
+              </span>
+              {/* 오늘 라벨 (공간 유지, 오늘만 표시) */}
+              <span style={{fontSize:8,lineHeight:1,marginTop:1,fontWeight:600,color:isToday?"#2e6e44":"transparent"}}>오늘</span>
+              {/* 인디케이터 — 날짜 바로 아래 */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0}}>
+                {isWait && <span style={{fontSize:8,color:"#e8a020",lineHeight:1.2}}>▲</span>}
                 {isClosure && !isSel && <span style={{fontSize:7,color:"#c97474",fontWeight:700,lineHeight:1.2}}>휴강</span>}
                 {isPartial && <span style={{fontSize:7,color:"#e07050",fontWeight:700,lineHeight:1.2}}>부분</span>}
                 {isOpen && <span style={{fontSize:7,color:"#1a6e4a",fontWeight:700,lineHeight:1.2}}>오픈</span>}
@@ -199,30 +195,26 @@ export default function MemberReservePage({member,bookings,setBookings,setNotice
         specialSchedules={specialSchedules}
       />
 
-      {/* 선택 날짜 헤더 */}
-      <div style={{padding:"14px 16px 10px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid #f0ece4",background:"#fafaf7"}}>
-        <span style={{fontSize:15,fontWeight:700,color:"#1e2e1e"}}>{fmtWithDow(selDate)}</span>
-        {dayClosure&&<span style={{fontSize:11,background:"#fde8e8",color:"#a83030",borderRadius:10,padding:"2px 8px",fontWeight:700}}>휴강</span>}
-        {!dayClosure&&isOpen&&<span style={{fontSize:11,background:"#d8f5ec",color:"#1a6e4a",borderRadius:10,padding:"2px 8px",fontWeight:700}}>오픈</span>}
-        {!dayClosure&&isSpecial&&special?.type==="special"&&<span style={{fontSize:11,background:"#ede8fa",color:"#5a3a9a",borderRadius:10,padding:"2px 8px",fontWeight:700}}>집중</span>}
-        {!dayClosure&&isRegular&&hasTimeChange&&<span style={{fontSize:11,background:"#fdf0d8",color:"#9a5a10",borderRadius:10,padding:"2px 8px",fontWeight:700}}>변경</span>}
+      {/* 선택 날짜 헤더 — 타임슬롯 카드와 동일한 라운드 스타일 */}
+      <div style={{margin:"0 14px 10px",borderRadius:12,background:"#fff",border:`1.5px solid ${dayClosure?"#f0b0a0":isOpen?"#7acca0":special?.type==="special"?"#a090d0":"#e4e0d8"}`,overflow:"hidden"}}>
+        <div style={{padding:"11px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+          <span style={{fontSize:15,fontWeight:700,color:"#1e2e1e"}}>{fmtWithDow(selDate)}</span>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
+            {selDate===TODAY_STR&&<span style={{fontSize:11,background:"#2e6e44",color:"#fff",borderRadius:10,padding:"2px 8px",fontWeight:700}}>오늘</span>}
+            {dayClosure&&<span style={{fontSize:11,background:"#fde8e8",color:"#a83030",borderRadius:10,padding:"2px 8px",fontWeight:700}}>휴강</span>}
+            {!dayClosure&&isOpen&&<span style={{fontSize:11,background:"#d8f5ec",color:"#1a6e4a",borderRadius:10,padding:"2px 8px",fontWeight:700}}>오픈</span>}
+            {!dayClosure&&isSpecial&&special?.type==="special"&&<span style={{fontSize:11,background:"#ede8fa",color:"#5a3a9a",borderRadius:10,padding:"2px 8px",fontWeight:700}}>집중</span>}
+            {!dayClosure&&isRegular&&hasTimeChange&&<span style={{fontSize:11,background:"#fdf0d8",color:"#9a5a10",borderRadius:10,padding:"2px 8px",fontWeight:700}}>변경</span>}
+          </div>
+        </div>
       </div>
 
-      <div style={{padding:"12px 14px"}}>
+      <div style={{padding:"0 14px 12px"}}>
         {/* 과거 날짜 */}
         {!isFuture&&<div style={{textAlign:"center",padding:"32px 0",color:"#b0a090"}}><div style={{fontSize:28,marginBottom:8}}>📅</div><div style={{fontSize:13}}>과거 날짜는 예약할 수 없어요.</div></div>}
 
         {/* 수업 없는 날 */}
         {isFuture&&isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"32px 0",color:"#b0a090"}}><div style={{fontSize:28,marginBottom:8}}>🌿</div><div style={{fontSize:13}}>이 날은 수업이 없습니다.</div></div>}
-
-        {/* 특별 공지 */}
-        {isFuture&&isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
-          <div style={{background:special.type==="open"?"#d8f5ec":special.type==="special"?"#f0edff":"#fdf3e3",border:`1.5px solid ${special.type==="open"?"#1a6e4a":special.type==="special"?"#a090d0":"#e8a44a"}`,borderRadius:12,padding:"11px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"flex-start"}}>
-            <span style={{fontSize:15}}>🔔</span>
-            <div><div style={{fontSize:12,fontWeight:700,color:special.type==="open"?"#1a6e4a":special.type==="special"?"#5a3a9a":"#9a5a10",marginBottom:3}}>오늘의 공지</div>
-            {special.dailyNote?.trim()&&<div style={{fontSize:12,color:"#5a5a5a",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}</div>
-          </div>
-        )}
         {isFuture&&isOpen&&<div style={{background:"#d8f5ec",border:"1.5px solid #7acca0",borderRadius:12,padding:"11px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:20}}>🍀</span><div><div style={{fontSize:13,fontWeight:700,color:"#1a6e4a"}}>오픈클래스</div><div style={{fontSize:11,color:"#1a5a3a",marginTop:2}}>{special.label}</div>{special.feeNote&&<div style={{fontSize:11,color:"#1a5a3a"}}>{special.feeNote}</div>}</div></div>}
         {isFuture&&isSpecial&&!isOpen&&special?.type==="special"&&<div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"11px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:20}}>⚡️</span><div><div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>집중수련</div><div style={{fontSize:11,color:"#7a5aaa",marginTop:2}}>{special.label}</div>{special.feeNote&&<div style={{fontSize:11,color:"#6a4aaa"}}>{special.feeNote}</div>}</div></div>}
         {isFuture&&dayClosure&&<div style={{background:"#fff3f0",border:"1px solid #f0b0a0",borderRadius:12,padding:"12px 16px",display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:20}}>🔕</span><div><div style={{fontSize:13,fontWeight:700,color:"#8e3030"}}>전체 휴강</div><div style={{fontSize:12,color:"#9a5a50",marginTop:2}}>{dayClosure.reason}</div></div></div>}
