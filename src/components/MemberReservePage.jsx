@@ -79,10 +79,9 @@ function InlineCalendar({selDate, onSelect, bookings, member, closures, specialS
               <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:26,height:26,padding:"0 2px",borderRadius:"50%",fontSize:13,fontWeight:isSel||isToday?700:400,color:numColor,lineHeight:1,background:isSel?"#2e6e44":isAtt&&!isSel?"#e4f5eb":"transparent",border:isToday&&!isSel?"1.5px solid #2e6e44":"1.5px solid transparent"}}>
                 {day}
               </span>
-              {/* 오늘 라벨 (공간 유지, 오늘만 표시) */}
-              <span style={{fontSize:8,lineHeight:1,marginTop:1,fontWeight:600,color:isToday?"#2e6e44":"transparent"}}>오늘</span>
-              {/* 인디케이터 — 날짜 바로 아래 */}
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0}}>
+              {/* 오늘 라벨 + 인디케이터 — 같은 위치 */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,marginTop:1,minHeight:10}}>
+                {isToday && <span style={{fontSize:8,color:"#2e6e44",fontWeight:600,lineHeight:1.2}}>오늘</span>}
                 {isWait && <span style={{fontSize:8,color:"#e8a020",lineHeight:1.2}}>▲</span>}
                 {isClosure && !isSel && <span style={{fontSize:7,color:"#c97474",fontWeight:700,lineHeight:1.2}}>휴강</span>}
                 {isPartial && <span style={{fontSize:7,color:"#e07050",fontWeight:700,lineHeight:1.2}}>부분</span>}
@@ -179,12 +178,6 @@ export default function MemberReservePage({member,bookings,setBookings,setNotice
   return (
     <div style={{maxWidth:520,margin:"0 auto",width:"100%",fontFamily:FONT,paddingBottom:80}}>
 
-      {/* 잔여 횟수 배너 */}
-      <div style={{background:remBg,borderBottom:"1px solid #f0ece4",padding:"9px 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <span style={{fontSize:13,color:"#7a6e60"}}>{memberExpired?"회원권 만료":rem===0?"잔여 횟수 없음":rem===1?"마지막 1회":"잔여 횟수"}</span>
-        <span style={{fontSize:15,fontWeight:700,color:remColor}}>{memberExpired?"만료":`${rem}회`}</span>
-      </div>
-
       {/* 풀 달력 */}
       <InlineCalendar
         selDate={selDate}
@@ -195,17 +188,15 @@ export default function MemberReservePage({member,bookings,setBookings,setNotice
         specialSchedules={specialSchedules}
       />
 
-      {/* 선택 날짜 헤더 — 타임슬롯 카드와 동일한 라운드 스타일 */}
+      {/* 선택 날짜 헤더 */}
       <div style={{margin:"0 14px 10px",borderRadius:12,background:"#fff",border:`1.5px solid ${dayClosure?"#f0b0a0":isOpen?"#7acca0":special?.type==="special"?"#a090d0":"#e4e0d8"}`,overflow:"hidden"}}>
-        <div style={{padding:"11px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+        <div style={{padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"center",gap:7,flexWrap:"wrap"}}>
           <span style={{fontSize:15,fontWeight:700,color:"#1e2e1e"}}>{fmtWithDow(selDate)}</span>
-          <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
-            {selDate===TODAY_STR&&<span style={{fontSize:11,background:"#2e6e44",color:"#fff",borderRadius:10,padding:"2px 8px",fontWeight:700}}>오늘</span>}
-            {dayClosure&&<span style={{fontSize:11,background:"#fde8e8",color:"#a83030",borderRadius:10,padding:"2px 8px",fontWeight:700}}>휴강</span>}
-            {!dayClosure&&isOpen&&<span style={{fontSize:11,background:"#d8f5ec",color:"#1a6e4a",borderRadius:10,padding:"2px 8px",fontWeight:700}}>오픈</span>}
-            {!dayClosure&&isSpecial&&special?.type==="special"&&<span style={{fontSize:11,background:"#ede8fa",color:"#5a3a9a",borderRadius:10,padding:"2px 8px",fontWeight:700}}>집중</span>}
-            {!dayClosure&&isRegular&&hasTimeChange&&<span style={{fontSize:11,background:"#fdf0d8",color:"#9a5a10",borderRadius:10,padding:"2px 8px",fontWeight:700}}>변경</span>}
-          </div>
+          {selDate===TODAY_STR&&<span style={{fontSize:11,background:"#2e6e44",color:"#fff",borderRadius:10,padding:"2px 8px",fontWeight:700}}>오늘</span>}
+          {dayClosure&&<span style={{fontSize:11,background:"#fde8e8",color:"#a83030",borderRadius:10,padding:"2px 8px",fontWeight:700}}>휴강</span>}
+          {!dayClosure&&isOpen&&<span style={{fontSize:11,background:"#d8f5ec",color:"#1a6e4a",borderRadius:10,padding:"2px 8px",fontWeight:700}}>오픈</span>}
+          {!dayClosure&&isSpecial&&special?.type==="special"&&<span style={{fontSize:11,background:"#ede8fa",color:"#5a3a9a",borderRadius:10,padding:"2px 8px",fontWeight:700}}>집중</span>}
+          {!dayClosure&&isRegular&&hasTimeChange&&<span style={{fontSize:11,background:"#fdf0d8",color:"#9a5a10",borderRadius:10,padding:"2px 8px",fontWeight:700}}>변경</span>}
         </div>
       </div>
 
@@ -240,26 +231,26 @@ export default function MemberReservePage({member,bookings,setBookings,setNotice
           const isChg = isRegular&&DEFAULT_TIMES[slot.key]&&slot.time!==DEFAULT_TIMES[slot.key];
 
           return (
-            <div key={slot.key} style={{background:"#fff",borderRadius:14,marginBottom:10,border:`1.5px solid ${slCl?"#f0b0a0":isMyRes?"#2e6e44":isMyWait?"#e8c44a":"#e8e4dc"}`,overflow:"hidden",boxShadow:isMyRes?"0 0 0 3px rgba(46,110,68,.08)":isMyWait?"0 0 0 3px rgba(232,196,74,.12)":"none"}}>
-              <div style={{padding:"13px 16px",display:"flex",alignItems:"center",gap:12}}>
-                <div style={{width:44,height:44,borderRadius:12,background:slCl?"#f5f0ee":slot.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{slot.icon}</div>
+            <div key={slot.key} style={{background:"#fff",borderRadius:12,marginBottom:8,border:`1.5px solid ${slCl?"#f0b0a0":isMyRes?"#2e6e44":isMyWait?"#e8c44a":"#e8e4dc"}`,overflow:"hidden",boxShadow:isMyRes?"0 0 0 3px rgba(46,110,68,.08)":isMyWait?"0 0 0 3px rgba(232,196,74,.12)":"none"}}>
+              <div style={{padding:"10px 12px",display:"flex",alignItems:"center",gap:9}}>
+                <div style={{width:36,height:36,borderRadius:10,background:slCl?"#f5f0ee":slot.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>{slot.icon}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:3}}>
-                    <span style={{fontSize:15,fontWeight:700,color:slCl?"#9a8e80":slot.color}}>{slot.label}</span>
-                    {isChg?<span style={{fontSize:12}}><s style={{color:"#c0b0b0"}}>{DEFAULT_TIMES[slot.key]}</s><span style={{color:"#c97474"}}> → {slot.time}</span></span>:<span style={{fontSize:12,color:"#9a8e80"}}>{slot.time}</span>}
-                    {isMyRes&&<span style={{fontSize:11,background:"#e8f5ee",color:"#2e6e44",borderRadius:10,padding:"1px 8px",fontWeight:700}}>내 예약</span>}
-                    {isMyWait&&<span style={{fontSize:11,background:"#fffaeb",color:"#9a5a10",borderRadius:10,padding:"1px 8px",fontWeight:700}}>대기 {myRank}번째</span>}
+                  <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",marginBottom:2}}>
+                    <span style={{fontSize:14,fontWeight:700,color:slCl?"#9a8e80":slot.color}}>{slot.label}</span>
+                    {isChg?<span style={{fontSize:11}}><s style={{color:"#c0b0b0"}}>{DEFAULT_TIMES[slot.key]}</s><span style={{color:"#c97474"}}> → {slot.time}</span></span>:<span style={{fontSize:11,color:"#9a8e80"}}>{slot.time}</span>}
+                    {isMyRes&&<span style={{fontSize:10,background:"#e8f5ee",color:"#2e6e44",borderRadius:10,padding:"1px 7px",fontWeight:700}}>내 예약</span>}
+                    {isMyWait&&<span style={{fontSize:10,background:"#fffaeb",color:"#9a5a10",borderRadius:10,padding:"1px 7px",fontWeight:700}}>대기 {myRank}번째</span>}
                   </div>
-                  <div style={{fontSize:12,color:slCl?"#b0a090":isFull&&!myB?"#c97474":remaining<=2&&!myB?"#9a5a10":"#a0988e"}}>
+                  <div style={{fontSize:11,color:slCl?"#b0a090":isFull&&!myB?"#c97474":remaining<=2&&!myB?"#9a5a10":"#a0988e"}}>
                     {slCl?`🔕 ${slCl.reason}`:isFull&&!myB?`마감 · 대기 ${waitCnt}명`:`잔여 ${remaining}석 / ${cap}석`}
                   </div>
                 </div>
                 <div style={{flexShrink:0}}>
-                  {slCl?(<span style={{fontSize:12,background:"#f5f0ee",color:"#9a8e80",borderRadius:8,padding:"7px 11px",fontWeight:700}}>휴강</span>)
-                  :isMyRes?(<button onClick={()=>setConfirmCancel(myB.id)} style={{background:"none",border:"1.5px solid #e8a0a0",borderRadius:10,padding:"7px 13px",fontSize:13,fontWeight:700,color:"#c97474",cursor:"pointer",fontFamily:FONT}}>취소</button>)
-                  :isMyWait?(<button onClick={()=>setConfirmCancel(myB.id)} style={{background:"none",border:"1.5px solid #e8c44a",borderRadius:10,padding:"7px 13px",fontSize:13,fontWeight:700,color:"#9a5a10",cursor:"pointer",fontFamily:FONT}}>대기취소</button>)
-                  :isFull?(<button onClick={()=>tryReserve(slot.key,true)} style={{background:"#fdf3e3",border:"1.5px solid #e8c44a",borderRadius:10,padding:"7px 13px",fontSize:13,fontWeight:700,color:"#9a5a10",cursor:"pointer",fontFamily:FONT}}>대기</button>)
-                  :(<button onClick={()=>tryReserve(slot.key)} style={{background:"#2e6e44",border:"none",borderRadius:10,padding:"7px 18px",fontSize:13,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:FONT}}>예약</button>)}
+                  {slCl?(<span style={{fontSize:11,background:"#f5f0ee",color:"#9a8e80",borderRadius:7,padding:"5px 9px",fontWeight:700}}>휴강</span>)
+                  :isMyRes?(<button onClick={()=>setConfirmCancel(myB.id)} style={{background:"none",border:"1.5px solid #e8a0a0",borderRadius:9,padding:"6px 11px",fontSize:12,fontWeight:700,color:"#c97474",cursor:"pointer",fontFamily:FONT}}>취소</button>)
+                  :isMyWait?(<button onClick={()=>setConfirmCancel(myB.id)} style={{background:"none",border:"1.5px solid #e8c44a",borderRadius:9,padding:"6px 11px",fontSize:12,fontWeight:700,color:"#9a5a10",cursor:"pointer",fontFamily:FONT}}>대기취소</button>)
+                  :isFull?(<button onClick={()=>tryReserve(slot.key,true)} style={{background:"#fdf3e3",border:"1.5px solid #e8c44a",borderRadius:9,padding:"6px 11px",fontSize:12,fontWeight:700,color:"#9a5a10",cursor:"pointer",fontFamily:FONT}}>대기</button>)
+                  :(<button onClick={()=>tryReserve(slot.key)} style={{background:"#2e6e44",border:"none",borderRadius:9,padding:"6px 15px",fontSize:12,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:FONT}}>예약</button>)}
                 </div>
               </div>
               {!slCl&&<div style={{height:3,background:"#f0ece4"}}><div style={{height:"100%",width:`${Math.min(100,cnt/cap*100)}%`,background:isFull?"#c97474":remaining<=2?"#e8c44a":"#4a9e68",transition:"width .3s",borderRadius:"0 3px 3px 0"}}/></div>}
