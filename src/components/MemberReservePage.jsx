@@ -63,7 +63,7 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
           const sp = specialSchedules.find(s=>s.date===ds);
           const hasSlots = sp ? sp.activeSlots?.length > 0 : (dow!==0 && dow!==6);
           const noClass = !isPast && !hasSlots && !isClosure;
-          const unselectable = isClosure || noClass || isPast;
+          const unselectable = isPast; // 과거 날짜만 클릭 불가 — 주말/휴강도 클릭해 안내 표시
           const isAtt = attendedSet.has(day);
           const isWait = waitingSet.has(day) && !isAtt;
           const isOpen = !isPast && !isClosure && sp?.type==="open";
@@ -139,9 +139,14 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const usedCnt       = usedAsOf(member.id, TODAY_STR, bookings, [member]);
   const rem           = memberExpired ? 0 : Math.max(0, member.total - usedCnt);
 
-  // 다가오는 예약 — reserved/waiting 중 가장 빠른 미래 예약
+  // 다가오는 예약 — 취소되지 않은, 오늘 이후(오늘 출석완료 제외)의 가장 빠른 예약
   const upcomingBooking = [...bookings]
-    .filter(b => b.memberId===member.id && (b.status==="reserved"||b.status==="waiting") && b.date>=TODAY_STR)
+    .filter(b =>
+      b.memberId===member.id &&
+      b.status!=="cancelled" &&
+      b.date>=TODAY_STR &&
+      !(b.status==="attended" && b.date===TODAY_STR) // 오늘 이미 출석한 건 제외
+    )
     .sort((a,b) => a.date.localeCompare(b.date)||(a.id-b.id))[0];
   const upcomingSlot = upcomingBooking ? TIME_SLOTS.find(t=>t.key===upcomingBooking.timeSlot) : null;
   const upcomingText = upcomingBooking ? (()=>{
@@ -242,10 +247,10 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
         </div>
       )}
 
-      {/* ─── 다가오는 예약 카드 ─────────────────────────────── */}
-      {upcomingBooking&&(
-        <div style={{margin:"0 14px 10px",borderRadius:12,background:"#fff8ee",border:"1.5px solid #f0c888",padding:"11px 14px"}}>{/* ← 카드 배경(연한주황)/테두리색 */}
-          <div style={{fontSize:13,fontWeight:700,color:"#a06010",marginBottom:6}}>❗️다가오는 예약</div>{/* ← 타이틀 크기/색상 */}
+      {/* ─── 다가오는 예약 카드 (항상 표시) ────────────────── */}
+      <div style={{margin:"0 14px 10px",borderRadius:12,background:"#fff8ee",border:"1.5px solid #f0c888",padding:"11px 14px"}}>{/* ← 카드 배경(연한주황)/테두리색 */}
+        <div style={{fontSize:13,fontWeight:700,color:"#a06010",marginBottom:6}}>❗️다가오는 예약</div>{/* ← 타이틀 크기/색상 */}
+        {upcomingBooking ? (
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
             <div style={{fontSize:11,color:"#7a5010",lineHeight:1.5,flex:1,minWidth:0}}>
               {upcomingText}{/* ← 예약정보 텍스트 색상/크기 */}
@@ -256,8 +261,11 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
             {/* ← 예약취소 버튼 색상/크기 */}
             <button onClick={()=>setConfirmCancel(upcomingBooking.id)} style={{flexShrink:0,background:"none",border:"1px solid #e8a0a0",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,color:"#c97474",cursor:"pointer",fontFamily:FONT}}>예약취소</button>
           </div>
-        </div>
-      )}
+        ) : (
+          /* ← 예약 없을 때 안내 텍스트 색상 */
+          <div style={{fontSize:11,color:"#c0a870",fontStyle:"italic"}}>다가오는 예약이 없습니다.</div>
+        )}
+      </div>
 
       {/* ─── 인라인 달력 ────────────────────────────────────── */}
       <InlineCalendar
@@ -274,8 +282,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       {selDate&&(
         <div style={{padding:"0 14px 8px"}}>
 
-          {/* 수업 없는 날 */}
-          {isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&(
+          {/* 수업 없는 날 (주말 또는 슬롯 0개인 날) */}
+          {!dayClosure&&!isOpen&&!(isSpecial&&special?.type==="special")&&slots.length===0&&(
             <div style={{textAlign:"center",padding:"32px 0",color:"#b0a090"}}>
               <div style={{fontSize:28,marginBottom:8}}>🌿</div>
               <div style={{fontSize:13}}>이 날은 수업이 없습니다.</div>
