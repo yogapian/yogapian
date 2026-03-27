@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, SLOT_LIMIT } from "../constants.js";
+import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
-import { calcDL, getClosureExtDays, usedAsOf } from "../memberCalc.js";
+import { calcDL, getClosureExtDays, usedAsOf, getSlotCapacity } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 import CalendarPicker from "./CalendarPicker.jsx";
 import MiniCalendar from "./MiniCalendar.jsx";
 
-export default function MemberReservePage({member,bookings,setBookings,setMembers,setNotices,specialSchedules,closures,notices,onBack}){
+export default function MemberReservePage({member,bookings,setBookings,setMembers,setNotices,specialSchedules,closures,notices,scheduleTemplate,onBack}){
   const [tab,setTab]=useState("reserve");
   const [selDate,setSelDate]=useState(TODAY_STR);
   const [showCal,setShowCal]=useState(false);
@@ -48,7 +48,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
   function reserve(slotKey,isWaiting=false){
     if(rem<=0||mySlot(slotKey)||getSlotClosure(slotKey)||dayClosure)return;
-    if(!isWaiting&&slotActiveCount(slotKey)>=SLOT_LIMIT)return;
+    if(!isWaiting&&slotActiveCount(slotKey)>=getSlotCapacity(selDate,slotKey,specialSchedules,scheduleTemplate))return;
     const nid=Math.max(...bookings.map(b=>b.id),0)+1;
     const bStatus=isWaiting?"waiting":"attended";
     setBookings(p=>[...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:bStatus,cancelNote:"",cancelledBy:""}]);
@@ -163,7 +163,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
             const slClosure=getSlotClosure(slot.key);
             const cnt=slotActiveCount(slot.key);
             const waitCnt=slotWaitCount(slot.key);
-            const remaining=SLOT_LIMIT-cnt;
+            const remaining=getSlotCapacity(selDate,slot.key,specialSchedules,scheduleTemplate)-cnt;
             const myB=mySlot(slot.key);
             const myRank=myB&&myB.status==="waiting"?waitingRank(slot.key):0;
             const isFull=remaining<=0;

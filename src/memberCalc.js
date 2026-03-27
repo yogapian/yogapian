@@ -78,6 +78,15 @@ export const getStatus=(m, closures=[])=>{
   return"on";
 };
 
+export function getSlotCapacity(date, slotKey, specialSchedules, scheduleTemplate) {
+  const special = specialSchedules.find(s => s.date === date);
+  if (special?.slotCapacity?.[slotKey] != null) {
+    return special.slotCapacity[slotKey];
+  }
+  const dow = new Date(date + "T00:00:00").getDay();
+  return scheduleTemplate?.[dow]?.[slotKey] ?? 10;
+}
+
 export function periodRecs(member,bookings,r){
   return bookings.filter(function(b){
     return b.memberId===member.id&&b.status==="attended"&&b.date>=r.startDate&&b.date<=r.endDate;

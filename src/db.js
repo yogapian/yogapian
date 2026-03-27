@@ -100,14 +100,15 @@ export function fromSnakeNotice(r) {
 }
 export function specialToSnake(s) {
   return {
-    id:           s.id,
-    date:         s.date,
-    label:        s.label ?? "",
-    type:         s.type ?? null,
-    fee_note:     s.feeNote ?? "",
-    active_slots: s.activeSlots ?? [],
-    custom_times: s.customTimes ?? {},
-    updated_at:   new Date().toISOString(),
+    id:            s.id,
+    date:          s.date,
+    label:         s.label ?? "",
+    type:          s.type ?? null,
+    fee_note:      s.feeNote ?? "",
+    active_slots:  s.activeSlots ?? [],
+    custom_times:  s.customTimes ?? {},
+    slot_capacity: s.slotCapacity ?? {},
+    updated_at:    new Date().toISOString(),
   };
 }
 export function fromSnakeSpecial(r) {
@@ -119,6 +120,7 @@ export function fromSnakeSpecial(r) {
     feeNote:      r.fee_note ?? "",
     activeSlots:  r.active_slots ?? [],
     customTimes:  r.custom_times ?? {},
+    slotCapacity: r.slot_capacity ?? {},
   };
 }
 export function closureToSnake(c) {
@@ -146,19 +148,29 @@ export function fromSnakeClosure(r) {
 // ---------- DB 직접 조작 함수들 ----------
 
 export async function dbLoadAll() {
-  const [mRes, bRes, nRes, sRes, cRes] = await Promise.all([
+  const [mRes, bRes, nRes, sRes, cRes, tmplRes] = await Promise.all([
     _supabase.from("members").select("*").order("id"),
     _supabase.from("bookings").select("*").order("id"),
     _supabase.from("notices").select("*").order("id", { ascending: false }),
     _supabase.from("special_schedules").select("*").order("date"),
     _supabase.from("closures").select("*").order("date"),
+    _supabase.from("appdata").select("value").eq("key", "schedule_template").maybeSingle(),
   ]);
+  let scheduleTemplate = {};
+  try {
+    if (tmplRes.data?.value) {
+      scheduleTemplate = typeof tmplRes.data.value === "string"
+        ? JSON.parse(tmplRes.data.value)
+        : tmplRes.data.value;
+    }
+  } catch(e) { console.warn("schedule_template parse error:", e); }
   return {
     members:          (mRes.data || []).map(fromSnakeMember),
     bookings:         (bRes.data || []).map(fromSnakeBooking),
     notices:          (nRes.data || []).map(fromSnakeNotice),
     specialSchedules: (sRes.data || []).map(fromSnakeSpecial),
     closures:         (cRes.data || []).map(fromSnakeClosure),
+    scheduleTemplate,
   };
 }
 
@@ -198,6 +210,17 @@ export async function dbDeleteSpecial(id) {
 export async function dbDeleteClosure(id) {
   const { error } = await _supabase.from("closures").delete().eq("id", id);
   if (error) console.error("closure delete:", error);
+}
+
+// 스케줄 템플릿 저장 (appdata 테이블)
+export async function saveScheduleTemplate(template) {
+  try {
+    await _supabase.from("appdata").upsert({
+      key: "schedule_template",
+      value: JSON.stringify(template),
+      updated_at: new Date().toISOString(),
+    });
+  } catch(e) { console.warn("schedule_template save:", e); }
 }
 
 // 자동로그인 (appdata 테이블)

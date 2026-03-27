@@ -1,20 +1,20 @@
 import { useState } from "react";
-import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG } from "../constants.js";
+import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
-import { getStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, calc3MonthEnd } from "../memberCalc.js";
+import { getStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, calc3MonthEnd, getSlotCapacity } from "../memberCalc.js";
 import S from "../styles.js";
 import CalendarPicker from "./CalendarPicker.jsx";
 import AttendCheckModal from "./AttendCheckModal.jsx";
 import AdminCancelModal from "./AdminCancelModal.jsx";
 
-export default function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedules,setSpecialSchedules,closures,setClosures,notices,setNotices,onMemberClick}){
+export default function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedules,setSpecialSchedules,closures,setClosures,notices,setNotices,scheduleTemplate,setScheduleTemplate,onMemberClick}){
   const [date,setDate]=useState(TODAY_STR);
   const [showCal,setShowCal]=useState(false);
   const [addModal,setAddModal]=useState(null);
   const [addForm,setAddForm]=useState({type:"member",memberId:"",onedayName:"",walkIn:false});
   const [convertModal,setConvertModal]=useState(null);
   const [showSpecialMgr,setShowSpecialMgr]=useState(false);
-  const INIT_SP={date:TODAY_STR,label:"",type:"regular",feeNote:"",dailyNote:"",activeSlots:[],customTimes:{dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"}};
+  const INIT_SP={date:TODAY_STR,label:"",type:"regular",feeNote:"",dailyNote:"",activeSlots:[],customTimes:{dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"},slotCapacity:{}};
   const [newSp,setNewSp]=useState(INIT_SP);
   const [originalType,setOriginalType]=useState(null);
   const closeSpecialMgr=()=>{setShowSpecialMgr(false);setOriginalType(null);setNewSp(INIT_SP);};
@@ -138,13 +138,13 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
             const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
             const spOnDate=specialSchedules.find(s=>s.date===date);
             if(spOnDate){
-              setNewSp({date,type:spOnDate.type,label:spOnDate.label||"",feeNote:spOnDate.feeNote||"",dailyNote:spOnDate.dailyNote||"",activeSlots:spOnDate.activeSlots||[],customTimes:{...regularTimes,...(spOnDate.customTimes||{})}});
+              setNewSp({date,type:spOnDate.type,label:spOnDate.label||"",feeNote:spOnDate.feeNote||"",dailyNote:spOnDate.dailyNote||"",activeSlots:spOnDate.activeSlots||[],customTimes:{...regularTimes,...(spOnDate.customTimes||{})},slotCapacity:{...(spOnDate.slotCapacity||{})}});
               setOriginalType(spOnDate.type);
             } else if(dowSlots.length){
-              setNewSp({date,type:"regular",label:"",feeNote:"",dailyNote:"",activeSlots:dowSlots,customTimes:regularTimes});
+              setNewSp({date,type:"regular",label:"",feeNote:"",dailyNote:"",activeSlots:dowSlots,customTimes:regularTimes,slotCapacity:{}});
               setOriginalType("regular");
             } else {
-              setNewSp({date,type:"special",label:"",feeNote:"",activeSlots:[],customTimes:regularTimes});
+              setNewSp({date,type:"special",label:"",feeNote:"",activeSlots:[],customTimes:regularTimes,slotCapacity:{}});
               setOriginalType(null);
             }
             setShowSpecialMgr(true);
@@ -575,13 +575,13 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                   const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
                   const existingOnDate=specialSchedules.find(s=>s.date===val);
                   if(existingOnDate){
-                    setNewSp(f=>({...f,date:val,type:existingOnDate.type,activeSlots:existingOnDate.activeSlots||[],customTimes:{...regularTimes,...(existingOnDate.customTimes||{})},label:existingOnDate.label||"",feeNote:existingOnDate.feeNote||""}));
+                    setNewSp(f=>({...f,date:val,type:existingOnDate.type,activeSlots:existingOnDate.activeSlots||[],customTimes:{...regularTimes,...(existingOnDate.customTimes||{})},label:existingOnDate.label||"",feeNote:existingOnDate.feeNote||"",slotCapacity:{...(existingOnDate.slotCapacity||{})}}));
                     setOriginalType(existingOnDate.type);
                   } else if(dowSlots.length){
-                    setNewSp(f=>({...f,date:val,type:"regular",activeSlots:dowSlots,customTimes:regularTimes,label:"",feeNote:""}));
+                    setNewSp(f=>({...f,date:val,type:"regular",activeSlots:dowSlots,customTimes:regularTimes,label:"",feeNote:"",slotCapacity:{}}));
                     setOriginalType("regular");
                   } else {
-                    setNewSp(f=>({...f,date:val,type:"special",activeSlots:[],customTimes:regularTimes,label:"",feeNote:""}));
+                    setNewSp(f=>({...f,date:val,type:"special",activeSlots:[],customTimes:regularTimes,label:"",feeNote:"",slotCapacity:{}}));
                     setOriginalType(null);
                   }
                 }
@@ -641,6 +641,39 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                 </div>
               </div>
             )}
+            {newSp.activeSlots.length>0&&!closures.some(cl=>cl.date===newSp.date&&!cl.timeSlot)&&(
+              <div style={S.fg}>
+                <label style={S.lbl}>이 날 수업별 정원 <span style={{fontWeight:400,color:"#9a8e80"}}>(비우면 기본값 사용)</span></label>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {TIME_SLOTS.filter(sl=>newSp.activeSlots.includes(sl.key)).map(sl=>{
+                    const spDow=new Date(newSp.date+"T00:00:00").getDay();
+                    const templateCap=scheduleTemplate?.[spDow]?.[sl.key]??10;
+                    const overrideCap=newSp.slotCapacity?.[sl.key];
+                    return(
+                      <div key={sl.key} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:sl.bg,borderRadius:9,border:`1px solid ${sl.color}33`}}>
+                        <span style={{fontSize:14,flexShrink:0}}>{sl.icon}</span>
+                        <span style={{fontSize:13,fontWeight:700,color:sl.color,width:28,flexShrink:0}}>{sl.label}</span>
+                        <span style={{fontSize:11,color:"#9a8e80",flex:1}}>기본 {templateCap}명</span>
+                        <input type="number" min="1" max="99" placeholder={String(templateCap)}
+                          value={overrideCap!=null?overrideCap:""}
+                          onChange={e=>{
+                            const v=e.target.value;
+                            setNewSp(f=>{
+                              const sc={...f.slotCapacity};
+                              if(v==="")delete sc[sl.key];
+                              else sc[sl.key]=Number(v);
+                              return{...f,slotCapacity:sc};
+                            });
+                          }}
+                          onClick={e=>e.stopPropagation()}
+                          style={{...S.inp,width:60,padding:"4px 8px",fontSize:12,margin:0,textAlign:"center"}}/>
+                        <span style={{fontSize:11,color:"#9a8e80",flexShrink:0}}>명</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div style={S.fg}>
               {closures.some(cl=>cl.date===newSp.date&&!cl.timeSlot)?(
                 <>
@@ -681,6 +714,42 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                 </button>
               );
             })()}
+            <div style={{...S.fg,borderTop:"1px solid #e8e4dc",paddingTop:12}}>
+              <label style={{...S.lbl,color:"#3d5494"}}>기본 정원 (요일별 템플릿)</label>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {[1,2,3,4,5].map(d=>{
+                  const slots=TIME_SLOTS.filter(sl=>(scheduleTemplate?.[d]?.[sl.key]!=null)||({1:["dawn","morning","lunch","evening"],2:["lunch","evening"],3:["dawn","morning","lunch","evening"],4:["lunch","evening"],5:["dawn","morning","evening"]}[d]||[]).includes(sl.key));
+                  if(!slots.length)return null;
+                  return(
+                    <div key={d} style={{background:"#f0f0f8",borderRadius:9,padding:"8px 10px"}}>
+                      <div style={{fontSize:12,fontWeight:700,color:"#3d5494",marginBottom:6}}>{DOW_KO[d]}요일</div>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        {slots.map(sl=>{
+                          const cur=scheduleTemplate?.[d]?.[sl.key]??10;
+                          return(
+                            <div key={sl.key} style={{display:"flex",alignItems:"center",gap:4,background:sl.bg,borderRadius:7,padding:"4px 8px",border:`1px solid ${sl.color}33`}}>
+                              <span style={{fontSize:12,color:sl.color,fontWeight:700}}>{sl.label}</span>
+                              <input type="number" min="1" max="99"
+                                value={cur}
+                                onChange={e=>{
+                                  const v=Number(e.target.value)||10;
+                                  setScheduleTemplate(prev=>{
+                                    const next={...prev};
+                                    next[d]={...(next[d]||{}),[sl.key]:v};
+                                    return next;
+                                  });
+                                }}
+                                onClick={e=>e.stopPropagation()}
+                                style={{...S.inp,width:46,padding:"2px 5px",fontSize:12,margin:0,textAlign:"center"}}/>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
             <div style={S.modalBtns}><button style={S.cancelBtn} onClick={()=>closeSpecialMgr()}>취소</button><button style={{...S.saveBtn,opacity:(newSp.type==="regular"||newSp.label)?1:0.5}} onClick={addSpecial} disabled={newSp.type!=="regular"&&!newSp.label}>저장</button></div>
           </div>
         </div>

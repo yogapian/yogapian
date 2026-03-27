@@ -14,7 +14,21 @@ npm run preview  # 빌드 결과 미리보기
 
 ## Architecture
 
-전체 앱이 `src/App.jsx` 단일 파일(~3000줄)에 있다. 별도 라우터 없이 `screen` state 값으로 화면을 전환한다.
+라우터 없이 `screen` state 값으로 화면을 전환한다. `src/App.jsx`는 루트 컴포넌트(state 관리 + screen 분기)만 담당하며, 기능별로 아래 파일로 분리되어 있다.
+
+### 소스 파일 구조
+
+```
+src/
+├── constants.js      # SCHEDULE, TIME_SLOTS, SC, GE, TYPE_CFG, BOOKING_STATUS, KR_HOLIDAYS 등 모든 상수
+├── utils.js          # parseLocal, fmt, fmtWithDow, addDays, toDateStr, isHoliday, useClock 등 순수 유틸
+├── memberCalc.js     # usedAsOf, getStatus, calcDL, effEnd, calc3MonthEnd, getClosureExtDays 등 회원 계산
+├── context.js        # ClosuresContext + useClosures
+├── styles.js         # S 스타일 객체 (전 컴포넌트 공유)
+├── db.js             # Supabase 클라이언트 + DB 함수 (dbLoadAll, dbUpsert*, dbDelete*) + 변환 함수
+├── App.jsx           # 루트: 커스텀 setter 정의, screen 분기, ClosuresContext.Provider
+└── components/       # 22개 컴포넌트 파일
+```
 
 ### 데이터 흐름
 
@@ -100,7 +114,7 @@ usedAsOf(memberId, targetDate, bookings, [member])
 
 ## 작업 규칙
 
-- **App.jsx 전체 읽기 금지.** 필요한 함수/컴포넌트만 Grep·Read로 핀포인트 읽기
+- 필요한 함수/컴포넌트만 Grep·Read로 핀포인트 읽기 (파일 전체 읽기 지양)
 - 수정 전 반드시 영향 범위 먼저 말하기
 - 작업 완료 후 항상 `git commit` + `git push`
 

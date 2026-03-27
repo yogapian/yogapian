@@ -8,7 +8,7 @@ import NoticeBoard from "./NoticeBoard.jsx";
 import MemberReservePage from "./MemberReservePage.jsx";
 import { MemberContactBar } from "./ContactBar.jsx";
 
-export default function MemberView({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,setNotices,onLogout}){
+export default function MemberView({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,setNotices,scheduleTemplate,onLogout}){
   const m=member;
   const closuresCxt=useClosures();
   const status=getStatus(m,closuresCxt),sc=SC[status];
@@ -110,7 +110,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
           )}
         </div>
       </div>
-      <MemberReservePage member={m} bookings={bookings} setBookings={setBookings} setMembers={setMembers} setNotices={setNotices} specialSchedules={specialSchedules} closures={closures} notices={notices} onBack={()=>{}}/>
+      <MemberReservePage member={m} bookings={bookings} setBookings={setBookings} setMembers={setMembers} setNotices={setNotices} specialSchedules={specialSchedules} closures={closures} notices={notices} scheduleTemplate={scheduleTemplate} onBack={()=>{}}/>
       <div style={{display:"flex",justifyContent:"center"}}>
         <MemberContactBar/>
       </div>
