@@ -1,56 +1,61 @@
 import { useState, useEffect } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
-import { fmt, fmtWithDow, useClock } from "../utils.js";
+import { fmt, useClock } from "../utils.js";
 import { getStatus, calcDL, effEnd, getClosureExtDays, usedAsOf } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 import NoticeBoard from "./NoticeBoard.jsx";
 import MemberReservePage from "./MemberReservePage.jsx";
+import MemberDetailModal from "./MemberDetailModal.jsx";
 import { MemberContactBar } from "./ContactBar.jsx";
 
 export default function MemberView({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,setNotices,scheduleTemplate,onLogout}){
-  const m=member;
-  const closuresCxt=useClosures();
-  const status=getStatus(m,closuresCxt),sc=SC[status];
-  const tc=TYPE_CFG[m.memberType]||TYPE_CFG["1month"];
-  const dl=calcDL(m,closuresCxt);
-  const end=effEnd(m,closuresCxt);
-  const expired=dl<0;
-  const usedCnt=usedAsOf(m.id,TODAY_STR,bookings,[m]);
-  const rem=expired?0:Math.max(0,m.total-usedCnt);
-  const pct=expired?100:Math.round(usedCnt/Math.max(m.total,1)*100);
-  const barColor=expired?"#c97474":status==="hold"?"#6a7fc8":"#5a9e6a";
-  const isOff=status==="off";
-  const closureExt=getClosureExtDays(m,closuresCxt);
+  const m = member;
+  const closuresCxt = useClosures();
+  const status = getStatus(m, closuresCxt), sc = SC[status];
+  const tc = TYPE_CFG[m.memberType] || TYPE_CFG["1month"];
+  const dl = calcDL(m, closuresCxt);
+  const end = effEnd(m, closuresCxt);
+  const expired = dl < 0;
+  const usedCnt = usedAsOf(m.id, TODAY_STR, bookings, [m]);
+  const rem = expired ? 0 : Math.max(0, m.total - usedCnt);
+  const pct = expired ? 100 : Math.round(usedCnt / Math.max(m.total, 1) * 100);
+  const barColor = expired ? "#c97474" : status === "hold" ? "#6a7fc8" : "#5a9e6a";
+  const isOff = status === "off";
+  const closureExt = getClosureExtDays(m, closuresCxt);
 
-  const personalNotices=(notices||[]).filter(n=>n.targetMemberId===m.id);
-  const [popupNotice,setPopupNotice]=useState(null);
-  useEffect(()=>{
-    const pending=(notices||[]).filter(n=>n.targetMemberId===m.id);
-    if(pending.length>0 && !popupNotice){
-      setPopupNotice(pending[0]);
-    }
-  },[notices]); // eslint-disable-line
+  const [showDetail, setShowDetail] = useState(false);
+
+  // 개인 공지 팝업
+  const [popupNotice, setPopupNotice] = useState(null);
+  useEffect(() => {
+    const pending = (notices||[]).filter(n => n.targetMemberId === m.id);
+    if(pending.length > 0 && !popupNotice) setPopupNotice(pending[0]);
+  }, [notices]); // eslint-disable-line
 
   function markRead(n){
-    setNotices&&setNotices(p=>p.filter(x=>x.id!==n.id));
+    setNotices && setNotices(p => p.filter(x => x.id !== n.id));
     setPopupNotice(null);
   }
 
-  const {dateTimeStr}=useClock();
+  const {dateTimeStr} = useClock();
 
-  return(
-    <div style={{minHeight:"100vh",background:"#f5f3ef",fontFamily:FONT}}>
-      {popupNotice&&(
+  return (
+    <div style={{minHeight:"100vh", background:"#f5f3ef", fontFamily:FONT}}>
+
+      {/* 개인 공지 팝업 */}
+      {popupNotice && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 24px"}}>
           <div style={{background:"#fff",borderRadius:18,padding:"24px 20px",width:"100%",maxWidth:360,boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}}>
             <div style={{fontSize:20,marginBottom:8,textAlign:"center"}}>📢</div>
             <div style={{fontSize:15,fontWeight:700,color:"#1e2e1e",marginBottom:12,textAlign:"center"}}>{popupNotice.title}</div>
             <div style={{fontSize:13,color:"#5a5a5a",lineHeight:1.8,whiteSpace:"pre-wrap",background:"#f7f4ef",borderRadius:10,padding:"12px 14px",marginBottom:16}}>{popupNotice.content}</div>
-            <button onClick={()=>markRead(popupNotice)} style={{width:"100%",background:"#4a6a4a",color:"#fff",border:"none",borderRadius:12,padding:"13px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>확인했어요</button>
+            <button onClick={() => markRead(popupNotice)} style={{width:"100%",background:"#4a6a4a",color:"#fff",border:"none",borderRadius:12,padding:"13px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>확인했어요</button>
           </div>
         </div>
       )}
+
+      {/* 헤더 */}
       <div style={{background:"#f5f3ef",padding:"max(16px, env(safe-area-inset-top)) 16px 12px",maxWidth:520,margin:"0 auto",width:"100%",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
         <div>
           <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
@@ -61,25 +66,31 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
         </div>
         <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,marginTop:4}}>로그아웃</button>
       </div>
+
       <div style={{padding:"0 14px 0",maxWidth:520,margin:"0 auto",width:"100%"}}>
         <NoticeBoard notices={notices} member={member}/>
-        <div style={{...S.card,opacity:isOff?0.82:1,marginBottom:12}}>
+
+        {/* 회원 카드 — 클릭 시 상세 모달 */}
+        <div style={{...S.card, opacity:isOff?0.82:1, marginBottom:12, cursor:"pointer"}} onClick={() => setShowDetail(true)}>
           <div style={{...S.cardTop}}>
             <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",flex:1,minWidth:0}}>
               <span style={{fontSize:20,lineHeight:1,flexShrink:0}}>{GE[m.gender]}</span>
               <span style={S.memberName}>{m.name}</span>
-              {m.isNew&&<span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
-              {!isOff&&<span style={{fontSize:11,borderRadius:20,padding:"2px 8px",background:tc.bg,color:tc.color,fontWeight:700}}>{tc.label}</span>}
-              {m.holding&&<span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
+              {m.isNew && <span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
+              {!isOff && <span style={{fontSize:11,borderRadius:20,padding:"2px 8px",background:tc.bg,color:tc.color,fontWeight:700}}>{tc.label}</span>}
+              {m.holding && <span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
             </div>
-            <span style={{...S.statusBadge,background:sc.bg,color:sc.color,flexShrink:0}}><span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block",marginRight:4}}/>{sc.label}</span>
+            <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+              <span style={{...S.statusBadge,background:sc.bg,color:sc.color}}><span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block",marginRight:4}}/>{sc.label}</span>
+              <span style={{fontSize:11,color:"#b0a090"}}>›</span>
+            </div>
           </div>
-          {m.adminNote&&<div style={{fontSize:11,color:"#9a5a10",background:"#fffaeb",borderRadius:6,padding:"3px 8px",marginBottom:7,border:"1px dashed #e8c44a"}}>📝 {m.adminNote}</div>}
-          {isOff?(
-            <div style={{fontSize:11,color:"#b0a090",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+          {m.adminNote && <div style={{fontSize:11,color:"#9a5a10",background:"#fffaeb",borderRadius:6,padding:"3px 8px",marginBottom:7,border:"1px dashed #e8c44a"}}>📝 {m.adminNote}</div>}
+          {isOff ? (
+            <div style={{fontSize:11,color:"#b0a090",marginBottom:4,display:"flex",alignItems:"center",gap:6}}>
               <span>종료</span><span style={{fontWeight:600,color:"#c97474"}}>{fmt(end)}</span>
             </div>
-          ):(
+          ) : (
             <>
               <div style={{marginBottom:10}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
@@ -110,10 +121,32 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
           )}
         </div>
       </div>
-      <MemberReservePage member={m} bookings={bookings} setBookings={setBookings} setMembers={setMembers} setNotices={setNotices} specialSchedules={specialSchedules} closures={closures} notices={notices} scheduleTemplate={scheduleTemplate} onBack={()=>{}}/>
+
+      <MemberReservePage
+        member={m}
+        bookings={bookings}
+        setBookings={setBookings}
+        setMembers={setMembers}
+        setNotices={setNotices}
+        specialSchedules={specialSchedules}
+        closures={closures}
+        notices={notices}
+        scheduleTemplate={scheduleTemplate}
+        onBack={()=>{}}
+      />
+
       <div style={{display:"flex",justifyContent:"center"}}>
         <MemberContactBar/>
       </div>
+
+      {/* 회원 상세 모달 (읽기 전용) */}
+      {showDetail && (
+        <MemberDetailModal
+          member={m}
+          bookings={bookings}
+          onClose={() => setShowDetail(false)}
+        />
+      )}
     </div>
   );
 }
