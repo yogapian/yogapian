@@ -21,7 +21,7 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
     if (!waiter) return { nextBookings };
 
     const updatedBookings = nextBookings.map(b =>
-      b.id === waiter.id ? { ...b, status: "attended" } : b
+      b.id === waiter.id ? { ...b, status: "reserved" } : b
     );
 
     const nid = Date.now();
@@ -42,7 +42,7 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
 
   function doAbsent(){
     setBookings(p => {
-      let next = p.map(b => b.id === rec.id ? { ...b, confirmedAttend: false } : b);
+      let next = p.map(b => b.id === rec.id ? { ...b, status: "reserved", confirmedAttend: false } : b);
       const res = promoteWaiterLogic(next);
       return res.nextBookings;
     });

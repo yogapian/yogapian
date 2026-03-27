@@ -73,7 +73,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     setBookings(p => {
       const next = p.map(bk => bk.id === id ? { ...bk, status: "cancelled", cancelledBy: "admin", cancelNote: note } : bk);
       if(firstWaiter){
-        return next.map(bk => bk.id === firstWaiter.id ? { ...bk, status: "attended" } : bk);
+        return next.map(bk => bk.id === firstWaiter.id ? { ...bk, status: "reserved" } : bk);
       }
       return next;
     });
@@ -92,10 +92,10 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     const nid=Math.max(...bookings.map(b=>b.id),0)+1;
     if(addForm.type==="oneday"){
       if(!addForm.onedayName.trim())return;
-      setBookings(p=>[...p,{id:nid,date,memberId:null,onedayName:addForm.onedayName.trim(),timeSlot:addModal,walkIn:true,status:"attended",cancelNote:"",cancelledBy:""}]);
+      setBookings(p=>[...p,{id:nid,date,memberId:null,onedayName:addForm.onedayName.trim(),timeSlot:addModal,walkIn:true,status:"reserved",cancelNote:"",cancelledBy:""}]);
     } else {
       if(!addForm.memberId)return;
-      setBookings(p=>[...p,{id:nid,date,memberId:+addForm.memberId,timeSlot:addModal,walkIn:addForm.walkIn,status:"attended",cancelNote:"",cancelledBy:""}]);
+      setBookings(p=>[...p,{id:nid,date,memberId:+addForm.memberId,timeSlot:addModal,walkIn:addForm.walkIn,status:"reserved",cancelNote:"",cancelledBy:""}]);
     }
     setAddModal(null);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});
   }
