@@ -362,9 +362,9 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                   <div style={{padding:"10px 6px 8px"}}>{/* ← 카드 내부 패딩 */}
 
                     {/* 줄 1: 이모지 + 시간 한 줄 */}
-                    <div style={{textAlign:"center",marginBottom:4}}>
-                      <span style={{fontSize:17,lineHeight:1,marginRight:3}}>{/* ← 이모지 크기 */}{slot.icon}</span>
-                      <span style={{fontSize:15,fontWeight:700,color:slCl?"#9a8e80":"#3f3f3f"}}>{/* ← 시간 색상·크기 */}
+                    <div style={{textAlign:"center",marginBottom:1}}>
+                      <span style={{fontSize:16,lineHeight:1,marginRight:3}}>{/* ← 이모지 크기 */}{slot.icon}</span>
+                      <span style={{fontSize:13,fontWeight:700,color:slCl?"#9a8e80":"#3f3f3f"}}>{/* ← 시간 색상·크기 */}
                         {isChg
                           ? <><s style={{color:"#c0b0b0",fontWeight:400}}>{DEFAULT_TIMES[slot.key]}</s><span style={{color:"#c97474"}}> {slot.time}</span></>
                           : slot.time
@@ -378,7 +378,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                         ? <span style={{fontSize:9,background:"#e8f5ee",color:"#2e6e44",borderRadius:6,padding:"2px 6px",fontWeight:700}}>내 예약</span>/* ← 내예약 뱃지 색상 */
                         : isMyWait
                         ? <span style={{fontSize:9,background:"#fffaeb",color:"#9a5a10",borderRadius:6,padding:"2px 6px",fontWeight:700}}>대기 {myRank}번</span>/* ← 대기 뱃지 색상 */
-                        : <span style={{fontSize:12,color:slCl?"#b0a090":isFull?"#c97474":remaining<=2?"#9a5a10":"#a0988e"}}>{/* ← 잔여석: 마감=빨강/촉박=주황/여유=회색 */}
+                        : <span style={{fontSize:9,color:slCl?"#b0a090":isFull?"#c97474":remaining<=2?"#9a5a10":"#a0988e", padding: "2px 4px"}}>{/* ← 잔여석: 마감=빨강/촉박=주황/여유=회색 */}
                             {slCl?`🔕 휴강`:isFull?`마감·대기 ${waitCnt}명`:`잔여 ${remaining}/${cap}명`}
                           </span>
                       }
