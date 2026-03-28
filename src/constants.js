@@ -7,7 +7,7 @@ export const TIME_SLOTS = [
   {key:"evening",   label:"저녁",time:"19:30",color:"#5c3070",bg:"#f2edf8",icon:"🌛"},
 ];
 export const DOW_KO=["일","월","화","수","목","금","토"];
-export const FONT="'Malgun Gothic','맑은 고딕',-apple-system,sans-serif";
+export const FONT="'Gowun Dodum','맑은 고딕',sans-serif";
 
 // 한국 공휴일 (2025~2026)
 export const KR_HOLIDAYS={
