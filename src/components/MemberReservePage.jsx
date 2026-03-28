@@ -231,7 +231,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
       {/* ─── 홀딩 배너 ─────────────────────────────────────── */}
       {member.holding&&(
-        <div style={{margin:"0 14px 12px",borderRadius:12,background:"#edf0f8",border:"1.5px solid #a0b0d0",padding:"12px 14px"}}>{/* ← 홀딩 카드: 배경/테두리색 */}
+        <div style={{margin:"0 14px 9px",borderRadius:12,background:"#edf0f8",border:"1.5px solid #a0b0d0",padding:"12px 14px"}}>{/* ← 홀딩 카드: 배경/테두리색 */}
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:20,flexShrink:0}}>⏸️</span>
             <div style={{flex:1,minWidth:0}}>
@@ -248,23 +248,18 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       )}
 
       {/* ─── 다가오는 예약 카드 (항상 표시) ────────────────── */}
-      <div style={{margin:"0 14px 10px",borderRadius:12,background:"#fff8ee",border:"1.5px solid #f0c888",padding:"11px 14px"}}>{/* ← 카드 배경(연한주황)/테두리색 */}
-        <div style={{fontSize:13,fontWeight:700,color:"#a06010",marginBottom:4}}>❗️다가오는 예약</div>{/* ← 타이틀 크기/색상 */}
+      <div style={{margin:"0 14px 8px",borderRadius:12,background:"#fff8ee",border:"1.5px solid #f0c888",padding:"7px 14px"}}>{/* ← 카드 배경(연한주황)/테두리색 */}
+        <div style={{fontSize:13,fontWeight:700,color:"#a06010",marginBottom:1}}>❗️다가오는 예약</div>{/* ← 타이틀 크기/색상 */}
         {upcomingBooking ? (
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
             <div style={{flex:1,minWidth:0}}>
-              {/* ← 날짜·슬롯 텍스트: 이탤릭·색상·크기 */}
-              <div style={{fontSize:11,color:"#7a5010",fontStyle:"italic",lineHeight:1.3}}>{upcomingText}</div>
-              {/* ← 잔여석/대기순번 텍스트 색상·크기 */}
-              <div style={{fontSize:10,color:"#a07030",marginTop:2,lineHeight:1.3}}>
-                {upcomingBooking.status==="waiting"
-                  ? `대기 ${upcomingWaitRank}번째`
-                  : `잔여 ${Math.max(0,upcomingCap-upcomingCnt)}/${upcomingCap}석`
-                }
+              {/* ← 날짜·슬롯 + 잔여석/대기: 한 줄, 이탤릭·색상·크기 */}
+              <div style={{fontSize:11,color:"#7a5010",fontStyle:"italic",lineHeight:1.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                {upcomingText}{" ———— "}{upcomingBooking.status==="waiting"?`대기 ${upcomingWaitRank}번째`:`잔여 ${Math.max(0,upcomingCap-upcomingCnt)}/${upcomingCap}석`}
               </div>
             </div>
             {/* ← 예약취소 버튼 색상/크기 */}
-            <button onClick={()=>setConfirmCancel(upcomingBooking.id)} style={{flexShrink:0,background:"none",border:"1px solid #e8a0a0",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,color:"#c97474",cursor:"pointer",fontFamily:FONT}}>예약취소</button>
+            <button onClick={()=>setConfirmCancel(upcomingBooking.id)} style={{flexShrink:0,background:"none",border:"1px solid #e8a0a0",borderRadius:8,padding:"5px 14px",fontSize:11,fontWeight:700,color:"#c97474",cursor:"pointer",fontFamily:FONT,alignSelf: "flex-start",marginTop: -10}}>예약취소</button>
           </div>
         ) : (
           /* ← 예약 없을 때 안내 텍스트 색상 */
@@ -366,7 +361,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                     {/* 줄 1: 이모지 + 라벨·시간 + 잔여석 or 내예약 한 줄 */}
                     <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:5}}>
                       <span style={{fontSize:17,lineHeight:1,flexShrink:0}}>{/* ← 이모지 크기 */}{slot.icon}</span>
-                      <span style={{fontSize:15,fontWeight:700,color:slCl?"#9a8e80":slot.color,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{/* ← 라벨+시간 색상·크기 */}
+                      <span style={{fontSize:13,fontWeight:700,color:slCl?"#9a8e80":slot.color,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{/* ← 라벨+시간 색상·크기 */}
                         {slot.label}{" "}
                         {isChg
                           ? <><s style={{color:"#c0b0b0",fontWeight:400}}>{DEFAULT_TIMES[slot.key]}</s><span style={{color:"#c97474"}}> {slot.time}</span></>
