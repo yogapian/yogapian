@@ -216,7 +216,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
             :!dayClosure.timeSlot&&<span style={{marginLeft:6,fontSize:11,background:"#fef5e0",color:"#9a5a10",borderRadius:4,padding:"1px 6px",fontWeight:700}}>+1일 연장</span>
           }
         </div>
-        <button onClick={()=>{const nc=closures.filter(cl=>cl.id!==dayClosure.id);setClosures(nc);setMembers(prev=>prev.map(m=>m.memberType==="3month"?{...m,endDate:calc3MonthEnd(m.startDate,nc)}:m));}} style={{background:"none",border:"none",color:"#c97474",cursor:"pointer",fontSize:12,fontFamily:FONT}}>삭제</button>
+        <button onClick={()=>{const nc=closures.filter(cl=>cl.id!==dayClosure.id);setClosures(nc);setMembers(prev=>prev.map(m=>{if(m.memberType!=="3month")return m;const nd=calc3MonthEnd(m.startDate,nc);const rh=m.renewalHistory||[];const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,endDate:nd}:r):rh;return{...m,endDate:nd,renewalHistory:updRH};}));}} style={{background:"none",border:"none",color:"#c97474",cursor:"pointer",fontSize:12,fontFamily:FONT}}>삭제</button>
       </div>}
 
       {slots.length>0&&!dayClosure&&(
@@ -675,7 +675,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                       e.stopPropagation();
                       const nc=closures.filter(cl=>cl.date!==newSp.date);
                       setClosures(nc);
-                      setMembers(prev=>prev.map(m=>m.memberType==="3month"?{...m,endDate:calc3MonthEnd(m.startDate,nc)}:m));
+                      setMembers(prev=>prev.map(m=>{if(m.memberType!=="3month")return m;const nd=calc3MonthEnd(m.startDate,nc);const rh=m.renewalHistory||[];const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,endDate:nd}:r):rh;return{...m,endDate:nd,renewalHistory:updRH};}));
                       const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
                       setNewSp(f=>({...f,type:"regular",activeSlots:[],customTimes:regularTimes,label:"",feeNote:""}));
                       setOriginalType(null);

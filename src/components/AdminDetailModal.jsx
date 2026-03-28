@@ -22,6 +22,8 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
   const curRecs=currentRecs(member,bookings);
   const isActiveStatus=status==="on"||status==="hold";
   const reversedHistory=[...(member.renewalHistory||[])].reverse();
+  const phoneDigits=(member.phone||"").replace(/\D/g,"");
+  const phoneFormatted=phoneDigits.length===11?`${phoneDigits.slice(0,3)}-${phoneDigits.slice(3,7)}-${phoneDigits.slice(7)}`:member.phone||"";
 
   return(
     <div style={S.overlay} onClick={onClose}>
@@ -102,7 +104,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:0,marginTop:4,paddingTop:4,borderTop:"1px solid #ece8e0"}}>
                 <span style={{color:"#9a8e80"}}>전화번호</span>
                 {/* ← 전화 링크 색상: #3d5494 / 숫자만 추출해서 전화 연결 (- 무관) */}
-                <a href={`tel:${member.phone.replace(/\D/g,"")}`} style={{color:"#3d5494",fontWeight:700,textDecoration:"none"}}>{member.phone}</a>
+                <a href={`tel:${phoneDigits}`} style={{color:"#3d5494",fontWeight:700,textDecoration:"none"}}>{phoneFormatted}</a>
               </div>
             )}
           </div>

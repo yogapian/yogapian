@@ -75,9 +75,18 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays:0};}));setHoldT(null);setDetailM(null);}
   function applyAdjust(mid,changes){setMembers(p=>p.map(m=>{
     if(m.id!==mid)return m;
-    // 횟수·기간 수정 시 renewalHistory 마지막 항목도 함께 업데이트 (이력 불일치 버그 방지)
     const rh=m.renewalHistory||[];
-    const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,...(changes.total!==undefined?{total:changes.total}:{}),...(changes.startDate?{startDate:changes.startDate}:{}),...(changes.endDate?{endDate:changes.endDate}:{})}:r):rh;
+    // 이력이 있으면 마지막 항목 업데이트, 없으면 신규 생성
+    const updRH=rh.length>0
+      ?rh.map((r,i)=>{
+          if(i!==rh.length-1)return r;
+          const u={...r};
+          if(changes.total!==undefined)u.total=changes.total;
+          if(changes.startDate)u.startDate=changes.startDate;
+          if(changes.endDate)u.endDate=changes.endDate;
+          return u;
+        })
+      :[{id:1,total:changes.total??m.total,startDate:changes.startDate||m.startDate,endDate:changes.endDate||m.endDate,memberType:m.memberType}];
     return{...m,...changes,renewalHistory:updRH};
   }));}
   const {dateTimeStr}=useClock();
