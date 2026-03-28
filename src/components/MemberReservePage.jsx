@@ -1,3 +1,15 @@
+// ─── MemberReservePage.jsx ───────────────────────────────────────────────────
+// 회원이 보는 예약 페이지 (로그인한 회원 전용 화면)
+// 구성: 홀딩 배너 → 다가오는 예약 카드 → 인라인 달력 → 타임슬롯 카드 → 모달들
+//
+// 슬롯 카드 액션 버튼 흐름:
+//   예약하기 → tryReserve → (잔여0이면 needRenewal팝업, 잔여1이면 last1팝업, 정상이면) doReserve
+//   예약취소 → setConfirmCancel → cancelBooking → 대기자 자동 승격
+//   대기 → tryReserve(isWaiting=true) → doReserve(status="waiting")
+//
+// 달력 날짜 선택 → selDate 변경 → 슬롯 영역 표시
+// 월 이동 → selDate 초기화 (슬롯 숨김)
+
 import { useState } from "react";
 import { Agentation } from "agentation";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, DOW_KO, KR_HOLIDAYS } from "../constants.js";
@@ -6,6 +18,7 @@ import { calcDL, getClosureExtDays, usedAsOf, getSlotCapacity, holdingElapsed } 
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 
+// 슬롯 기본 시간 (수업설정으로 변경된 경우와 비교해 취소선 표시에 사용)
 const DEFAULT_TIMES = {dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
 
 // ─── 인라인 달력 컴포넌트 ───────────────────────────────────────────────────
@@ -124,10 +137,11 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
 
 // ─── 회원 예약 페이지 ────────────────────────────────────────────────────────
 export default function MemberReservePage({member,bookings,setBookings,setMembers,setNotices,specialSchedules,closures,scheduleTemplate}){
-  const [selDate, setSelDate] = useState(null); // null = 날짜 미선택 상태 (슬롯 숨김)
-  const [confirmCancel, setConfirmCancel] = useState(null);
-  const [pendingSlot, setPendingSlot] = useState(null);
-  const [renewPopup, setRenewPopup] = useState(null);
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [selDate, setSelDate] = useState(null);       // 달력에서 선택한 날짜 (null=미선택)
+  const [confirmCancel, setConfirmCancel] = useState(null); // 취소 확인 모달: null 또는 bookingId
+  const [pendingSlot, setPendingSlot] = useState(null);     // 팝업 확인 후 예약할 slotKey 임시 저장
+  const [renewPopup, setRenewPopup] = useState(null); // "last1"=마지막1회 / "needRenewal"=잔여0/만료
 
   const closuresCxt = useClosures();
 
@@ -185,6 +199,10 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     return idx>=0?idx+1:0;
   }
 
+  // ── tryReserve: 예약하기/대기 버튼 클릭 시 진입점 ───────────────────────
+  // 이미 예약됨 / 슬롯휴강 / 전일휴강이면 무시
+  // 정원 초과이면서 isWaiting=false이면 무시 (대기 버튼만 통과)
+  // 잔여 0 or 만료 → needRenewal 팝업 / 잔여 1 → last1 팝업 / 정상 → doReserve 바로 호출
   function tryReserve(slotKey, isWaiting=false){
     if(mySlot(slotKey)||getSlotClosure(slotKey)||dayClosure) return;
     if(!isWaiting && slotActiveCount(slotKey)>=getSlotCapacity(selDate,slotKey,specialSchedules,scheduleTemplate)) return;
@@ -194,12 +212,16 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     doReserve(slotKey,false,false);
   }
 
+  // ── doReserve: booking을 실제로 생성 ─────────────────────────────────────
+  // renewalPending=true면 갱신 필요 임시예약 (관리자가 갱신 처리할 때까지 표시됨)
   function doReserve(slotKey, isWaiting, renewalPending){
     const nid = Math.max(...bookings.map(b=>b.id),0)+1;
     setBookings(p=>[...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}]);
     setPendingSlot(null); setRenewPopup(null);
   }
 
+  // ── cancelBooking: 예약 취소 + 대기자 자동 승격 ──────────────────────────
+  // reserved/attended 취소 시 대기 1번 → status="attended"로 자동 변경 + 공지 생성
   function cancelBooking(bId){
     const cancelled = bookings.find(b=>b.id===bId);
     if(!cancelled) return;
@@ -219,6 +241,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     setConfirmCancel(null);
   }
 
+  // ── resumeHolding: 홀딩 복귀 버튼 클릭 시 (3개월권만 가능) ──────────────
+  // 홀딩 시작일~오늘까지 평일 수를 extensionDays에 누적, holding 필드 초기화
   function resumeHolding(){
     if(!member.holding||!setMembers) return;
     const startStr = member.holding.startDate;

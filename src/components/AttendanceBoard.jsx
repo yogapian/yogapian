@@ -1,3 +1,13 @@
+// ─── AttendanceBoard.jsx ─────────────────────────────────────────────────────
+// 관리자 "출석보드" 탭
+// 역할: 날짜별 수업 슬롯 목록 + 예약자 행 + 출석체크 / 휴강·수업설정 / 워크인 추가
+//
+// 슬롯 카드 구조: [슬롯 헤더(배경색)] → [예약자 행 목록] (드래그로 슬롯간 이동 가능)
+// 예약자 행: 이름 클릭 → quickDetailM 미니카드 / 아이콘 클릭 → AttendCheckModal
+// 모달 목록: addModal(출석추가) / cancelModal(취소) / attendCheckModal(출석처리)
+//           showClosureMgr(휴강설정) / showSpecialMgr(수업설정) / quickDetailM(미니상세)
+//           waitPopup(대기자 수락/거절) / showTemplateMgr(시간표 관리)
+
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
@@ -9,39 +19,51 @@ import AdminCancelModal from "./AdminCancelModal.jsx";
 import ScheduleTemplateManager from "./ScheduleTemplateManager.jsx";
 
 export default function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedules,setSpecialSchedules,closures,setClosures,notices,setNotices,scheduleTemplate,setScheduleTemplate,onMemberClick}){
-  const [date,setDate]=useState(TODAY_STR);
-  const [showCal,setShowCal]=useState(false);
-  const [addModal,setAddModal]=useState(null);
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [date,setDate]=useState(TODAY_STR);         // 현재 선택된 날짜 (YYYY-MM-DD)
+  const [showCal,setShowCal]=useState(false);        // 달력 피커 열림 여부
+  const [addModal,setAddModal]=useState(null);        // 출석 추가 모달: null 또는 slotKey
   const [addForm,setAddForm]=useState({type:"member",memberId:"",onedayName:"",walkIn:false});
-  const [convertModal,setConvertModal]=useState(null);
-  const [showSpecialMgr,setShowSpecialMgr]=useState(false);
+  // addForm.type: "member"=기존 회원 / "oneday"=원데이 참여자
+  const [convertModal,setConvertModal]=useState(null); // 원데이→정회원 전환 안내 모달
+  const [showSpecialMgr,setShowSpecialMgr]=useState(false); // 수업설정 모달 열림 여부
+  // INIT_SP: 수업설정 모달 초기값 (새로 열 때마다 리셋)
   const INIT_SP={date:TODAY_STR,label:"",type:"regular",feeNote:"",dailyNote:"",activeSlots:[],customTimes:{dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"},slotCapacity:{}};
-  const [newSp,setNewSp]=useState(INIT_SP);
-  const [originalType,setOriginalType]=useState(null);
+  const [newSp,setNewSp]=useState(INIT_SP);          // 수업설정 폼 데이터
+  const [originalType,setOriginalType]=useState(null); // 수업설정 열기 전 기존 유형 (편집 시 유형 잠금용)
   const closeSpecialMgr=()=>{setShowSpecialMgr(false);setOriginalType(null);setNewSp(INIT_SP);};
-  const [cancelModal,setCancelModal]=useState(null);
-  const [attendCheckModal,setAttendCheckModal]=useState(null);
-  const [dragId,setDragId]=useState(null);
-  const [dragOver,setDragOver]=useState(null);
-  const [showClosureMgr,setShowClosureMgr]=useState(false);
+  const [cancelModal,setCancelModal]=useState(null);  // 예약 취소 모달: null 또는 booking 객체
+  const [attendCheckModal,setAttendCheckModal]=useState(null); // 출석처리 모달: null 또는 booking 객체
+  const [dragId,setDragId]=useState(null);            // 드래그 중인 booking id
+  const [dragOver,setDragOver]=useState(null);        // 드래그 대상 슬롯 key (하이라이트용)
+  const [showClosureMgr,setShowClosureMgr]=useState(false); // 휴강설정 모달
   const [closureForm,setClosureForm]=useState({date:TODAY_STR,timeSlot:"",reason:"",closureType:"regular",extensionOverride:0});
-  const [quickDetailM,setQuickDetailM]=useState(null);
-  const [openWaitActionId, setOpenWaitActionId] = useState(null);
-  const [waitPopup, setWaitPopup] = useState(null);
-  const [showTemplateMgr, setShowTemplateMgr] = useState(false);
+  // closureForm.timeSlot: ""=전체휴강 / 슬롯key=해당 타임만 휴강
+  // closureForm.closureType: "regular"=정기(연장없음) / "regular_ext"=정기(추가연장) / "special"=별도
+  const [quickDetailM,setQuickDetailM]=useState(null); // 예약자 이름 클릭 시 뜨는 미니 상세카드
+  const [openWaitActionId, setOpenWaitActionId] = useState(null); // (미사용 예비 state)
+  const [waitPopup, setWaitPopup] = useState(null);   // 대기자 수락/거절 팝업 {rec, slotKey, mem}
+  const [showTemplateMgr, setShowTemplateMgr] = useState(false); // 시간표 관리 모달
 
-  const dow=parseLocal(date).getDay();
-  const special=specialSchedules.find(s=>s.date===date);
+  // ── 선택된 날짜 파생 계산값 ────────────────────────────────────────────────
+  const dow=parseLocal(date).getDay();                // 요일 (0=일 ~ 6=토)
+  const special=specialSchedules.find(s=>s.date===date); // 이 날의 특별수업 설정 (없으면 undefined)
   const isWeekend=dow===0||dow===6;
   const isSpecial=!!special;
-  const isOpen=special?.type==="open";
-  const isRegular=special?.type==="regular";
-  const dayClosure=closures.find(cl=>cl.date===date&&!cl.timeSlot);
-  const getSlotClosure=k=>closures.find(cl=>cl.date===date&&cl.timeSlot===k);
+  const isOpen=special?.type==="open";               // 오픈클래스 여부
+  const isRegular=special?.type==="regular";          // 정규수업으로 override된 날
+  const dayClosure=closures.find(cl=>cl.date===date&&!cl.timeSlot); // 전일 휴강
+  const getSlotClosure=k=>closures.find(cl=>cl.date===date&&cl.timeSlot===k); // 특정 슬롯 휴강
   const defaultTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"14:00",evening:"19:30"};
+  // 시간 변경이 있는 정규수업인지 — 날짜바에 "변경❗" 뱃지 표시 여부에 쓰임
   const hasTimeChange=isRegular&&special?.activeSlots?.some(k=>special.customTimes?.[k]&&special.customTimes[k]!==defaultTimes[k]);
 
-  const LEGACY_END="2026-05-01"; // 이 날짜부터는 SCHEDULE 하드코딩 fallback 미적용
+  // ── 슬롯 결정 함수 ─────────────────────────────────────────────────────────
+  // LEGACY_END 이전: constants.js의 SCHEDULE 하드코딩 fallback 사용
+  // LEGACY_END 이후: scheduleTemplate DB 데이터만 사용
+  const LEGACY_END="2026-05-01";
+
+  // getDowSlots: 요일(d)에 열리는 slotKey 배열 반환 (수업설정 모달 초기값에도 사용)
   function getDowSlots(d,forDate){
     if(Array.isArray(scheduleTemplate)&&scheduleTemplate.length>0){
       const res=scheduleTemplate.filter(e=>e.days.includes(d)&&(!e.startDate||forDate>=e.startDate)&&(!e.endDate||forDate<=e.endDate)).map(e=>e.slotKey);
@@ -50,6 +72,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     if(forDate<LEGACY_END) return SCHEDULE[d]||[];
     return [];
   }
+
+  // getSlots: 현재 date에 표시할 슬롯 배열 (time 포함)
+  // 우선순위: 특별수업 > 주말(없음) > scheduleTemplate > LEGACY 하드코딩
   const getSlots=()=>{
     if(isSpecial)return TIME_SLOTS.filter(s=>special.activeSlots.includes(s.key)).map(s=>({...s,time:special.customTimes?.[s.key]||s.time}));
     if(isWeekend)return[];
@@ -61,8 +86,13 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     return [];
   };
   const slots=getSlots();
+  // dayActive: 오늘 날짜의 취소되지 않은 booking 목록 (슬롯 카드에서 필터해서 사용)
   const dayActive=bookings.filter(b=>b.date===date&&b.status!=="cancelled");
 
+  // ── adminCancel: 관리자가 예약을 취소할 때 호출 ─────────────────────────
+  // - booking을 cancelled로 변경
+  // - 대기자가 있으면 첫 번째 대기자를 자동으로 reserved로 올림
+  // - sendNotice=true면 해당 회원 + 대기 확정된 회원에게 공지 자동 생성
   function adminCancel(id, note, sendNotice=true){
     const b = bookings.find(bk=>bk.id===id);
     if(!b) return;
@@ -88,6 +118,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     setCancelModal(null);
   }
 
+  // ── addRecord: 출석 추가 모달에서 "출석 추가" 버튼 클릭 시 ────────────────
+  // 회원: memberId + walkIn(워크인 여부) / 원데이: memberId=null + onedayName
   function addRecord(){
     const nid=Math.max(...bookings.map(b=>b.id),0)+1;
     if(addForm.type==="oneday"){
@@ -100,6 +132,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     setAddModal(null);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});
   }
 
+  // ── 드래그 앤 드롭: 예약자를 다른 슬롯으로 이동 ─────────────────────────
+  // 같은 슬롯이나 이미 해당 슬롯에 있는 회원이면 이동 불가
   function onDragStart(e,id){setDragId(id);e.dataTransfer.effectAllowed="move";}
   function onDragEnd(){setDragId(null);setDragOver(null);}
   function onDropSlot(e,slotKey){
@@ -113,7 +147,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     setDragOver(null);setDragId(null);
   }
 
+  // slotMids: 특정 슬롯에 이미 예약된 memberId 배열 (중복 방지용)
   const slotMids=k=>dayActive.filter(b=>b.timeSlot===k&&b.memberId).map(b=>b.memberId);
+  // avail: 해당 슬롯에 아직 예약 안 한 + off 아닌 회원 목록 (추가 드롭다운용)
   const avail=k=>members.filter(m=>!slotMids(k).includes(m.id)&&getDisplayStatus(m,closures,bookings)!=="off").sort((a,b)=>a.name.localeCompare(b.name,"ko"));
 
   function addSpecial(){
@@ -126,10 +162,12 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   }
   const toggleSp=sl=>setNewSp(f=>({...f,activeSlots:f.activeSlots.includes(sl)?f.activeSlots.filter(s=>s!==sl):[...f.activeSlots,sl]}));
 
+  // attendedDay: 이 날 출석+예약 총 인원수 (날짜바 왼쪽 초록 뱃지에 표시)
   const attendedDay=dayActive.filter(b=>b.status==="attended"||b.status==="reserved").length;
 
   return(
     <div>
+      {/* ── 날짜 바: ← 날짜 → / 출석 수 / 시간표 버튼 / 수업설정 버튼 ──── */}
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
           <button style={{...S.navBtn,padding:"10px 14px",fontSize:16,minWidth:44,flexShrink:0}} onClick={()=>setDate(d=>addDays(d,-1))}>←</button>
@@ -219,12 +257,14 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         <button onClick={()=>{const nc=closures.filter(cl=>cl.id!==dayClosure.id);setClosures(nc);setMembers(prev=>prev.map(m=>{if(m.memberType!=="3month")return m;const nd=calc3MonthEnd(m.startDate,nc);const rh=m.renewalHistory||[];const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,endDate:nd}:r):rh;return{...m,endDate:nd,renewalHistory:updRH};}));}} style={{background:"none",border:"none",color:"#c97474",cursor:"pointer",fontSize:12,fontFamily:FONT}}>삭제</button>
       </div>}
 
+      {/* ── 슬롯 카드 그리드 (전일 휴강이면 숨김) ─────────────────────────── */}
+      {/* 열 너비: 자동 배치, 최소 160px / 가로 스크롤 없이 줄바꿈 */}
       {slots.length>0&&!dayClosure&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
           {slots.map(slot=>{
-            const recs=dayActive.filter(b=>b.timeSlot===slot.key);
-            const isDT=dragOver===slot.key;
-            const slotCl=getSlotClosure(slot.key);
+            const recs=dayActive.filter(b=>b.timeSlot===slot.key); // 이 슬롯의 예약 목록
+            const isDT=dragOver===slot.key;      // 드래그 hover 중인지 (테두리 하이라이트)
+            const slotCl=getSlotClosure(slot.key); // 이 슬롯만의 휴강 정보
             return(
               <div key={slot.key}
                 onDragOver={e=>{e.preventDefault();setDragOver(slot.key);}}
@@ -257,6 +297,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                 <div style={{minHeight:44}}>
                   {recs.filter(r=>r.status!=="waiting").length===0&&recs.length===0&&<div style={{padding:12,textAlign:"center",fontSize:12,color:"#c8c0b0"}}>없음</div>}
                   {(() => {
+                    // 정렬: 회원 먼저 / 대기자는 맨 뒤 / 같은 그룹 내 id 오름차순
                     const sorted = [...recs].sort((a,b)=>{
                       const aOneday=!a.memberId, bOneday=!b.memberId;
                       const aWait=a.status==="waiting", bWait=b.status==="waiting";
@@ -266,20 +307,23 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                       if(!aWait&&bWait) return -1;
                       return a.id-b.id;
                     });
+                    // 대기자 순서 (waitRank: 1번부터 이모지로 표시)
                     const waiters=recs.filter(r=>r.status==="waiting").sort((a,b)=>a.id-b.id);
                     return sorted.map(rec=>{
-                    const isOneday=!rec.memberId;
+                    const isOneday=!rec.memberId;        // 원데이(비회원) 여부
                     const mem=isOneday?null:members.find(m=>m.id===rec.memberId);
                     const isWaiting=rec.status==="waiting";
                     const waitRank=isWaiting?waiters.findIndex(w=>w.id===rec.id)+1:0;
                     const waitEmoji=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣"][waitRank-1]||`${waitRank}`;
                     const remCount=mem?Math.max(0,mem.total-usedAsOf(mem.id,date,bookings,members)):null;
                     const isDragging=dragId===rec.id;
+                    // remCount<=2이면 잔여 경고 텍스트 표시 (1이하=빨강, 2=주황)
                     const showRemWarn=!isOneday&&!isWaiting&&remCount!==null&&remCount<=2;
                     const remColor=showRemWarn?(remCount<=1?"#a83030":"#9a5a10"):undefined;
                     const cardColor=mem?.cardColor||"";
-                    const isAttended=rec.confirmedAttend===true;
-                    const isAbsent=rec.confirmedAttend===false;
+                    const isAttended=rec.confirmedAttend===true;  // 출석 확정
+                    const isAbsent=rec.confirmedAttend===false;   // 결석 처리됨
+                    // 행 배경: 결석=연분홍 / 대기=회색 / 개인색상=투명 오버레이 / 기본=흰색
                     const rowBg=isAbsent?"#fff8f8":isWaiting?"#e8e8e8":cardColor?`${cardColor}22`:"#fff";
                     return(
                         <div key={rec.id} draggable={!slotCl&&!isWaiting} onDragStart={e=>!slotCl&&!isWaiting&&onDragStart(e,rec.id)} onDragEnd={onDragEnd}
@@ -325,6 +369,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         </div>
       )}
 
+      {/* ── 출석 추가 모달: addModal = slotKey일 때 열림 ──────────────────── */}
       {addModal&&(
         <div style={S.overlay} onClick={()=>setAddModal(null)}>
           <div style={{...S.modal,maxWidth:350}} onClick={e=>e.stopPropagation()}>
@@ -376,6 +421,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         </div>
       )}
 
+      {/* ── 휴강 설정 모달 ─────────────────────────────────────────────────── */}
+      {/* 전체/슬롯별 휴강 선택 + 유형(정기/추가연장/별도) 선택 */}
+      {/* 별도/추가연장은 저장 시 회원 공지 자동 생성 */}
       {showClosureMgr&&(
         <div style={S.overlay} onClick={()=>setShowClosureMgr(false)}>
           <div style={{...S.modal,maxWidth:360}} onClick={e=>e.stopPropagation()}>
@@ -460,6 +508,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         </div>
       )}
 
+      {/* ── 빠른 상세 카드: 예약자 이름 클릭 시 뜨는 미니 팝업 ─────────── */}
+      {/* 전체 상세보기(AdminDetailModal)로 가지 않고 바로 핵심 정보만 확인 */}
       {quickDetailM&&(()=>{
         const qm=members.find(m=>m.id===quickDetailM.id)||quickDetailM;
         const qdl=calcDL(qm,closures);
@@ -521,6 +571,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         );
       })()}
 
+      {/* ── 대기자 처리 팝업: 대기 이모지 클릭 시 수락/거절 선택 ─────────── */}
+      {/* 수락 → status="reserved" + 회원 공지 / 거절 → status="cancelled" + 공지 */}
       {waitPopup&&(
         <div style={S.overlay} onClick={()=>setWaitPopup(null)}>
           <div style={{...S.modal,maxWidth:320,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
@@ -555,6 +607,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         </div>
       )}
 
+      {/* ── 수업 설정 모달: 특정 날짜의 수업 유형·슬롯·시간·정원 설정 ──── */}
+      {/* 유형: 정규(요일 기본) / 집중수련 / 오픈클래스 */}
+      {/* 슬롯 클릭으로 on/off 토글, 시간·정원 직접 입력 가능 */}
       {showSpecialMgr&&(
         <div style={S.overlay} onClick={()=>closeSpecialMgr()}>
           <div style={{...S.modal,maxWidth:400}} onClick={e=>e.stopPropagation()}>
@@ -710,7 +765,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         </div>
       )}
 
+      {/* AttendCheckModal: 🕉 아이콘 클릭 시 출석/결석/워크인 처리 */}
       {attendCheckModal&&<AttendCheckModal rec={attendCheckModal} members={members} isOpen={isOpen} bookings={bookings} setBookings={setBookings} setMembers={setMembers} notices={notices} setNotices={setNotices} onClose={()=>setAttendCheckModal(null)}/>}
+      {/* AdminCancelModal: 예약 취소 사유 입력 후 adminCancel 호출 */}
       {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={(note,sendNotice)=>adminCancel(cancelModal.id,note,sendNotice)}/>}
       {showTemplateMgr&&<ScheduleTemplateManager scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} onClose={()=>setShowTemplateMgr(false)}/>}
     </div>
