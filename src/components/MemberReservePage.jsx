@@ -72,7 +72,8 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
 
           // 날짜 숫자 색상 결정
           let numColor = "#1e2e1e";
-          if(isSel)              numColor = "#fff";      // ← 선택된 날 흰색
+          if(isSel&&!isToday)    numColor = "#1e4a2e";    // ← 선택된 날 진초록 텍스트 (연초록 배경 위)
+          else if(isToday)       numColor = "#fff";      // ← 오늘 흰색 텍스트 (진초록 배경 위)
           else if(isPast)        numColor = "#c8c0b0";   // ← 지난날 회색
           else if(isClosure)     numColor = "#c97474";   // ← 휴강일 빨강
           else if(isHol||dow===0) numColor = "#e05050";  // ← 공휴일/일요일
@@ -89,8 +90,8 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
                 minWidth:26,height:26,padding:"0 2px",borderRadius:"50%",
                 fontSize:13,fontWeight:isSel||isToday?700:400,
                 color:numColor,lineHeight:1,
-                background:isSel?"#2e6e44":isAtt&&!isSel?"#fef9c3":"transparent", /* ← 선택=진초록 / 출석한날=연노랑 */
-                border:isToday&&!isSel?"1.5px solid #2e6e44":"1.5px solid transparent", /* ← 오늘 테두리 색상 */
+                background:isSel?"#b9d5c3":isToday&&!isSel?"#3c7450":isAtt&&!isSel?"#f1faeb":"transparent", /* ← 선택=연초록 / 오늘=진초록 채움 / 출석한날=연노랑 */
+                border:"1.5px solid transparent", /* ← 테두리 없음 */
                 textDecoration:isClosure&&!isSel?"line-through":"none" /* ← 휴강일 취소선 */
               }}>
                 {day}
