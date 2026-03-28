@@ -108,7 +108,7 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
               <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,marginTop:-3,minHeight:10}}>
                 {isToday    && <span style={{fontSize:8,color:"#284f36",fontWeight:600,lineHeight:0.8}}>오늘</span>}
                 {isWait     && <span style={{fontSize:8,color:"#e8a020",lineHeight:1.2}}>▲</span>}
-                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0.2px 0.5px",fontWeight:700,lineHeight:0.8}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
+                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:0.8}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
                 {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:0.8}}>부분</span>}
                 {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:0.8}}>오픈</span>}
                 {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:0.8}}>집중</span>}
@@ -263,7 +263,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
             <div style={{flex:1,minWidth:0}}>
               {/* ← 날짜·슬롯 + 잔여석/대기: 한 줄, 이탤릭·색상·크기 */}
               <div style={{fontSize:11,color:"#7a5010",fontStyle:"italic",lineHeight:1.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                {upcomingText}{" ———— "}{upcomingBooking.status==="waiting"?`대기 ${upcomingWaitRank}번째`:`잔여 ${Math.max(0,upcomingCap-upcomingCnt)}/${upcomingCap}명`}
+                {upcomingText}{" —— "}{upcomingBooking.status==="waiting"?`대기 ${upcomingWaitRank}번째`:`잔여 ${Math.max(0,upcomingCap-upcomingCnt)}/${upcomingCap}명`}
               </div>
             </div>
             {/* ← 예약취소 버튼 색상/크기 */}
