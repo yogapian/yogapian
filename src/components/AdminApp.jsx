@@ -51,7 +51,13 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     const phone=form.phone||"";
     const phone4=(phone.replace(/\D/g,"")).slice(-4)||form.phone4||"";
     const e={...form,phone,phone4,endDate:autoEnd||form.endDate,total:+form.total,extensionDays:+(form.extensionDays||0),holdingDays:+(form.holdingDays||0),isNew:!!form.isNew,manualStatus:form.manualStatus||null};
-    if(editId)setMembers(p=>p.map(m=>m.id===editId?{...m,...e}:m));
+    if(editId)setMembers(p=>p.map(m=>{
+      if(m.id!==editId)return m;
+      // 편집 시 renewalHistory 마지막 항목도 동기화 (total/날짜 불일치 버그 방지)
+      const rh=m.renewalHistory||[];
+      const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,total:e.total,startDate:e.startDate,endDate:e.endDate,memberType:e.memberType}:r):rh;
+      return{...m,...e,renewalHistory:updRH};
+    }));
     else{const id=Math.max(...members.map(m=>m.id),0)+1;setMembers(p=>[...p,{id,...e,renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]}]);}
     setShowForm(false);
   }
@@ -67,7 +73,13 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       return{...m,holding:null,holdingDays:0,extensionDays:(m.extensionDays||0)+hd.workdays,holdingHistory:newHistory};
     }
     return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays:0};}));setHoldT(null);setDetailM(null);}
-  function applyAdjust(mid,changes){setMembers(p=>p.map(m=>m.id!==mid?m:{...m,...changes}));}
+  function applyAdjust(mid,changes){setMembers(p=>p.map(m=>{
+    if(m.id!==mid)return m;
+    // 횟수·기간 수정 시 renewalHistory 마지막 항목도 함께 업데이트 (이력 불일치 버그 방지)
+    const rh=m.renewalHistory||[];
+    const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,...(changes.total!==undefined?{total:changes.total}:{}),...(changes.startDate?{startDate:changes.startDate}:{}),...(changes.endDate?{endDate:changes.endDate}:{})}:r):rh;
+    return{...m,...changes,renewalHistory:updRH};
+  }));}
   const {dateTimeStr}=useClock();
 
   return(
@@ -107,20 +119,23 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       </div>
 
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-        <div style={{display:"flex",gap:0,background:"#e8e4dc",borderRadius:11,padding:3}}>
+        {/* ─── 탭 전환 (출석/회원관리) ─── */}
+        <div style={{display:"flex",gap:0,background:"#e8e4dc",borderRadius:11,padding:3}}>{/* ← 탭바 배경색/둥글기 */}
           {[["attendance","📋 출석"],["members","🧘🏻 회원 관리"]].map(([k,l])=>(
-            <button key={k} onClick={()=>setTab(k)} style={{border:"none",borderRadius:9,padding:"9px 14px",fontSize:13,fontWeight:tab===k?700:400,background:tab===k?"#fff":"transparent",color:tab===k?"#1e2e1e":"#9a8e80",boxShadow:tab===k?"0 1px 5px rgba(60,50,40,.12)":"none",cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>{l}</button>
+            <button key={k} onClick={()=>setTab(k)} style={{border:"none",borderRadius:9,padding:"9px 14px",fontSize:13,/* ← 탭 글씨 크기 */fontWeight:tab===k?700:400,background:tab===k?"#fff":"transparent",/* ← 선택탭 배경 */color:tab===k?"#1e2e1e":"#9a8e80",/* ← 선택/비선택 글씨색 */boxShadow:tab===k?"0 1px 5px rgba(60,50,40,.12)":"none",cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>{l}</button>
           ))}
         </div>
-        {tab==="members"&&<button style={{...S.addBtn,marginLeft:"auto"}} onClick={openAdd}>+ 회원 추가</button>}
+        {tab==="members"&&<button style={{...S.addBtn,marginLeft:"auto"}} onClick={openAdd}>+ 회원 추가</button>}{/* ← 회원추가 버튼: styles.js S.addBtn 참고 */}
       </div>
 
       {tab==="attendance"&&<AttendanceBoard members={members} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} notices={notices} setNotices={setNotices} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} onMemberClick={(m)=>setDetailM(m)}/>}
 
       {tab==="members"&&(<>
+        {/* ─── 상태 필터 pill ─── */}
         <div style={S.pillRow}>
+          {/* ← 각 pill 활성 색상: Total=#4a4a4a / ON=#4a6a4a / RENEW=#9a5a10 / HOLD=#3d5494 / OFF=#8e3030 */}
           {[["total","Total","#4a4a4a"],["on","ON","#4a6a4a"],["renew","RENEW","#9a5a10"],["hold","HOLD","#3d5494"],["off","OFF","#8e3030"]].map(([k,l,ac])=>(
-            <button key={k} onClick={()=>setFilter(k)} style={{...S.pill,background:filter===k?ac:"#e8e4dc",color:filter===k?"#fff":"#7a6e60",fontWeight:filter===k?700:400}}>{l} <span style={{opacity:.75,fontSize:11}}>{counts[k]??0}</span></button>
+            <button key={k} onClick={()=>setFilter(k)} style={{...S.pill,background:filter===k?ac:"#e8e4dc",/* ← 비활성 pill 배경 */color:filter===k?"#fff":"#7a6e60",fontWeight:filter===k?700:400}}>{l} <span style={{opacity:.75,fontSize:11}}>{counts[k]??0}</span></button>
           ))}
         </div>
         <div style={S.toolbar}>
@@ -139,14 +154,15 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
 
       {showForm&&(
         <div style={S.overlay} onClick={()=>setShowForm(false)}>
-          <div style={{...S.modal,maxWidth:460,maxHeight:"92vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+          <div style={{...S.modal,maxWidth:460,/* ← 폼 모달 최대 너비 */maxHeight:"92vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
             <div style={{...S.modalHead,marginBottom:10}}><span>{editId?"✏️":"🌱"}</span><span style={S.modalTitle}>{editId?"회원 수정":"신규 회원 추가"}</span></div>
 
             {/* 성별 + 이름 한 줄 */}
             <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:10}}>
               <div style={{display:"flex",gap:4,flexShrink:0}}>
+                {/* ← 성별 버튼: 선택 테두리=#4a7a5a, 선택 배경=#eef5ee / 미선택 배경=#faf8f5 */}
                 {[["F",GE.F],["M",GE.M]].map(([v,icon])=>(
-                  <button key={v} onClick={()=>setForm(f=>({...f,gender:v}))} style={{width:36,height:36,borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:18,fontFamily:FONT,lineHeight:1,borderColor:form.gender===v?"#4a7a5a":"#e0d8cc",background:form.gender===v?"#eef5ee":"#faf8f5"}}>{icon}</button>
+                  <button key={v} onClick={()=>setForm(f=>({...f,gender:v}))} style={{width:36,height:36,/* ← 버튼 크기 */borderRadius:8,border:"1.5px solid",cursor:"pointer",fontSize:18,fontFamily:FONT,lineHeight:1,borderColor:form.gender===v?"#4a7a5a":"#e0d8cc",background:form.gender===v?"#eef5ee":"#faf8f5"}}>{icon}</button>
                 ))}
               </div>
               <input style={{...S.inp,marginBottom:0,flex:1}} value={form.name||""} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="회원 이름"/>
@@ -155,12 +171,17 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
             {/* 전화번호 단일 입력 */}
             <div style={{...S.fg}}>
               <label style={S.lbl}>전화번호</label>
-              <input style={S.inp} type="tel" value={form.phone||""} onChange={e=>{const v=e.target.value;const p4=v.replace(/\D/g,"").slice(-4);setForm(f=>({...f,phone:v,phone4:p4}));}} placeholder="010-0000-0000"/>
+              <input style={S.inp} type="tel" value={form.phone||""} onChange={e=>{
+                const d=e.target.value.replace(/\D/g,"").slice(0,11); /* ← 숫자만 추출, 최대 11자리 */
+                const fmt=d.length>7?d.slice(0,3)+"-"+d.slice(3,7)+"-"+d.slice(7):d.length>3?d.slice(0,3)+"-"+d.slice(3):d; /* ← 010-XXXX-XXXX 자동 포맷 */
+                const p4=d.slice(-4); /* ← 로그인 비밀번호: 뒷 4자리 */
+                setForm(f=>({...f,phone:fmt,phone4:p4}));
+              }} placeholder="010-0000-0000"/>
               {form.phone&&<div style={{fontSize:10,color:"#9a8e80",marginTop:3}}>로그인 비밀번호: <b style={{color:"#4a4a4a"}}>{form.phone4||"-"}</b></div>}
             </div>
 
-            {/* 어드민 전용 */}
-            <div style={{background:"#f5f9f5",borderRadius:9,padding:"10px 12px",marginBottom:10,border:"1px dashed #b8d8b8"}}>
+            {/* 어드민 전용 박스 */}
+            <div style={{background:"#f5f9f5",/* ← 어드민 박스 배경색 */borderRadius:9,padding:"10px 12px",marginBottom:10,border:"1px dashed #b8d8b8"/* ← 점선 테두리색 */}}>
               <div style={{fontSize:11,fontWeight:700,color:"#3d6e45",marginBottom:6}}>👀 어드민 전용</div>
               <div style={{display:"flex",gap:8,marginBottom:8}}>
                 <div style={{flex:1}}><label style={S.lbl}>별명</label><input style={S.inp} value={form.adminNickname||""} onChange={e=>setForm(f=>({...f,adminNickname:e.target.value}))} placeholder="1호/저녁반"/></div>

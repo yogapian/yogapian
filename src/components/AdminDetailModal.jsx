@@ -42,15 +42,17 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
             <button onClick={onClose} style={{background:"#f0ece4",border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:14,color:"#9a8e80",fontFamily:FONT,flexShrink:0}}>×</button>
           </div>
 
+          {/* ─── 상단 통계 3칸 ─── */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:12}}>
+            {/* ← 출석=파랑#3d5494 / 잔여: 만료=빨강#c97474, 0회=주황#9a5a10, 정상=초록#2e6e44 / D-day: 초과=빨강, 촉박=주황 */}
             {[
               {l:"이번기수출석",v:curRecs.length+"/"+member.total,c:"#3d5494"},
               {l:"잔여 회차",v:dispRem+"회",c:expired?"#c97474":dispRem===0?"#9a5a10":"#2e6e44"},
               {l:"D-day",v:dl<0?Math.abs(dl)+"일초과":dl===0?"오늘":"D-"+dl,c:dl<0?"#c97474":dl<=7?"#9a5a10":"#4a4a4a"}
             ].map(function(item){return(
-              <div key={item.l} style={{background:"#f7f4ef",borderRadius:9,padding:"9px",textAlign:"center"}}>
-                <div style={{fontSize:10,color:"#9a8e80",marginBottom:3}}>{item.l}</div>
-                <div style={{fontSize:13,fontWeight:700,color:item.c}}>{item.v}</div>
+              <div key={item.l} style={{background:"#f7f4ef",/* ← 통계 카드 배경색 */borderRadius:9,padding:"9px",textAlign:"center"}}>
+                <div style={{fontSize:10,color:"#9a8e80",marginBottom:3}}>{/* ← 라벨 글씨 크기/색 */}{item.l}</div>
+                <div style={{fontSize:13,fontWeight:700,color:item.c}}>{/* ← 값 글씨 크기 */}{item.v}</div>
               </div>
             );})}
           </div>
@@ -60,8 +62,9 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
               <button onClick={()=>{setAdjTotal(member.total);setAdjStart(member.startDate||"");setAdjEnd(member.endDate||"");setAdjMode(true);}} style={{fontSize:11,background:"#fdf3e3",color:"#9a5a10",border:"1px solid #e8c44a",borderRadius:7,padding:"4px 10px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>✏️ 횟수·기간 수정</button>
             </div>
           )}
+          {/* ─── 횟수·기간 직접 수정 영역 ─── */}
           {adjMode&&(
-            <div style={{background:"#fffaeb",border:"1px solid #e8c44a",borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+            <div style={{background:"#fffaeb",/* ← 수정모드 배경색 */border:"1px solid #e8c44a",/* ← 수정모드 테두리색 */borderRadius:10,padding:"12px 14px",marginBottom:12}}>
               <div style={{fontSize:12,fontWeight:700,color:"#7a5a10",marginBottom:10}}>✏️ 등록 횟수·기간 직접 수정</div>
               <div style={{display:"flex",gap:14,marginBottom:10,flexWrap:"wrap",alignItems:"flex-start"}}>
                 <div>
@@ -98,6 +101,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
             {member.phone&&(
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:0,marginTop:4,paddingTop:4,borderTop:"1px solid #ece8e0"}}>
                 <span style={{color:"#9a8e80"}}>전화번호</span>
+                {/* ← 전화 링크 색상: #3d5494 / 숫자만 추출해서 전화 연결 (- 무관) */}
                 <a href={`tel:${member.phone.replace(/\D/g,"")}`} style={{color:"#3d5494",fontWeight:700,textDecoration:"none"}}>{member.phone}</a>
               </div>
             )}
@@ -110,10 +114,11 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
             {member.memberType==="3month"&&<button onClick={onHolding} style={{background:"#edf0f8",color:"#3d5494",border:"none",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>{member.holding?"⏸️ 홀딩 관리":"⏸️ 홀딩"}</button>}
           </div>
 
+          {/* ─── 갱신 이력 목록 ─── */}
           {reversedHistory.length>0&&(
             <div style={{marginBottom:14}}>
               <div style={{fontSize:12,fontWeight:700,color:"#3d4a3d",marginBottom:7}}>갱신 이력 <span style={{color:"#9a8e80",fontWeight:400}}>({reversedHistory.length}회)</span></div>
-              <div style={{maxHeight:280,overflowY:"auto"}}>
+              <div style={{maxHeight:280,/* ← 이력 목록 최대 높이 (스크롤) */overflowY:"auto"}}>
                 {reversedHistory.map((r,i)=>{
                   const precs=periodRecs(member,bookings,r);
                   const isCurrent=isActiveStatus&&i===0;
@@ -123,7 +128,8 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
                   const displayEndDate=(closureExt>0||holdExt>0)?addDays(r.endDate,closureExt+holdExt):r.endDate;
                   return(
                     <div key={r.id} style={{marginBottom:5,borderRadius:9,overflow:"hidden",border:`1px solid ${isCurrent?"#b8d8b8":"#e4e0d8"}`}}>
-                      <div onClick={()=>setExpandedRH(isOpenH?null:r.id)} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:isCurrent?"#f0f8f0":"#fafaf7",cursor:"pointer",userSelect:"none"}}>
+                      {/* ← 이력 헤더: 현재기수 배경=#f0f8f0 / 과거 배경=#fafaf7 */}
+                    <div onClick={()=>setExpandedRH(isOpenH?null:r.id)} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:isCurrent?"#f0f8f0":"#fafaf7",cursor:"pointer",userSelect:"none"}}>
                         <span style={{fontSize:14,flexShrink:0}}>{isCurrent?"🟢":"⚪"}</span>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
