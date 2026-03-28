@@ -170,14 +170,21 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
       {/* ── 날짜 바: ← 날짜 → / 출석 수 / 시간표 버튼 / 수업설정 버튼 ──── */}
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+          {/* ← / → 이전·다음 날 버튼 크기: padding "10px 14px" / fontSize:16 */}
           <button style={{...S.navBtn,padding:"10px 14px",fontSize:16,minWidth:44,flexShrink:0}} onClick={()=>setDate(d=>addDays(d,-1))}>←</button>
           <div style={{flex:1,position:"relative"}}>
+            {/* 날짜 클릭 버튼: 열릴 때 배경 #eef5ee(연초록) / 닫힐 때 흰색 */}
             <div onClick={()=>setShowCal(s=>!s)} style={{background:showCal?"#eef5ee":"#fff",border:`1.5px solid ${showCal?"#4a6a4a":"#ddd"}`,borderRadius:10,padding:"10px 12px",fontSize:14,fontWeight:700,color:"#1e2e1e",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               {fmtWithDow(date)}
+              {/* 오늘 뱃지: bg #4a6a4a(진초록) */}
               {date===TODAY_STR&&<span style={{fontSize:10,background:"#4a6a4a",color:"#fff",borderRadius:5,padding:"2px 6px",fontWeight:700}}>오늘</span>}
+              {/* 휴강 뱃지: bg #fde8e8(연분홍) / text #a83030(빨강) */}
               {dayClosure&&<span style={{fontSize:10,background:"#fde8e8",color:"#a83030",borderRadius:4,padding:"1px 6px",fontWeight:700}}>휴강</span>}
+              {/* 오픈클래스 뱃지: bg #d8f5ec(민트) / text #1a6e4a(진초록) */}
               {isSpecial&&special.type==="open"&&<span style={{fontSize:10,background:"#d8f5ec",color:"#1a6e4a",borderRadius:4,padding:"1px 6px",fontWeight:700}}>오픈</span>}
+              {/* 집중수련 뱃지: bg #ede8fa(연보라) / text #5a3a9a(보라) */}
               {isSpecial&&special.type==="special"&&<span style={{fontSize:10,background:"#ede8fa",color:"#5a3a9a",borderRadius:4,padding:"1px 6px",fontWeight:700}}>집중</span>}
+              {/* 시간변경/공지 뱃지: bg #fdf0d8(연노랑) / text #9a5a10(주황갈) */}
               {isSpecial&&special.type==="regular"&&(hasTimeChange||special.dailyNote)&&<span style={{fontSize:10,background:"#fdf0d8",color:"#9a5a10",borderRadius:4,padding:"1px 6px",fontWeight:700}}>{hasTimeChange?"변경❗":"📌"}</span>}
               <span style={{fontSize:12,color:"#9a8e80"}}>▾</span>
             </div>
@@ -186,7 +193,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
           <button style={{...S.navBtn,padding:"10px 14px",fontSize:16,minWidth:44,flexShrink:0}} onClick={()=>setDate(d=>addDays(d,1))}>→</button>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+          {/* 출석 N 뱃지: bg #2e8a4a(초록) / 글씨 흰색 / fontSize:12 */}
           {slots.length>0&&<div style={{background:"#2e8a4a",color:"#fff",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:700}}>출석 {attendedDay}</div>}
+          {/* 시간표 버튼: text #3d5494(파랑) */}
           <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#3d5494",background:"#fff"}} onClick={()=>setShowTemplateMgr(true)}>📅 시간표</button>
           <button disabled={date<TODAY_STR} style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:date<TODAY_STR?"#c0b8b0":"#8a5510",background:"#fff",cursor:date<TODAY_STR?"default":"pointer",opacity:date<TODAY_STR?0.5:1}} onClick={()=>{
             if(date<TODAY_STR)return;
@@ -210,38 +219,51 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         </div>
       </div>
 
+      {/* 수업 없는 날 안내: padding "50px 0" / 이모지 fontSize:36 / 텍스트 #b0a090 */}
       {isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>🌿</div><div style={{fontSize:14,fontWeight:700}}>이 날은 수업이 없습니다.</div></div>}
+
+      {/* ── 오늘의 공지 배너 (시간변경 또는 dailyNote 있는 날만 표시) ──────── */}
+      {/* 배경/테두리: 오픈=민트#d8f5ec / 집중=연보라#f0edff / 정규=연노랑#fdf3e3 */}
       {isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
         <div style={{background:special.type==="open"?"#d8f5ec":special.type==="special"?"#f0edff":"#fdf3e3",border:`1.5px solid ${special.type==="open"?"#1a6e4a":special.type==="special"?"#a090d0":"#e8a44a"}`,borderRadius:10,padding:"10px 14px",marginBottom:12}}>
           <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
             <span style={{fontSize:16,flexShrink:0}}>🔔</span>
             <div style={{flex:1}}>
+              {/* 공지 타이틀 fontSize:12 / 오픈=#1a6e4a / 집중=#5a3a9a / 정규=#9a5a10 */}
               <div style={{fontSize:12,fontWeight:700,color:special.type==="open"?"#1a6e4a":special.type==="special"?"#5a3a9a":"#9a5a10",marginBottom:4}}>오늘의 공지</div>
+              {/* 공지 본문 fontSize:12 / whiteSpace:pre-wrap = 줄바꿈 보존 */}
               {special.dailyNote?.trim()&&<div style={{fontSize:12,color:special.type==="open"?"#1a5a3a":special.type==="special"?"#4a2e8a":"#7a4a10",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
             </div>
           </div>
         </div>
       )}
+
+      {/* ── 오픈클래스 배너: bg #d8f5ec(민트) / border #7acca0 / text #1a6e4a(진초록) ── */}
       {isOpen&&(
         <div style={{background:"#d8f5ec",border:"1.5px solid #7acca0",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:20,flexShrink:0}}>🍀</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#1a6e4a"}}>오픈클래스</div>
-            <div style={{fontSize:11,color:"#1a5a3a",marginTop:3}}>{special.label}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#1a6e4a"}}>오픈클래스</div>   {/* ← 타이틀 크기/색상 */}
+            <div style={{fontSize:11,color:"#1a5a3a",marginTop:3}}>{special.label}</div>  {/* ← 부제목 크기/색상 */}
             {special.feeNote&&<div style={{fontSize:12,color:"#1a5a3a",marginTop:3}}>{special.feeNote}</div>}
           </div>
         </div>
       )}
+
+      {/* ── 집중수련 배너: bg 그라데이션 #f0edff→#e8e2ff / border #a090d0(연보라) ── */}
       {isSpecial&&!isOpen&&special?.type==="special"&&(
         <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:20,flexShrink:0}}>⚡️</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>집중수련</div>
-            <div style={{fontSize:11,color:"#7a5aaa",marginTop:3}}>{special.label}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>집중수련</div>   {/* ← 타이틀: #4a2e8a(진보라) */}
+            <div style={{fontSize:11,color:"#7a5aaa",marginTop:3}}>{special.label}</div>  {/* ← 부제목: #7a5aaa(중보라) */}
             {special.feeNote&&<div style={{fontSize:12,color:"#6a4aaa",marginTop:3}}>{special.feeNote}</div>}
           </div>
         </div>
       )}
+
+      {/* ── 전일 휴강 배너 ────────────────────────────────────────────────────── */}
+      {/* bg/border: 정기=#fff0f0/#e8a0a0 / 추가연장=#fff5f5/#f0b0b0 / 별도=동일 */}
       {dayClosure&&<div style={{
           background:dayClosure.closureType==="regular"?"#fff0f0":dayClosure.closureType==="regular_ext"?"#fff5f5":"#fff0f0",
           border:`1px solid ${dayClosure.closureType==="regular"?"#e8a0a0":dayClosure.closureType==="regular_ext"?"#f0b0b0":"#e8a0a0"}`,
@@ -249,6 +271,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         <span style={{fontSize:18}}>🔕</span>
         <div style={{flex:1}}>
           <b>{dayClosure.closureType==="regular"?"정기 휴강":dayClosure.closureType==="regular_ext"?"정기휴강 (추가연장)":"⚠️ 별도 휴강"}</b> — {dayClosure.reason}
+          {/* 연장없음 뱃지: bg #e8f5e0(연초록) / +1일연장 뱃지: bg #fef5e0(연노랑) */}
           {dayClosure.closureType==="regular"
             ?<span style={{marginLeft:6,fontSize:11,background:"#e8f5e0",color:"#2e6e44",borderRadius:4,padding:"1px 6px",fontWeight:700}}>연장없음</span>
             :!dayClosure.timeSlot&&<span style={{marginLeft:6,fontSize:11,background:"#fef5e0",color:"#9a5a10",borderRadius:4,padding:"1px 6px",fontWeight:700}}>+1일 연장</span>
@@ -258,28 +281,38 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
       </div>}
 
       {/* ── 슬롯 카드 그리드 (전일 휴강이면 숨김) ─────────────────────────── */}
-      {/* 열 너비: 자동 배치, 최소 160px / 가로 스크롤 없이 줄바꿈 */}
+      {/* 열 너비: minmax(160px,1fr) → 160px 미만이면 자동 줄바꿈 / gap:10 = 카드 간격 */}
       {slots.length>0&&!dayClosure&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
           {slots.map(slot=>{
             const recs=dayActive.filter(b=>b.timeSlot===slot.key); // 이 슬롯의 예약 목록
             const isDT=dragOver===slot.key;      // 드래그 hover 중인지 (테두리 하이라이트)
             const slotCl=getSlotClosure(slot.key); // 이 슬롯만의 휴강 정보
+            // 카드 외곽: bg 흰색 / borderRadius:14(둥글기)
+            // border: 슬롯휴강=#f0b0a0 / 드래그hover=슬롯고유색(slot.color) / 기본=#e8e4dc
+            // boxShadow: 드래그hover 시 slot.bg 색으로 외곽 빛 / 기본 연한 그림자
             return(
               <div key={slot.key}
                 onDragOver={e=>{e.preventDefault();setDragOver(slot.key);}}
                 onDrop={e=>onDropSlot(e,slot.key)}
                 onDragLeave={()=>setDragOver(null)}
                 style={{background:"#fff",borderRadius:14,overflow:"hidden",border:`2px solid ${slotCl?"#f0b0a0":isDT?slot.color:"#e8e4dc"}`,boxShadow:isDT?`0 0 0 3px ${slot.bg}`:"0 2px 8px rgba(60,50,40,.06)"}}>
+
+                {/* 슬롯 개별 휴강 띠: bg #fff3f0(연분홍) / text #8e3030(빨강) / fontSize:11 */}
                 {slotCl&&<div style={{background:"#fff3f0",padding:"6px 12px",fontSize:11,color:"#8e3030",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #f0d0c0"}}>
                   <span>🔕 {slotCl.reason}</span>
                   <button onClick={()=>setClosures(p=>p.filter(cl=>cl.id!==slotCl.id))} style={{background:"none",border:"none",color:"#c97474",cursor:"pointer",fontSize:11,fontFamily:FONT}}>삭제</button>
                 </div>}
+
+                {/* 슬롯 헤더: bg=slot.bg(슬롯 고유 배경색, constants.js에서 수정) / padding "10px 12px" */}
                 <div style={{background:slot.bg,padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                   <div style={{display:"flex",alignItems:"center",gap:7}}>
+                    {/* 슬롯 이모지 크기: fontSize:17 */}
                     <span style={{fontSize:17}}>{slot.icon}</span>
                     <div>
+                      {/* 슬롯 이름: fontSize:14 / 색상=slot.color(슬롯 고유색, constants.js에서 수정) */}
                       <div style={{fontSize:14,fontWeight:700,color:slot.color}}>{slot.label}</div>
+                      {/* 시간: 변경된 경우 기존시간 취소선+빨강 새시간 표시 */}
                       <div style={{fontSize:11,color:slot.color,opacity:.8}}>{(()=>{
                         const defT={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"}[slot.key];
                         const isChg=isRegular&&defT&&slot.time!==defT;
@@ -290,11 +323,16 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                    {/* 현재 인원 수: fontSize:12 / 색=slot.color */}
                     <span style={{fontSize:12,color:slot.color,fontWeight:700}}>{recs.filter(r=>r.status!=="waiting").length}명</span>
+                    {/* + 추가 버튼: bg=slot.color / 글씨 흰색 / fontSize:11 / borderRadius:6 */}
                     {!slotCl&&<button onClick={()=>{setAddModal(slot.key);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});}} style={{fontSize:11,background:slot.color,color:"#fff",border:"none",borderRadius:6,padding:"3px 9px",cursor:"pointer",fontFamily:FONT,fontWeight:700,minHeight:26}}>+ 추가</button>}
                   </div>
                 </div>
+
+                {/* 예약자 목록 영역: minHeight:44 (비어있어도 최소 높이 유지) */}
                 <div style={{minHeight:44}}>
+                  {/* 예약자 없을 때 "없음" 텍스트: fontSize:12 / 색 #c8c0b0(연회색) */}
                   {recs.filter(r=>r.status!=="waiting").length===0&&recs.length===0&&<div style={{padding:12,textAlign:"center",fontSize:12,color:"#c8c0b0"}}>없음</div>}
                   {(() => {
                     // 정렬: 회원 먼저 / 대기자는 맨 뒤 / 같은 그룹 내 id 오름차순
@@ -325,19 +363,30 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     const isAbsent=rec.confirmedAttend===false;   // 결석 처리됨
                     // 행 배경: 결석=연분홍 / 대기=회색 / 개인색상=투명 오버레이 / 기본=흰색
                     const rowBg=isAbsent?"#fff8f8":isWaiting?"#e8e8e8":cardColor?`${cardColor}22`:"#fff";
+                    // 예약자 행: padding "8px 12px" / 행간 구분선 #f8f4ef
+                    // 드래그중=투명도0.4 / 결석=0.5 / cursor: 드래그가능=grab / 대기·휴강=default
                     return(
                         <div key={rec.id} draggable={!slotCl&&!isWaiting} onDragStart={e=>!slotCl&&!isWaiting&&onDragStart(e,rec.id)} onDragEnd={onDragEnd}
                           style={{padding:"8px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:isDragging?0.4:isAbsent?0.5:1,background:rowBg,cursor:slotCl||isWaiting?"default":"grab",WebkitUserSelect:"none",userSelect:"none"}}>
+                          {/* ⠿ 드래그 핸들: fontSize:11 / 색 #c8c0b0(연회색) / 휴강 중이면 숨김 */}
                           {!slotCl&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
+                          {/* 성별 이모지: fontSize:15 / 원데이=👤 */}
                           <span style={{fontSize:15,flexShrink:0}}>{isOneday?"👤":GE[mem?.gender]||"🧘🏿"}</span>
                           <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
+                            {/* 이름: fontSize:13 */}
+                            {/* 결석=#c97474(빨강취소선) / 대기=#666(회색) / 원데이=#9a6020(갈색) / 정상=#1e2e1e */}
+                            {/* 클릭 시 quickDetailM 미니카드 오픈 (원데이는 클릭 불가) */}
                             <span onClick={()=>!isOneday&&mem&&setQuickDetailM(mem)}
                               style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isWaiting?"#666":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:isOneday?"default":"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
                               {isOneday?rec.onedayName:mem.name}
                             </span>
+                            {/* 갱신 뱃지: bg #fdf3e3(연노랑) / text #9a5a10(갈색) */}
                             {!isOneday&&rec.renewalPending&&<span style={{fontSize:10,background:"#fdf3e3",color:"#9a5a10",borderRadius:5,padding:"1px 6px",fontWeight:700,flexShrink:0}}>갱신</span>}
+                            {/* 잔여 경고: remCount<=1=빨강#a83030 / remCount=2=주황#9a5a10 */}
                             {showRemWarn&&!isAbsent&&!rec.renewalPending&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
                           </div>
+                          {/* 오른쪽 아이콘: 대기=순서이모지(클릭→waitPopup) / 원데이·회원=출석아이콘(클릭→AttendCheckModal) */}
+                          {/* 출석아이콘: 워크인=☑️ / 정상출석=✅ / 결석=❌ / 미처리=🕉 */}
                           {isWaiting?(
                             <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
                               <span
