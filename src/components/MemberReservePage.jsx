@@ -72,39 +72,46 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
 
           // 날짜 숫자 색상 결정
           let numColor = "#1e2e1e";
-          if(isSel&&!isToday)    numColor = "#1e4a2e";    // ← 선택된 날 진초록 텍스트 (연초록 배경 위)
-          else if(isToday)       numColor = "#fff";      // ← 오늘 흰색 텍스트 (진초록 배경 위)
+          if(isToday)            numColor = "#035529";      // ← 오늘 (최우선)
+          else if(isClosure)     numColor = "#c97474";   // ← 휴강일 빨강 (선택돼도 유지)
           else if(isPast)        numColor = "#c8c0b0";   // ← 지난날 회색
-          else if(isClosure)     numColor = "#c97474";   // ← 휴강일 빨강
           else if(isHol||dow===0) numColor = "#e05050";  // ← 공휴일/일요일
           else if(dow===6)       numColor = "#4a70d0";   // ← 토요일 파랑
           else if(noClass)       numColor = "#c8c0b0";   // ← 수업없는날 회색
+          else if(isSel)         numColor = "#000000";    // ← 선택된 날
 
           return (
             <div key={i} onClick={() => !unselectable && onSelect(ds)}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"1px 1px 1px",cursor:unselectable?"default":"pointer",userSelect:"none"}}>
+              style={{
+                display:"flex",flexDirection:"column",alignItems:"center",
+                padding:"0.1px 1px",margin:"1px auto",                              /* ← 셀 크기 조절: padding/margin */
+                borderRadius:7,                                               /* ← 셀 라운드 */
+                width:"80%",
+                background:isSel?"#8989895c":isToday&&!isSel?"#84bf977a":"transparent", /* ← 선택=회색 / 오늘=진초록 */
+                cursor:unselectable?"default":"pointer",userSelect:"none"
+              }}>
 
-              {/* 날짜 숫자 원형 배지 */}
+              {/* 날짜 숫자 */}
               <span style={{
                 display:"inline-flex",alignItems:"center",justifyContent:"center",
-                minWidth:26,height:22,padding:"0 5px",borderRadius:6,
+                minWidth:24,height:22,padding:"0 3px",
                 fontSize:13,fontWeight:isSel||isToday?700:400,
                 color:numColor,lineHeight:1,
-                background:isSel?"#b9d5c3":isToday&&!isSel?"#3c7450":isAtt&&!isSel?"#f1faeb":"transparent", /* ← 선택=연초록 / 오늘=진초록 채움 / 출석한날=연노랑 */
-                border:"1.5px solid transparent", /* ← 테두리 없음 */
-                textDecoration:isClosure&&!isSel?"line-through":"none" /* ← 휴강일 취소선 */
+                background:isAtt&&!isSel&&!isToday?"#f1faeb":"transparent", /* ← 출석한날만 연노랑 유지 */
+                borderRadius:5,
+                textDecoration:isClosure?"line-through":"none"               /* ← 휴강일 취소선 (선택돼도 유지) */
               }}>
                 {day}
               </span>
 
               {/* 날짜 아래 인디케이터 뱃지 */}
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,marginTop:1,minHeight:10}}>
-                {isToday    && <span style={{fontSize:8,color:"#2e6e44",fontWeight:600,lineHeight:1.2}}>오늘</span>}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,marginTop:-3,minHeight:10}}>
+                {isToday    && <span style={{fontSize:8,color:"#284f36",fontWeight:600,lineHeight:0.8}}>오늘</span>}
                 {isWait     && <span style={{fontSize:8,color:"#e8a020",lineHeight:1.2}}>▲</span>}
-                {isClosure && !isSel && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.3}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
-                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.3}}>부분</span>}
-                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.3}}>오픈</span>}
-                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.3}}>집중</span>}
+                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0.2px 0.5px",fontWeight:700,lineHeight:0.8}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
+                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:0.8}}>부분</span>}
+                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:0.8}}>오픈</span>}
+                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:0.8}}>집중</span>}
                 {hasDailyNote && <span style={{fontSize:9,lineHeight:1}}>📢</span>}
               </div>
             </div>
@@ -362,9 +369,9 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                   <div style={{padding:"10px 6px 8px"}}>{/* ← 카드 내부 패딩 */}
 
                     {/* 줄 1: 이모지 + 시간 한 줄 */}
-                    <div style={{textAlign:"center",marginBottom:1}}>
-                      <span style={{fontSize:16,lineHeight:1,marginRight:3}}>{/* ← 이모지 크기 */}{slot.icon}</span>
-                      <span style={{fontSize:13,fontWeight:700,color:slCl?"#9a8e80":"#3f3f3f"}}>{/* ← 시간 색상·크기 */}
+                    <div style={{textAlign:"center",marginBottom:-1}}>
+                      <span style={{fontSize:14,lineHeight:1,marginRight:3}}>{/* ← 이모지 크기 */}{slot.icon}</span>
+                      <span style={{fontSize:14,fontWeight:700,color:slCl?"#9a8e80":"#3f3f3f"}}>{/* ← 시간 색상·크기 */}
                         {isChg
                           ? <><s style={{color:"#c0b0b0",fontWeight:400}}>{DEFAULT_TIMES[slot.key]}</s><span style={{color:"#c97474"}}> {slot.time}</span></>
                           : slot.time
