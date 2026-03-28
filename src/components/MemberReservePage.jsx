@@ -300,35 +300,35 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
           {/* 오픈클래스 안내 */}
           {isOpen&&(
-            <div style={{background:"#d8f5ec",border:"1.5px solid #7acca0",borderRadius:12,padding:"11px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:20}}>🍀</span>
-              <div>
-                <div style={{fontSize:13,fontWeight:700,color:"#1a6e4a"}}>오픈클래스</div>
-                <div style={{fontSize:11,color:"#1a5a3a",marginTop:2}}>{special.label}</div>
-                {special.feeNote&&<div style={{fontSize:11,color:"#1a5a3a"}}>{special.feeNote}</div>}
+            <div style={{background:"#d8f5ec",border:"1.5px solid #7acca0",borderRadius:12,padding:"5px 10px",marginBottom:10,display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontSize:17}}>🍀</span>
+              <div style={{lineHeight:0.1}}>
+                <span style={{fontSize:13,fontWeight:700,color:"#1a6e4a"}}>오픈클래스</span>
+                {special.label&&<span style={{fontSize:11,color:"#1a5a3a"}}>{` - ${special.label}`}</span>}
+                {special.feeNote&&<span style={{fontSize:11,color:"#1a5a3a"}}>{` · ${special.feeNote}`}</span>}
               </div>
             </div>
           )}
 
           {/* 집중수련 안내 */}
           {isSpecial&&!isOpen&&special?.type==="special"&&(
-            <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"11px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:20}}>⚡️</span>
-              <div>
-                <div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>집중수련</div>
-                <div style={{fontSize:11,color:"#7a5aaa",marginTop:2}}>{special.label}</div>
-                {special.feeNote&&<div style={{fontSize:11,color:"#6a4aaa"}}>{special.feeNote}</div>}
+            <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"5px 10px",marginBottom:10,display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontSize:17}}>⚡️</span>
+              <div style={{lineHeight:0.1}}>
+                <span style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>집중수련</span>
+                {special.label&&<span style={{fontSize:11,color:"#7a5aaa"}}>{` - ${special.label}`}</span>}
+                {special.feeNote&&<span style={{fontSize:11,color:"#6a4aaa"}}>{` · ${special.feeNote}`}</span>}
               </div>
             </div>
           )}
 
           {/* 전체 휴강 안내 */}
           {dayClosure&&(
-            <div style={{background:"#fff3f0",border:"1px solid #f0b0a0",borderRadius:12,padding:"12px 16px",display:"flex",gap:10,alignItems:"center"}}>
-              <span style={{fontSize:20}}>🔕</span>
-              <div>
-                <div style={{fontSize:13,fontWeight:700,color:"#8e3030"}}>전체 휴강</div>
-                <div style={{fontSize:12,color:"#9a5a50",marginTop:2}}>{dayClosure.reason}</div>
+            <div style={{background:"#fff3f0",border:"1px solid #f0b0a0",borderRadius:12,padding:"5px 10px",display:"flex",gap:10,alignItems:"center"}}>
+              <span style={{fontSize:17}}>🔕</span>
+              <div style={{lineHeight:0.1}}>
+                <span style={{fontSize:13,fontWeight:700,color:"#8e3030"}}>전체 휴강</span>
+                {dayClosure.reason&&<span style={{fontSize:12,color:"#9a5a50"}}>{` - ${dayClosure.reason}`}</span>}
               </div>
             </div>
           )}
