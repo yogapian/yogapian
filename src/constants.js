@@ -1,4 +1,13 @@
+// ─── 수업 요일별 기본 슬롯 ───────────────────────────────────────────────────
+// 0=일 1=월 2=화 3=수 4=목 5=금 6=토 / 값: 해당 요일에 열리는 슬롯 key 배열
+// 슬롯 추가·제거 시 여기와 TIME_SLOTS 모두 수정
 export const SCHEDULE = {0:[],1:["dawn","morning","lunch","evening"],2:["lunch","evening"],3:["dawn","morning","lunch","evening"],4:["lunch","evening"],5:["dawn","morning","evening"],6:[]};
+
+// ─── 수업 시간대 정의 ─────────────────────────────────────────────────────────
+// key: 슬롯 식별자 (영문, 코드 전반에서 참조)
+// label: 화면 표시용 한글명
+// time: 시작 시간 (HH:MM) — 변경 시 이 값만 수정하면 전체 반영
+// color: 텍스트·아이콘 색상  bg: 카드 배경색  icon: 이모지
 export const TIME_SLOTS = [
   {key:"dawn",      label:"새벽",time:"06:30",color:"#3d5494",bg:"#edf0f8",icon:"🌙"},
   {key:"morning",   label:"오전",time:"08:30",color:"#3d6e45",bg:"#eaf4ea",icon:"🌤️"},
@@ -6,10 +15,17 @@ export const TIME_SLOTS = [
   {key:"afternoon", label:"오후",time:"14:00",color:"#6a5494",bg:"#f0edf8",icon:"🌞"},
   {key:"evening",   label:"저녁",time:"19:30",color:"#5c3070",bg:"#f2edf8",icon:"🌛"},
 ];
-export const DOW_KO=["일","월","화","수","목","금","토"];
-export const FONT="'Gowun Dodum','맑은 고딕',sans-serif";
 
-// 한국 공휴일 (2025~2026)
+// 요일 한글 레이블 (0=일요일 기준)
+export const DOW_KO=["일","월","화","수","목","금","토"];
+
+// ─── 앱 전체 폰트 ─────────────────────────────────────────────────────────────
+// 폰트 변경 시 이 값을 수정 + index.html의 <link> URL도 함께 교체
+export const FONT="'Spoqa Han Sans Neo','맑은 고딕',sans-serif";
+
+// ─── 한국 공휴일 (2025~2026) ──────────────────────────────────────────────────
+// 달력에서 빨간 날짜로 표시되며 클릭은 가능 (수업 없음 안내만 표시)
+// 연도 추가 시 계속 붙여넣기
 export const KR_HOLIDAYS={
   "2025-01-01":"신정","2025-01-28":"설날연휴","2025-01-29":"설날","2025-01-30":"설날연휴",
   "2025-03-01":"삼일절","2025-05-05":"어린이날","2025-05-06":"대체공휴일",
@@ -27,16 +43,29 @@ export const KR_HOLIDAYS={
 
 export const LOGO_B64="/logo.png";
 
-// 오늘 날짜를 항상 실제 현재 날짜로 동적 계산
+// ─── 오늘 날짜 (앱 실행 시점 고정) ───────────────────────────────────────────
+// TODAY_STR: "YYYY-MM-DD" 문자열 / TODAY: 자정 기준 Date 객체
 const _now=new Date();
 export const TODAY_STR=`${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
 export const TODAY=new Date(_now.getFullYear(),_now.getMonth(),_now.getDate());
+
+// 관리자 로그인 PIN (4자리 숫자)
 export const ADMIN_PIN="0066";
 
+// ─── 회원 상태 스타일 ─────────────────────────────────────────────────────────
+// on=정상 / off=만료 / hold=홀딩 / renew=갱신필요
+// bg: 뱃지 배경색  color: 텍스트색  dot: 상태 점 색상
 export const SC={on:{label:"ON",bg:"#e8f0e8",color:"#2e6e44",dot:"#3d8a55"},off:{label:"OFF",bg:"#f5eeee",color:"#8e3030",dot:"#c97474"},hold:{label:"HOLD",bg:"#edf0f8",color:"#3d5494",dot:"#6a7fc8"},renew:{label:"RENEW",bg:"#fdf3e3",color:"#9a5a10",dot:"#e8a44a"}};
+
+// 성별 이모지 (F=여성 M=남성)
 export const GE={F:"🧘🏻‍♀️",M:"🧘🏻‍♂️"};
+
+// ─── 회원권 종류 ──────────────────────────────────────────────────────────────
+// label: 화면 표시명  bg/color: 뱃지 색상
 export const TYPE_CFG={"1month":{label:"1개월",bg:"#e0f2e9",color:"#1e6040"},"3month":{label:"3개월",bg:"#ede9fe",color:"#5b30b8"}};
 
+// ─── 예약 상태 스타일 ─────────────────────────────────────────────────────────
+// reserved/attended: 출석 확정  waiting: 대기  cancelled: 취소
 export const BOOKING_STATUS={
   reserved: {label:"출석",bg:"#e8f0e8",color:"#2e6e44",icon:"✓"},
   attended: {label:"출석",bg:"#e8f0e8",color:"#2e6e44",icon:"✓"},
