@@ -110,22 +110,47 @@ export default function MemberDetailModal({member, bookings, onClose}){
                           <span style={{fontSize:12, color:"#9a8e80"}}>{isOpen?"▴":"▾"}</span>
                         </div>
                       </div>
-                      {isOpen && (
-                        <div style={{background:"#fff", borderTop:"1px solid #f0ece4", padding:"8px 11px"}}>
-                          {precs.length === 0 ? (
-                            <div style={{fontSize:11, color:"#c8c0b0", textAlign:"center", padding:"8px 0"}}>이 기간 출석 기록 없음</div>
-                          ) : precs.map((rec, ri) => {
-                            const sl = TIME_SLOTS.find(t => t.key === rec.timeSlot);
-                            return (
-                              <div key={rec.id} style={{display:"flex", alignItems:"center", gap:8, padding:"5px 0", borderBottom:ri<precs.length-1?"1px solid #f8f4ef":"none"}}>
-                                <span style={{fontSize:13, width:18, textAlign:"center", flexShrink:0}}>{sl?.icon||"📍"}</span>
-                                <span style={{fontSize:11, color:"#3a4a3a", flex:1}}>{fmtWithDow(rec.date)}</span>
-                                <span style={{fontSize:10, color:sl?.color, background:sl?.bg, borderRadius:4, padding:"1px 6px", fontWeight:600}}>{sl?.label}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                      {isOpen && (()=>{
+                        const fd = s => s?s.replace(/-/g,"."):"";
+                        // 이 갱신 기수 기간에 속하는 홀딩 이력 필터링
+                        const holdInPeriod = (member.holdingHistory||[]).filter(h =>
+                          h.startDate >= r.startDate && (!r.endDate || h.startDate <= r.endDate)
+                        );
+                        // 출석 행과 홀딩 행을 날짜순으로 합산
+                        const rows = [
+                          ...precs.map(rec => ({_type:"att", date:rec.date, rec})),
+                          ...holdInPeriod.map(h  => ({_type:"hold", date:h.startDate, h})),
+                        ].sort((a,b) => a.date.localeCompare(b.date));
+
+                        return (
+                          <div style={{background:"#fff", borderTop:"1px solid #f0ece4", padding:"8px 11px"}}>
+                            {rows.length === 0 ? (
+                              <div style={{fontSize:11, color:"#c8c0b0", textAlign:"center", padding:"8px 0"}}>이 기간 출석 기록 없음</div>
+                            ) : rows.map((row, ri) => {
+                              if(row._type==="hold"){
+                                const {h} = row;
+                                return (
+                                  // 홀딩 행: 연파랑 배경으로 구분
+                                  <div key={`hold-${h.startDate}`} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:ri<rows.length-1?"1px solid #f0edf8":"none",background:"#f4f6fb",borderRadius:6,paddingLeft:6,marginBottom:1}}>
+                                    <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0}}>⏸️</span>
+                                    <span style={{fontSize:11,color:"#3d5494",flex:1}}>홀딩 {fd(h.startDate)} ~ {fd(h.endDate)}</span>
+                                    <span style={{fontSize:10,color:"#6a7fc8",background:"#edf0f8",borderRadius:4,padding:"1px 6px",fontWeight:600}}>{h.workdays||member.extensionDays}일</span>
+                                  </div>
+                                );
+                              }
+                              const {rec} = row;
+                              const sl = TIME_SLOTS.find(t => t.key === rec.timeSlot);
+                              return (
+                                <div key={rec.id} style={{display:"flex", alignItems:"center", gap:8, padding:"5px 0", borderBottom:ri<rows.length-1?"1px solid #f8f4ef":"none"}}>
+                                  <span style={{fontSize:13, width:18, textAlign:"center", flexShrink:0}}>{sl?.icon||"📍"}</span>
+                                  <span style={{fontSize:11, color:"#3a4a3a", flex:1}}>{fmtWithDow(rec.date)}</span>
+                                  <span style={{fontSize:10, color:sl?.color, background:sl?.bg, borderRadius:4, padding:"1px 6px", fontWeight:600}}>{sl?.label}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
