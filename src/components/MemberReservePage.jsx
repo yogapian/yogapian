@@ -123,7 +123,7 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
               </span>
 
               {/* 날짜 아래 인디케이터 — flexDirection:row로 겹침 방지 (오늘+휴강 동시 표시 가능) */}
-              <div style={{display:"flex",flexDirection:"row",flexWrap:"wrap",alignItems:"center",justifyContent:"center",gap:3,marginTop:0,minHeight:10}}>
+              <div style={{display:"flex",flexDirection:"row",flexWrap:"wrap",alignItems:"flex-end",justifyContent:"center",gap:3,marginTop:0,minHeight:10}}>
                 {isToday    && <span style={{fontSize:8,color:"#c4d7bd",fontWeight:700,lineHeight:1.1,marginTop:-3,minHeight:10}}>오늘</span>}
                 {/* 출석 완료: 아래 ✔ 이모지로 표시 (원형 채움 대체) */}
                 {isAtt      && <span style={{fontSize:8,color:"#3a8a54",lineHeight:1,marginTop:-7,minHeight:10}}>🪬</span>}
