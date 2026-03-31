@@ -124,16 +124,16 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
 
               {/* 날짜 아래 인디케이터 — flexDirection:row로 겹침 방지 (오늘+휴강 동시 표시 가능) */}
               <div style={{display:"flex",flexDirection:"row",flexWrap:"wrap",alignItems:"flex-end",justifyContent:"center",gap:3,marginTop:0,minHeight:10}}>
-                {isToday    && <span style={{fontSize:8,color:"#c4d7bd",fontWeight:700,lineHeight:1.1,marginTop:-3,minHeight:10}}>오늘</span>}
+                {isToday    && <span style={{fontSize:8,color:"#c4d7bd",lineHeight:1,fontWeight:700,marginTop:-3,minHeight:10}}>오늘</span>}
                 {/* 출석 완료: 아래 ✔ 이모지로 표시 (원형 채움 대체) */}
                 {isAtt      && <span style={{fontSize:8,color:"#3a8a54",lineHeight:1,marginTop:-7,minHeight:10}}>🪬</span>}
                 {isWait     && <span style={{fontSize:6,color:"#e8a020",lineHeight:1,marginTop:-1,minHeight:10}}>▲</span>}
                 {/* 예약됨(출석 전): 초록 점 */}
                 {isRes      && <span style={{fontSize:6,color:"#5a86e5",lineHeight:1,marginTop:-1,minHeight:10}}>●</span>}
-                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"1.5px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
-                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"1.5px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>부분</span>}
-                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"1.5px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>오픈</span>}
-                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"1.5px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>집중</span>}
+                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1,display: "flex",alignItems: "center",justifyContent: "center"}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
+                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"1px 3px",fontWeight:700,lineHeight:1,display: "flex",alignItems: "center",justifyContent: "center"}}>부분</span>}
+                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"1px 3px",fontWeight:700,lineHeight:1,display: "flex",alignItems: "center",justifyContent: "center"}}>오픈</span>}
+                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"1px 3px",fontWeight:700,lineHeight:1,display: "flex",alignItems: "center",justifyContent: "center"}}>집중</span>}
                 {hasDailyNote && <span style={{fontSize:9,lineHeight:1}}>📢</span>}
               </div>
             </div>
