@@ -40,9 +40,9 @@ export default function MemberDetailModal({member, bookings, onClose}){
           {/* 요약 카드 */}
           <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:7, marginBottom:12}}>
             {[
-              {l:"이번기수출석", v:`${curRecs.length}/${member.total}`, c:"#3d5494"},
-              {l:"잔여 회차", v:`${dispRem}회`, c:expired?"#c97474":dispRem===0?"#9a5a10":"#2e6e44"},
-              {l:"D-day", v:dl<0?`${Math.abs(dl)}일초과`:dl===0?"오늘":`D-${dl}`, c:dl<0?"#c97474":dl<=7?"#9a5a10":"#4a4a4a"}
+              {l:"이번기수출석", v:`${curRecs.length}/${member.total}`, c:"#4f4f4f"},
+              {l:"잔여 회차", v:`${dispRem}회`, c:expired?"#c97474":dispRem===0?"#9a5a10":"#4f4f4f"},
+              {l:"D-day", v:dl<0?`${Math.abs(dl)}일초과`:dl===0?"오늘":`D-${dl}`, c:dl<0?"#c97474":dl<=7?"#9a5a10":"#4f4f4f"}
             ].map(item => (
               <div key={item.l} style={{background:"#f7f4ef", borderRadius:9, padding:"9px", textAlign:"center"}}>
                 <div style={{fontSize:10, color:"#9a8e80", marginBottom:3}}>{item.l}</div>
@@ -56,7 +56,7 @@ export default function MemberDetailModal({member, bookings, onClose}){
             {[
               ["최초등록", fmt(member.firstDate||member.startDate), "#7a6e60"],
               ["현재시작", fmt(member.startDate), "#7a6e60"],
-              ["종료일", fmt(end), dl<0?"#c97474":dl<=7?"#9a5a10":"#3a4a3a"]
+              ["종료일", fmt(end), dl<0?"#c97474":dl<=7?"#9a5a10":"#4f4f4f"]
             ].map(([l,v,c]) => (
               <div key={l} style={{display:"flex", justifyContent:"space-between", marginBottom:4}}>
                 <span style={{color:"#9a8e80"}}>{l}</span>
@@ -120,7 +120,7 @@ export default function MemberDetailModal({member, bookings, onClose}){
                         const rows = [
                           ...precs.map(rec => ({_type:"att", date:rec.date, rec})),
                           ...holdInPeriod.map(h  => ({_type:"hold", date:h.startDate, h})),
-                        ].sort((a,b) => a.date.localeCompare(b.date));
+                        ].sort((a,b) => b.date.localeCompare(a.date)); // 최신 날짜 위로
 
                         return (
                           <div style={{background:"#fff", borderTop:"1px solid #f0ece4", padding:"8px 11px"}}>
