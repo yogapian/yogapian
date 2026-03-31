@@ -130,10 +130,10 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
                 {isWait     && <span style={{fontSize:6,color:"#e8a020",lineHeight:1,marginTop:-1,minHeight:10}}>▲</span>}
                 {/* 예약됨(출석 전): 초록 점 */}
                 {isRes      && <span style={{fontSize:6,color:"#5a86e5",lineHeight:1,marginTop:-1,minHeight:10}}>●</span>}
-                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"1.1px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
-                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"1.1px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>부분</span>}
-                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"1.1px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>오픈</span>}
-                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"1.1px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>집중</span>}
+                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"1.5px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
+                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"1.5px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>부분</span>}
+                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"1.5px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>오픈</span>}
+                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"1.5px 3px",fontWeight:700,lineHeight:1,marginTop:-3,minHeight:10}}>집중</span>}
                 {hasDailyNote && <span style={{fontSize:9,lineHeight:1}}>📢</span>}
               </div>
             </div>
