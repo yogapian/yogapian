@@ -104,8 +104,8 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
                 padding:"0.1px 1px",margin:"1px auto",                              /* ← 셀 크기 조절: padding/margin */
                 borderRadius:7,                                               /* ← 셀 라운드 */
                 width:"80%",
-                // 오늘=solid진초록 / 선택=연파랑 / 나머지=transparent (테두리 없음)
-                background: isToday&&!isSel?"#2e6e44":isSel?"#dce8ff":"transparent",
+                // 오늘=solid진초록(선택여부 무관) / 선택=연파랑 / 나머지=transparent
+                background: isToday?"#2e6e44":isSel?"#dce8ff":"transparent",
                 cursor:unselectable?"default":"pointer",userSelect:"none"
               }}>
 
@@ -122,9 +122,8 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
                 {day}
               </span>
 
-              {/* 날짜 아래 인디케이터 — flexDirection:row로 겹침 방지 (오늘+휴강 동시 표시 가능) */}
+              {/* 날짜 아래 인디케이터 — "오늘" 뱃지는 타임헤더로 이동, 초록 배경이 오늘임을 표시 */}
               <div style={{display:"inline-flex",flexDirection:"row",flexWrap:"wrap",alignItems:"center",justifyContent:"center",gap:3,marginTop:0,minHeight:10}}>
-                {isToday    && <span style={{fontSize:8,color:"#c4d7bd",lineHeight:1,fontWeight:700,display:"inline-flex",marginTop:-3}}>오늘</span>}
                 {/* 출석 완료: 아래 ✔ 이모지로 표시 (원형 채움 대체) */}
                 {isAtt      && <span style={{fontSize:8,color:"#3a8a54",lineHeight:1,marginTop:-7,minHeight:10}}>🪬</span>}
                 {isWait     && <span style={{fontSize:6,color:"#e8a020",lineHeight:1,marginTop:-1,minHeight:10}}>▲</span>}
@@ -335,10 +334,20 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       {selDate&&(
         <div style={{padding:"0 14px 8px"}}>
 
-          {/* 날짜 헤더: 선택된 날짜를 슬롯 영역 상단에 표시해 맥락 연결 */}
-          <div style={{fontSize:14,fontWeight:700,color:"#3a4a3a",padding:"6px 2px 8px",display:"flex",alignItems:"center",gap:6}}>
+          {/* 날짜 헤더: 선택된 날짜 + 상태 뱃지 (오늘/휴강/오픈/집중/부분) */}
+          <div style={{fontSize:14,fontWeight:700,color:"#3a4a3a",padding:"6px 2px 8px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
             <span style={{color:"#9a8e80",fontSize:12,fontWeight:400}}>📅</span>
             {fmt(selDate)}<span style={{fontSize:12,color:"#9a8e80",fontWeight:400}}>({DOW_KO[parseLocal(selDate).getDay()]})</span>
+            {/* 오늘 뱃지 — 항상 초록 */}
+            {selDate===TODAY_STR && <span style={{fontSize:11,background:"#2e6e44",color:"#fff",borderRadius:5,padding:"2px 8px",fontWeight:700,lineHeight:"18px"}}>오늘</span>}
+            {/* 전체 휴강 */}
+            {dayClosure && <span style={{fontSize:11,background:"#fde8e8",color:"#a83030",borderRadius:5,padding:"2px 8px",fontWeight:700,lineHeight:"18px"}}>전체 휴강</span>}
+            {/* 오픈클래스 */}
+            {!dayClosure&&isOpen && <span style={{fontSize:11,background:"#d8f5ec",color:"#1a6e4a",borderRadius:5,padding:"2px 8px",fontWeight:700,lineHeight:"18px"}}>오픈클래스</span>}
+            {/* 집중수련 */}
+            {!dayClosure&&isSpecial&&!isOpen&&special?.type==="special" && <span style={{fontSize:11,background:"#ede8fa",color:"#5a3a9a",borderRadius:5,padding:"2px 8px",fontWeight:700,lineHeight:"18px"}}>집중수련</span>}
+            {/* 부분 휴강: 슬롯별 휴강이 1개 이상 있을 때 */}
+            {!dayClosure&&closures.some(cl=>cl.date===selDate&&cl.timeSlot) && <span style={{fontSize:11,background:"#fdf0ec",color:"#c97050",borderRadius:5,padding:"2px 8px",fontWeight:700,lineHeight:"18px"}}>부분 휴강</span>}
           </div>
 
           {/* 수업 없는 날 (주말 또는 슬롯 0개인 날) */}
