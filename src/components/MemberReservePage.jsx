@@ -90,7 +90,7 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
           // 날짜 숫자 색상 결정
           let numColor = "#1e2e1e";
           if(isToday)            numColor = "#ffffff";      // ← 오늘: solid 초록 배경 위 흰 글씨
-          else if(isClosure)     numColor = "#c97474";   // ← 휴강일 빨강 (선택돼도 유지)
+          else if(isClosure)     numColor = "#454545";   // ← 휴강일 빨강 (선택돼도 유지)
           else if(isPast)        numColor = "#c8c0b0";   // ← 지난날 회색
           else if(isHol||dow===0) numColor = "#e05050";  // ← 공휴일/일요일
           else if(dow===6)       numColor = "#4a70d0";   // ← 토요일 파랑
@@ -130,10 +130,10 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
                 {isWait     && <span style={{fontSize:6,color:"#e8a020",lineHeight:1,marginTop:-1,minHeight:10}}>▲</span>}
                 {/* 예약됨(출석 전): 초록 점 */}
                 {isRes      && <span style={{fontSize:6,color:"#5a86e5",lineHeight:1,marginTop:-1,minHeight:10}}>●</span>}
-                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0.5px 3px",fontWeight:700,lineHeight:1.1,marginTop:-3,minHeight:10}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
-                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"0.5px 3px",fontWeight:700,lineHeight:1.1,marginTop:-3,minHeight:10}}>부분</span>}
-                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"0.5px 3px",fontWeight:700,lineHeight:1.1,marginTop:-3,minHeight:10}}>오픈</span>}
-                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"0.5px 3px",fontWeight:700,lineHeight:1.1,marginTop:-3,minHeight:10}}>집중</span>}
+                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.1,marginTop:-3,minHeight:10}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
+                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.1,marginTop:-3,minHeight:10}}>부분</span>}
+                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.1,marginTop:-3,minHeight:10}}>오픈</span>}
+                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1.1,marginTop:-3,minHeight:10}}>집중</span>}
                 {hasDailyNote && <span style={{fontSize:9,lineHeight:1}}>📢</span>}
               </div>
             </div>
