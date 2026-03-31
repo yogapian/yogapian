@@ -225,14 +225,18 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
   // ── doReserve: booking을 실제로 생성 ─────────────────────────────────────
   // renewalPending=true면 갱신 필요 임시예약 (관리자가 갱신 처리할 때까지 표시됨)
+  // nid는 updater 내부(p)에서 계산 → 동시 예약 시 stale closure로 인한 ID 충돌 방지
   function doReserve(slotKey, isWaiting, renewalPending){
-    const nid = Math.max(...bookings.map(b=>b.id),0)+1;
-    setBookings(p=>[...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}]);
+    setBookings(p=>{
+      const nid = Math.max(...p.map(b=>b.id),0)+1;
+      return [...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}];
+    });
     setPendingSlot(null); setRenewPopup(null);
   }
 
   // ── cancelBooking: 예약 취소 + 대기자 자동 승격 ──────────────────────────
-  // reserved/attended 취소 시 대기 1번 → status="attended"로 자동 변경 + 공지 생성
+  // reserved/attended 취소 시 대기 1번 → status="reserved"로 자동 변경 + 공지 생성
+  // (attended가 아닌 reserved: 미래 수업은 출석 미완료 상태로 승격해야 usedAsOf 집계 오류 방지)
   function cancelBooking(bId){
     const cancelled = bookings.find(b=>b.id===bId);
     if(!cancelled) return;
@@ -247,7 +251,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       : null;
     setBookings(p=>{
       const next = p.map(b=>b.id===bId?{...b,status:"cancelled",cancelledBy:"member"}:b);
-      return firstWaiter?next.map(b=>b.id===firstWaiter.id?{...b,status:"attended"}:b):next;
+      return firstWaiter?next.map(b=>b.id===firstWaiter.id?{...b,status:"reserved"}:b):next;
     });
     if(firstWaiter){
       // 공지: 상단 이모지 제거 / 날짜 + 슬롯명 + 시간 명시
