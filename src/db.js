@@ -154,13 +154,15 @@ export function fromSnakeClosure(r) {
 // ---------- DB 직접 조작 함수들 ----------
 
 export async function dbLoadAll() {
+  // ⚠️ Supabase JS의 기본 row limit = 1000. 초과 시 최신 데이터가 잘림 → limit 명시 필수
   const [mRes, bRes, nRes, sRes, cRes] = await Promise.all([
-    _supabase.from("members").select("*").order("id"),
-    _supabase.from("bookings").select("*").order("id"),
-    _supabase.from("notices").select("*").order("id", { ascending: false }),
-    _supabase.from("special_schedules").select("*").order("date"),
-    _supabase.from("closures").select("*").order("date"),
+    _supabase.from("members").select("*").order("id").limit(2000),
+    _supabase.from("bookings").select("*").order("id").limit(10000),
+    _supabase.from("notices").select("*").order("id", { ascending: false }).limit(500),
+    _supabase.from("special_schedules").select("*").order("date").limit(2000),
+    _supabase.from("closures").select("*").order("date").limit(2000),
   ]);
+  if (bRes.data?.length >= 10000) console.warn("bookings 10000개 초과 — limit 상향 필요");
   let scheduleTemplate = {};
   try {
     const tmplRes = await _supabase.from("appdata").select("value").eq("key", "schedule_template").maybeSingle();
