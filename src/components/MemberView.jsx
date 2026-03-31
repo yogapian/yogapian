@@ -25,6 +25,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   const closureExt = getClosureExtDays(m, closuresCxt);
 
   const [showDetail, setShowDetail] = useState(false);
+  const [showHoldDetail, setShowHoldDetail] = useState(false); // 홀딩 상세 펼침 여부
 
   // 개인 공지 팝업
   const [popupNotice, setPopupNotice] = useState(null);
@@ -92,10 +93,14 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
           ) : (
             <>
               <div style={{marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
-                  <span style={{fontSize:11,color:"#9a8e80"}}>등록 <b style={{color:"#3a4a3a"}}>{m.total}회</b></span>
-                  <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{usedCnt}</b></span>
-                  <span style={{fontSize:13,fontWeight:700,color:rem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:20}}>{rem}</span>회</span>
+                {/* 등록·사용 왼쪽 한 줄 / 잔여 횟수 우측 강조 */}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                  <span style={{fontSize:11,color:"#9a8e80"}}>
+                    등록 <b style={{color:"#3a4a3a"}}>{m.total}회</b>
+                    <span style={{color:"#c8c0b0",margin:"0 5px"}}>·</span>
+                    사용 <b style={{color:"#3a4a3a"}}>{usedCnt}회</b>
+                  </span>
+                  <span style={{fontSize:13,fontWeight:700,color:rem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:22}}>{rem}</span>회</span>
                 </div>
                 <div style={{background:"#e8e4dc",borderRadius:8,height:20,overflow:"hidden"}}>
                   <div style={{height:"100%",width:`${pct}%`,background:barColor,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transition:"width .4s"}}>
@@ -111,11 +116,28 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
                   <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
                     <span style={{...S.dateVal,color:dl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(end)}</span>
                     {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
-                    {(m.extensionDays||0)>0&&<span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{m.extensionDays}일</span>}
+                    {/* 홀딩 버튼: 누르면 기간·원래종료일 펼침 */}
+                    {(m.extensionDays||0)>0&&(
+                      <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
+                        홀딩+{m.extensionDays}일 {showHoldDetail?"▲":"▼"}
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div style={{...S.dChip,background:dl<0?"#f5eeee":dl<=7?"#fdf3e3":"#eef4ee",color:dl<0?"#c97474":dl<=7?"#9a5a10":"#2e6e44"}}>{dl<0?`D+${Math.abs(dl)}`:dl===0?"D-Day":`D-${dl}`}</div>
               </div>
+              {/* 홀딩 상세 펼침: holdingHistory 마지막 기록에서 기간 날짜 표시 */}
+              {showHoldDetail&&(m.extensionDays||0)>0&&(()=>{
+                const h = m.holdingHistory?.slice(-1)[0];
+                // YYYY-MM-DD → YYYY.MM.DD 포맷 변환
+                const fd = s => s ? s.replace(/-/g,".") : "";
+                return (
+                  <div style={{fontSize:11,color:"#6a7090",background:"#f0f2f5",borderRadius:8,padding:"8px 12px",marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
+                    <div>홀딩 기간 <b style={{color:"#3d5494"}}>{h ? `${fd(h.startDate)} ~ ${fd(h.endDate)}` : `${m.extensionDays}일`}</b></div>
+                    <div>종료일 <b style={{color:"#5a6070"}}>{fmt(m.endDate)}</b> → 연장 후 <b style={{color:"#2e6e44"}}>{fmt(end)}</b></div>
+                  </div>
+                );
+              })()}
             </>
           )}
           <div style={{...S.actions, marginTop:8}}>
