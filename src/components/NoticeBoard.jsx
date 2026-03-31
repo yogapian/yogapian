@@ -6,9 +6,9 @@ export default function NoticeBoard({notices,member}){
   const visible=filtered.filter(n=>n.pinned).concat(filtered.filter(n=>!n.pinned)).slice(0,5);
   if(!visible.length)return null;
   return(
-    <div style={{marginBottom:16}}>
+    <div style={{marginBottom:10}}>
       {visible.map(n=>(
-        <div key={n.id} style={{background:n.pinned?"#fffaeb":"#fff",border:`1px solid ${n.pinned?"#e8c44a":"#e4e0d8"}`,borderRadius:12,padding:"12px 14px",marginBottom:8,cursor:"pointer"}} onClick={()=>setExpanded(expanded===n.id?null:n.id)}>
+        <div key={n.id} style={{background:n.pinned?"#f4db917f":"#fff",border:`1px solid ${n.pinned?"#f4ca3d":"#be8e35"}`,borderRadius:12,padding:"8px 14px",marginBottom:8,cursor:"pointer"}} onClick={()=>setExpanded(expanded===n.id?null:n.id)}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             {n.pinned&&<span style={{fontSize:14,flexShrink:0}}>📌</span>}
             <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e",flex:1}}>{n.title}</span>
