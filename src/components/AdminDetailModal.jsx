@@ -45,14 +45,15 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
           </div>
 
           {/* ─── 상단 통계 3칸 ─── */}
+          {/* 컬러 최소화: 배경 #f5f5f5(중립회색) / 값 색상도 채도 낮은 톤으로 통일 */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:12}}>
-            {/* ← 출석=파랑#3d5494 / 잔여: 만료=빨강#c97474, 0회=주황#9a5a10, 정상=초록#2e6e44 / D-day: 초과=빨강, 촉박=주황 */}
+            {/* 출석=#5a6070(회청) / 잔여: 만료=#9a7878, 0회=#8a7050, 정상=#5a7060 / D-day: 동일 */}
             {[
-              {l:"이번기수출석",v:curRecs.length+"/"+member.total,c:"#3d5494"},
-              {l:"잔여 회차",v:dispRem+"회",c:expired?"#c97474":dispRem===0?"#9a5a10":"#2e6e44"},
-              {l:"D-day",v:dl<0?Math.abs(dl)+"일초과":dl===0?"오늘":"D-"+dl,c:dl<0?"#c97474":dl<=7?"#9a5a10":"#4a4a4a"}
+              {l:"이번기수출석",v:curRecs.length+"/"+member.total,c:"#5a6070"},
+              {l:"잔여 회차",v:dispRem+"회",c:expired?"#9a7878":dispRem===0?"#8a7050":"#5a7060"},
+              {l:"D-day",v:dl<0?Math.abs(dl)+"일초과":dl===0?"오늘":"D-"+dl,c:dl<0?"#9a7878":dl<=7?"#8a7050":"#4a4a4a"}
             ].map(function(item){return(
-              <div key={item.l} style={{background:"#f7f4ef",/* ← 통계 카드 배경색 */borderRadius:9,padding:"9px",textAlign:"center"}}>
+              <div key={item.l} style={{background:"#f5f5f5",/* ← 통계 카드 배경: 중립회색(기존 베이지 #f7f4ef → #f5f5f5) */borderRadius:9,padding:"9px",textAlign:"center"}}>
                 <div style={{fontSize:10,color:"#9a8e80",marginBottom:3}}>{/* ← 라벨 글씨 크기/색 */}{item.l}</div>
                 <div style={{fontSize:13,fontWeight:700,color:item.c}}>{/* ← 값 글씨 크기 */}{item.v}</div>
               </div>
@@ -96,7 +97,8 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
             </div>
           )}
 
-          <div style={{background:"#f7f4ef",borderRadius:9,padding:"10px 12px",marginBottom:12,fontSize:12}}>
+          {/* 날짜·전화 정보 박스: 배경 #f5f5f5(중립) — 기존 베이지 #f7f4ef에서 변경 */}
+          <div style={{background:"#f5f5f5",borderRadius:9,padding:"10px 12px",marginBottom:12,fontSize:12}}>
             {[["최초등록",fmt(member.firstDate||member.startDate),"#7a6e60"],["현재시작",fmt(member.startDate),"#7a6e60"],["종료일",fmt(end),dl<0?"#c97474":dl<=7?"#9a5a10":"#3a4a3a"]].map(([l,v,c])=>(
               <div key={l} style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:"#9a8e80"}}>{l}</span><span style={{color:c,fontWeight:700}}>{v}</span></div>
             ))}
@@ -140,14 +142,19 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
                             {holdExt>0&&<span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{holdExt}일</span>}
                           </div>
                           <div style={{display:"flex",gap:5,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
-                            <span style={{fontSize:10,background:(TYPE_CFG[r.memberType]||TYPE_CFG["1month"]).bg,color:(TYPE_CFG[r.memberType]||TYPE_CFG["1month"]).color,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{(TYPE_CFG[r.memberType]||TYPE_CFG["1month"]).label}</span>
+                            {/* 회원권 종류 뱃지: 이력 카드 내에서는 중립 회색으로 — 초록과 구별 */}
+                            <span style={{fontSize:10,background:"#efefef",color:"#707070",borderRadius:4,padding:"1px 6px",fontWeight:500}}>{(TYPE_CFG[r.memberType]||TYPE_CFG["1month"]).label}</span>
                             {r.total>0&&<span style={{fontSize:10,color:"#9a8e80"}}>등록 {r.total}회</span>}
-                            <span style={{fontSize:10,color:precs.length>0?"#2e6e44":"#b0a090",fontWeight:700}}>출석 {precs.length}회</span>
-                            {r.payment&&<span style={{fontSize:10,background:r.payment.replace("3개월,","").includes("네이버")?"#e8f4e8":r.payment.replace("3개월,","").includes("현금")?"#fdf3e3":"#edf0f8",color:r.payment.replace("3개월,","").includes("네이버")?"#2e6e44":r.payment.replace("3개월,","").includes("현금")?"#8a5510":"#3d5494",borderRadius:4,padding:"1px 6px",fontWeight:600}}>{r.payment.replace("3개월,","")}</span>}
+                            {/* 출석 횟수: 초록에서 중립 다크로 — 정보성 텍스트는 채도 낮춤 */}
+                            <span style={{fontSize:10,color:precs.length>0?"#3a4a3a":"#b0a090",fontWeight:700}}>출석 {precs.length}회</span>
+                            {/* 결제수단 뱃지: 네이버 초록 → 슬레이트 중립 / 현금 주황 유지 / 기타 파랑 유지 */}
+                            {r.payment&&<span style={{fontSize:10,background:r.payment.replace("3개월,","").includes("네이버")?"#e8edf0":r.payment.replace("3개월,","").includes("현금")?"#fdf3e3":"#edf0f8",color:r.payment.replace("3개월,","").includes("네이버")?"#4a5a6a":r.payment.replace("3개월,","").includes("현금")?"#8a5510":"#3d5494",borderRadius:4,padding:"1px 6px",fontWeight:600}}>{r.payment.replace("3개월,","")}</span>}
                           </div>
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
-                          {isCurrent&&<span style={{fontSize:10,background:"#e0f2e9",color:"#1e6040",borderRadius:5,padding:"1px 6px",fontWeight:700}}>현재</span>}
+                          {/* 현재 뱃지: 반전(bg 진초록 + 흰글씨) — 가장 선명한 채도로 활성 상태 명확히 표시 */}
+                          {/* 배경(연초록 카드) 위에서 도드라지도록 solid 처리 */}
+                          {isCurrent&&<span style={{fontSize:10,background:"#2a6e44",color:"#fff",borderRadius:5,padding:"1px 6px",fontWeight:700}}>현재</span>}
                           <span style={{fontSize:12,color:"#9a8e80"}}>{isOpenH?"▴":"▾"}</span>
                         </div>
                       </div>
