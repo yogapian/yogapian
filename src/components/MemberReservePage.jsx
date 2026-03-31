@@ -122,18 +122,25 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
                 {day}
               </span>
 
-              {/* 날짜 아래 인디케이터 — "오늘" 뱃지는 타임헤더로 이동, 초록 배경이 오늘임을 표시 */}
-              <div style={{display:"inline-flex",flexDirection:"row",flexWrap:"wrap",alignItems:"center",justifyContent:"center",gap:3,marginTop:0,minHeight:10}}>
-                {/* 출석 완료: 아래 ✔ 이모지로 표시 (원형 채움 대체) */}
-                {isAtt      && <span style={{fontSize:8,color:"#3a8a54",lineHeight:1,marginTop:-7,minHeight:10}}>🪬</span>}
-                {isWait     && <span style={{fontSize:6,color:"#e8a020",lineHeight:1,marginTop:-1,minHeight:10}}>▲</span>}
-                {/* 예약됨(출석 전): 초록 점 */}
-                {isRes      && <span style={{fontSize:6,color:"#5a86e5",lineHeight:1,marginTop:-1,minHeight:10}}>●</span>}
-                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"1px 3px",fontWeight:700,lineHeight:1,display:"inline-flex",marginTop:-3}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
-                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"1px 3px",fontWeight:700,lineHeight:1,display:"inline-flex",marginTop:-3}}>부분</span>}
-                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"1px 3px",fontWeight:700,lineHeight:1,display:"inline-flex",marginTop:-3}}>오픈</span>}
-                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"1px 3px",fontWeight:700,lineHeight:1,display:"inline-flex",marginTop:-3}}>집중</span>}
-                {hasDailyNote && <span style={{fontSize:9,lineHeight:1}}>📢</span>}
+              {/* 날짜 아래 인디케이터
+                  - 배지 세로정렬: height+alignItems:"center"로 고정 (lineHeight:1+marginTop 핵 제거)
+                  - "오늘": 다른 상태 배지가 없을 때만 흰 글씨로 표시 */}
+              <div style={{display:"inline-flex",flexDirection:"row",flexWrap:"wrap",alignItems:"center",justifyContent:"center",gap:2,minHeight:11}}>
+                {/* 오늘: 상태 배지 없을 때만 흰 글씨 (초록 배경이 이미 오늘임을 표시) */}
+                {isToday&&!isClosure&&!isPartial&&!isOpen&&!isSpecialDay&&!hasDailyNote&&(
+                  <span style={{fontSize:8,color:"rgba(255,255,255,0.88)",fontWeight:700,display:"inline-flex",alignItems:"center",height:11}}>오늘</span>
+                )}
+                {/* 출석 완료 */}
+                {isAtt      && <span style={{fontSize:8,color:"#3a8a54",display:"inline-flex",alignItems:"center",height:11}}>🪬</span>}
+                {isWait     && <span style={{fontSize:7,color:"#e8a020",display:"inline-flex",alignItems:"center",height:11}}>▲</span>}
+                {/* 예약됨(출석 전) */}
+                {isRes      && <span style={{fontSize:7,color:"#5a86e5",display:"inline-flex",alignItems:"center",height:11}}>●</span>}
+                {/* 상태 배지: height+alignItems로 텍스트 세로 센터 고정 */}
+                {isClosure  && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0 3px",fontWeight:700,display:"inline-flex",alignItems:"center",height:11}}>휴강</span>}
+                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"0 3px",fontWeight:700,display:"inline-flex",alignItems:"center",height:11}}>부분</span>}
+                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"0 3px",fontWeight:700,display:"inline-flex",alignItems:"center",height:11}}>오픈</span>}
+                {isSpecialDay&&<span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"0 3px",fontWeight:700,display:"inline-flex",alignItems:"center",height:11}}>집중</span>}
+                {hasDailyNote&&<span style={{fontSize:9,display:"inline-flex",alignItems:"center",height:11}}>📢</span>}
               </div>
             </div>
           );
@@ -338,16 +345,12 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
           <div style={{fontSize:14,fontWeight:700,color:"#3a4a3a",padding:"6px 2px 8px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
             <span style={{color:"#9a8e80",fontSize:12,fontWeight:400}}>📅</span>
             {fmt(selDate)}<span style={{fontSize:12,color:"#9a8e80",fontWeight:400}}>({DOW_KO[parseLocal(selDate).getDay()]})</span>
-            {/* 오늘 뱃지 — 항상 초록 */}
-            {selDate===TODAY_STR && <span style={{fontSize:11,background:"#2e6e44",color:"#fff",borderRadius:5,padding:"2px 8px",fontWeight:700,lineHeight:"18px"}}>오늘</span>}
-            {/* 전체 휴강 */}
-            {dayClosure && <span style={{fontSize:11,background:"#fde8e8",color:"#a83030",borderRadius:5,padding:"2px 8px",fontWeight:700,lineHeight:"18px"}}>전체 휴강</span>}
-            {/* 오픈클래스 */}
-            {!dayClosure&&isOpen && <span style={{fontSize:11,background:"#d8f5ec",color:"#1a6e4a",borderRadius:5,padding:"2px 8px",fontWeight:700,lineHeight:"18px"}}>오픈클래스</span>}
-            {/* 집중수련 */}
-            {!dayClosure&&isSpecial&&!isOpen&&special?.type==="special" && <span style={{fontSize:11,background:"#ede8fa",color:"#5a3a9a",borderRadius:5,padding:"2px 8px",fontWeight:700,lineHeight:"18px"}}>집중수련</span>}
-            {/* 부분 휴강: 슬롯별 휴강이 1개 이상 있을 때 */}
-            {!dayClosure&&closures.some(cl=>cl.date===selDate&&cl.timeSlot) && <span style={{fontSize:11,background:"#fdf0ec",color:"#c97050",borderRadius:5,padding:"2px 8px",fontWeight:700,lineHeight:"18px"}}>부분 휴강</span>}
+            {/* 상태 배지: 달력 인디케이터와 동일 소형 스타일 */}
+            {selDate===TODAY_STR && <span style={{fontSize:8,background:"#2e6e44",color:"#fff",borderRadius:3,padding:"0 4px",fontWeight:700,display:"inline-flex",alignItems:"center",height:13}}>오늘</span>}
+            {dayClosure && <span style={{fontSize:8,background:"#fde8e8",color:"#a83030",borderRadius:3,padding:"0 4px",fontWeight:700,display:"inline-flex",alignItems:"center",height:13}}>휴강</span>}
+            {!dayClosure&&isOpen && <span style={{fontSize:8,background:"#d8f5ec",color:"#1a6e4a",borderRadius:3,padding:"0 4px",fontWeight:700,display:"inline-flex",alignItems:"center",height:13}}>오픈</span>}
+            {!dayClosure&&isSpecial&&!isOpen&&special?.type==="special" && <span style={{fontSize:8,background:"#ede8fa",color:"#5a3a9a",borderRadius:3,padding:"0 4px",fontWeight:700,display:"inline-flex",alignItems:"center",height:13}}>집중</span>}
+            {!dayClosure&&closures.some(cl=>cl.date===selDate&&cl.timeSlot) && <span style={{fontSize:8,background:"#fdf0ec",color:"#c97050",borderRadius:3,padding:"0 4px",fontWeight:700,display:"inline-flex",alignItems:"center",height:13}}>부분</span>}
           </div>
 
           {/* 수업 없는 날 (주말 또는 슬롯 0개인 날) */}
