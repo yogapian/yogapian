@@ -27,6 +27,7 @@ export function toSnake(m) {
     holding_days:     m.holdingDays ?? 0,
     holding:          m.holding ?? null,
     renewal_history:  m.renewalHistory ?? [],
+    holding_history:  m.holdingHistory ?? [],  // 완료된 홀딩 이력 [{startDate,endDate,workdays}]
     updated_at:       new Date().toISOString(),
   };
 }
@@ -50,6 +51,7 @@ export function fromSnakeMember(r) {
     holdingDays:    r.holding_days ?? 0,
     holding:        r.holding ?? null,
     renewalHistory: r.renewal_history ?? [],
+    holdingHistory: r.holding_history ?? [],  // 완료된 홀딩 이력
   };
 }
 export function bookingToSnake(b) {
