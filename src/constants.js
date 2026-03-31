@@ -55,7 +55,8 @@ export const ADMIN_PIN="0066";
 // ─── 회원 상태 스타일 ─────────────────────────────────────────────────────────
 // on=정상 / off=만료 / hold=홀딩 / renew=갱신필요
 // bg: 뱃지 배경색  color: 텍스트색  dot: 상태 점 색상
-export const SC={on:{label:"ON",bg:"#e8f0e8",color:"#2e6e44",dot:"#3d8a55"},off:{label:"OFF",bg:"#f5eeee",color:"#8e3030",dot:"#c97474"},hold:{label:"HOLD",bg:"#edf0f8",color:"#3d5494",dot:"#6a7fc8"},renew:{label:"RENEW",bg:"#fdf3e3",color:"#9a5a10",dot:"#e8a44a"}};
+// on=수강중(연파랑) / off=수강종료(빨강) / hold=홀딩중(파랑) / renew=갱신필요(주황)
+export const SC={on:{label:"수강 중",bg:"#e8f0f8",color:"#2a5080",dot:"#4a80b0"},off:{label:"수강 종료",bg:"#f5eeee",color:"#8e3030",dot:"#c97474"},hold:{label:"홀딩 중",bg:"#edf0f8",color:"#3d5494",dot:"#6a7fc8"},renew:{label:"갱신필요",bg:"#fdf3e3",color:"#9a5a10",dot:"#e8a44a"}};
 
 // 성별 이모지 (F=여성 M=남성)
 export const GE={F:"🧘🏻‍♀️",M:"🧘🏻‍♂️"};
