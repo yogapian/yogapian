@@ -89,13 +89,13 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
 
           // 날짜 숫자 색상 결정
           let numColor = "#1e2e1e";
-          if(isToday)            numColor = "#035529";      // ← 오늘 (최우선)
+          if(isToday)            numColor = "#ffffff";      // ← 오늘: solid 초록 배경 위 흰 글씨
           else if(isClosure)     numColor = "#c97474";   // ← 휴강일 빨강 (선택돼도 유지)
           else if(isPast)        numColor = "#c8c0b0";   // ← 지난날 회색
           else if(isHol||dow===0) numColor = "#e05050";  // ← 공휴일/일요일
           else if(dow===6)       numColor = "#4a70d0";   // ← 토요일 파랑
           else if(noClass)       numColor = "#c8c0b0";   // ← 수업없는날 회색
-          else if(isSel)         numColor = "#000000";    // ← 선택된 날
+          else if(isSel)         numColor = "#1a3a8a";    // ← 선택된 날: 블루톤
 
           return (
             <div key={i} onClick={() => !unselectable && onSelect(ds)}
@@ -104,36 +104,36 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
                 padding:"0.1px 1px",margin:"1px auto",                              /* ← 셀 크기 조절: padding/margin */
                 borderRadius:7,                                               /* ← 셀 라운드 */
                 width:"80%",
-                background:isSel?"#8989895c":isToday&&!isSel?"#84bf977a":"transparent", /* ← 선택=회색 / 오늘=진초록 */
+                // 오늘=solid진초록 / 선택=연파랑 / 나머지=transparent (테두리 없음)
+                background: isToday&&!isSel?"#2e6e44":isSel?"#dce8ff":"transparent",
                 cursor:unselectable?"default":"pointer",userSelect:"none"
               }}>
 
-              {/* 날짜 숫자: 과거 출석일은 원형 배경으로 표시 */}
-              {/* isCircle=true → bg #b8ddc8(연초록), borderRadius 50% / 기본 → 투명 bg, r:5 */}
-              {(()=>{const isCircle=isAtt&&isPast&&!isSel&&!isToday;return(
+              {/* 날짜 숫자: 원형 채움 없음 — 출석은 아래 이모지로 표시 */}
               <span style={{
                 display:"inline-flex",alignItems:"center",justifyContent:"center",
-                width:24,height:24,                                          /* ← 원형을 위해 w=h 고정 */
+                width:24,height:24,
                 fontSize:13,fontWeight:isSel||isToday?700:400,
                 color:numColor,lineHeight:1,
-                background:isCircle?"#b8ddc8":"transparent",                /* ← 과거 출석일: 연초록 원형 / 기본: 투명 */
-                borderRadius:isCircle?"50%":5,                              /* ← 원형 vs 모서리 r:5 */
+                background:"transparent",
+                borderRadius:5,
                 textDecoration:isClosure?"line-through":"none"              /* ← 휴강일 취소선 */
               }}>
                 {day}
               </span>
-              );})()}
 
               {/* 날짜 아래 인디케이터 — flexDirection:row로 겹침 방지 (오늘+휴강 동시 표시 가능) */}
-              <div style={{display:"flex",flexDirection:"row",flexWrap:"wrap",alignItems:"center",justifyContent:"center",gap:2,marginTop:0,minHeight:10}}>
-                {isToday    && <span style={{fontSize:8,color:"#284f36",fontWeight:600,lineHeight:1}}>오늘</span>}
+              <div style={{display:"flex",flexDirection:"row",flexWrap:"wrap",alignItems:"center",justifyContent:"center",gap:3,marginTop:0,minHeight:10}}>
+                {isToday    && <span style={{fontSize:8,color:"#a8d8c0",fontWeight:600,lineHeight:1}}>오늘</span>}
+                {/* 출석 완료: 아래 ✔ 이모지로 표시 (원형 채움 대체) */}
+                {isAtt      && <span style={{fontSize:10,color:"#3a8a54",lineHeight:1,marginTop:-32,minHeight:10}}>ॐ</span>}
                 {isWait     && <span style={{fontSize:8,color:"#e8a020",lineHeight:1}}>▲</span>}
-                {/* 예약됨(출석 전): 초록 점 — isPast 아닌 날에만 표시 */}
+                {/* 예약됨(출석 전): 초록 점 */}
                 {isRes      && <span style={{fontSize:8,color:"#3a8a54",lineHeight:1}}>●</span>}
-                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
-                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1}}>부분</span>}
-                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1}}>오픈</span>}
-                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"0px 3px",fontWeight:700,lineHeight:1}}>집중</span>}
+                {isClosure && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0.5px 3px",fontWeight:700,lineHeight:1}}>휴강</span>}{/* ← 휴강 뱃지 텍스트/배경색 */}
+                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"0.5px 3px",fontWeight:700,lineHeight:1}}>부분</span>}
+                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"0.5px 3px",fontWeight:700,lineHeight:1}}>오픈</span>}
+                {isSpecialDay && <span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"0.5px 3px",fontWeight:700,lineHeight:1}}>집중</span>}
                 {hasDailyNote && <span style={{fontSize:9,lineHeight:1}}>📢</span>}
               </div>
             </div>
@@ -183,6 +183,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const upcomingText = upcomingBooking ? `${fmtWithDow(upcomingBooking.date)} ${upcomingSlot?.label||''} ${upcomingSlot?.time||''}`.trim() : null;
   const upcomingCap = upcomingBooking ? getSlotCapacity(upcomingBooking.date,upcomingBooking.timeSlot,specialSchedules,scheduleTemplate) : 0;
   const upcomingCnt = upcomingBooking ? bookings.filter(b=>b.date===upcomingBooking.date&&b.timeSlot===upcomingBooking.timeSlot&&(b.status==="attended"||b.status==="reserved")).length : 0;
+  // 대기 포함 총 인원 (정원 초과 시 11/10석 표시용)
+  const upcomingWaitCnt = upcomingBooking ? bookings.filter(b=>b.date===upcomingBooking.date&&b.timeSlot===upcomingBooking.timeSlot&&b.status==="waiting").length : 0;
   const upcomingWaitRank = (upcomingBooking?.status==="waiting") ? (()=>{const ws=bookings.filter(b=>b.date===upcomingBooking.date&&b.timeSlot===upcomingBooking.timeSlot&&b.status==="waiting").sort((a,b)=>a.id-b.id);return ws.findIndex(b=>b.id===upcomingBooking.id)+1;})() : 0;
 
   const getSlots = () => {
@@ -300,8 +302,9 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
             <div style={{flex:1,minWidth:0}}>
               {/* ← 날짜·슬롯 + 잔여석/대기: 한 줄, 이탤릭·색상·크기 */}
               {/* 대기 상태: "대기 신청 N번" / 예약 상태: "잔여 N/M명" */}
+              {/* ← 날짜·슬롯 텍스트 + 구분자 + 잔여석/대기순번 */}
               <div style={{fontSize:11,color:"#7a5010",fontStyle:"italic",lineHeight:1.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                {upcomingText}{" —— "}{upcomingBooking.status==="waiting"?`대기 신청 ${upcomingWaitRank}번`:`잔여 ${Math.max(0,upcomingCap-upcomingCnt)}/${upcomingCap}명`}
+                {upcomingText}{" —— "}{upcomingBooking.status==="waiting"?`대기 신청 ${upcomingWaitRank}번`:`${upcomingCnt+upcomingWaitCnt}/${upcomingCap}석`}
               </div>
             </div>
             {/* 취소 버튼: 예약/대기 구분 없이 "취소"로 통일 / 그레이톤 — border #c0bdb8 / color #8a8480 */}
@@ -327,6 +330,12 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       {/* ─── 날짜 선택 시에만 표시 (슬롯 영역) ─────────────── */}
       {selDate&&(
         <div style={{padding:"0 14px 8px"}}>
+
+          {/* 날짜 헤더: 선택된 날짜를 슬롯 영역 상단에 표시해 맥락 연결 */}
+          <div style={{fontSize:14,fontWeight:700,color:"#3a4a3a",padding:"6px 2px 8px",display:"flex",alignItems:"center",gap:6}}>
+            <span style={{color:"#9a8e80",fontSize:12,fontWeight:400}}>📅</span>
+            {fmt(selDate)}<span style={{fontSize:12,color:"#9a8e80",fontWeight:400}}>({DOW_KO[parseLocal(selDate).getDay()]})</span>
+          </div>
 
           {/* 수업 없는 날 (주말 또는 슬롯 0개인 날) */}
           {!dayClosure&&!isOpen&&!(isSpecial&&special?.type==="special")&&slots.length===0&&(
@@ -398,7 +407,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                 <div key={slot.key} style={{
                   flex: "0 0 calc(25% - 5px)",                          /* ← 항상 4타임 기준 폭 고정 */
                   width: "calc(25% - 5px)",                             /* ← 수업 수 무관하게 고정 폭 */
-                  background:  slCl?"#f5f0ee":"#ffffffb8",              /* ← 카드 배경: 휴강=연회색 / 기본=슬롯 고유색 */
+                  background: slCl?"#f5f0ee":isMyRes?"#f0f8f4":isMyWait?"#fffaeb":"#ffffffb8", /* ← 내예약=연초록 / 대기=연노랑 / 기본=흰색 */
                   borderRadius: 11,                                     /* ← 카드 모서리 둥글기 */
                   border: `1.5px solid ${slCl?"#f0b0a0":isMyRes?"#2e6e44":isMyWait?"#e8c44a":"#e8e4dc"}`, /* ← 테두리: 휴강/내예약/대기/기본 */
                   overflow: "hidden",
@@ -424,7 +433,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                         : isMyWait
                         ? <span style={{fontSize:9,background:"#fffaeb",color:"#9a5a10",borderRadius:6,padding:"2px 6px",fontWeight:700}}>대기 {myRank}번</span>/* ← 대기 뱃지 색상 */
                         : <span style={{fontSize:9,color:slCl?"#b0a090":isFull?"#c97474":remaining<=2?"#9a5a10":"#a0988e", padding: "2px 4px"}}>{/* ← 잔여석: 마감=빨강/촉박=주황/여유=회색 */}
-                            {slCl?`🔕 휴강`:isFull?`마감·대기 ${waitCnt}명`:`잔여 ${remaining}/${cap}명`}
+                            {slCl?`🔕 휴강`:isFull?`마감·대기 ${waitCnt}명`:`${remaining}자리 남음`}
                           </span>
                       }
                     </div>
@@ -433,26 +442,35 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                     {slCl?(
                       <span style={{fontSize:10,color:"#9a8e80",fontWeight:700,display:"block",textAlign:"center"}}>휴강</span>
                     ):isMyRes?(
-                      /* 예약취소 버튼: 내예약 뱃지(초록)와 같은 톤앤매너 — border #a8d8b8 / color #2e6e44 */
-                      <button onClick={()=>setConfirmCancel(myB.id)} style={{width:"100%",background:"none",border:"1px solid #a8d8b8",borderRadius:7,padding:"6px 0",fontSize:12,fontWeight:700,color:"#2e6e44",cursor:"pointer",fontFamily:FONT}}>예약취소</button>
+                      /* 취소 버튼(내예약): border #a8d8b8 / color #2e6e44 */
+                      <button onClick={()=>setConfirmCancel(myB.id)} style={{width:"100%",background:"none",border:"1px solid #a8d8b8",borderRadius:7,padding:"4px 0",fontSize:11,fontWeight:700,color:"#2e6e44",cursor:"pointer",fontFamily:FONT}}>취소</button>
                     ):isMyWait?(
-                      /* 대기취소 버튼: 대기 뱃지(노랑)와 같은 톤앤매너 — border #e8c44a / color #9a5a10 */
+                      /* 대기취소 버튼: border #e8c44a / color #9a5a10 */
                       <button onClick={()=>setConfirmCancel(myB.id)} style={{width:"100%",background:"none",border:"1px solid #e8c44a",borderRadius:7,padding:"6px 0",fontSize:12,fontWeight:700,color:"#9a5a10",cursor:"pointer",fontFamily:FONT}}>대기취소</button>
                     ):isFull?(
-                      <button onClick={()=>tryReserve(slot.key,true)} style={{width:"100%",background:"#fdf3e3",border:"1px solid #e8c44a",borderRadius:7,padding:"6px 0",fontSize:12,fontWeight:700,color:"#9a5a10",cursor:"pointer",fontFamily:FONT}}>대기</button>/* ← 대기버튼 */
+                      <button onClick={()=>tryReserve(slot.key,true)} style={{width:"100%",background:"#fdf3e3",border:"1px solid #e8c44a",borderRadius:7,padding:"6px 0",fontSize:12,fontWeight:700,color:"#9a5a10",cursor:"pointer",fontFamily:FONT}}>대기</button>
                     ):(
-                      <button onClick={()=>tryReserve(slot.key)} style={{width:"100%",background:"#5a6a8a",border:"none",borderRadius:7,padding:"6px 0",fontSize:12,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:FONT}}>예약하기</button>/* ← 예약버튼 배경색 */
+                      <button onClick={()=>tryReserve(slot.key)} style={{width:"100%",background:"#5a6a8a",border:"none",borderRadius:7,padding:"6px 0",fontSize:12,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:FONT}}>예약</button>/* ← 예약버튼 */
                     )}
                   </div>
 
-                  {/* 진행률 바 */}
-                  {!slCl&&(
-                    <div style={{height:2,background:"rgba(0,0,0,0.06)"}}>{/* ← 진행바 트랙 높이/색 */}
-                      <div style={{height:"100%",width:`${Math.min(100,cnt/cap*100)}%`,
-                        background:isFull?"#c97474":remaining<=2?"#e8c44a":"#4a9e68", /* ← 마감=빨강 / 촉박=노랑 / 여유=초록 */
-                        transition:"width .3s",borderRadius:"0 2px 2px 0"}}/>
-                    </div>
-                  )}
+                  {/* 진행률 바 + N명: flex row로 겹침 없이 배치 */}
+                  {/* barBg: 마감=red / ≥70%=amber / 미만=green */}
+                  {!slCl&&(()=>{
+                    const ratio = cap>0?cnt/cap:0;
+                    const barBg = isFull?"#E24B4A":ratio>=0.7?"#EF9F27":"#2d6a4f";
+                    const barW  = `${Math.min(100,cnt/Math.max(cap,1)*100)}%`;
+                    return (
+                      <div style={{display:"flex",alignItems:"center",gap:4,padding:"2px 6px 4px"}}>
+                        {/* 바 트랙: flex:1로 남은 공간 채움 */}
+                        <div style={{flex:1,height:3,background:"rgba(0,0,0,0.07)",borderRadius:3,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:barW,background:barBg,transition:"width .3s"}}/>
+                        </div>
+                        {/* N명: 내예약=진초록 / 나머지=3차텍스트 */}
+                        <span style={{fontSize:9,color:isMyRes?"#27500A":"#9a8e80",fontWeight:isMyRes?700:400,flexShrink:0}}>{cnt}명</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -462,19 +480,30 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       )}
 
       {/* ─── 예약 취소 확인 모달 ────────────────────────────── */}
-      {confirmCancel&&(
-        <div style={S.overlay} onClick={()=>setConfirmCancel(null)}>
-          <div style={{...S.modal,maxWidth:320,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontSize:30,marginBottom:10}}>🌿</div>
-            <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:6}}>예약을 취소할까요?</div>
-            <div style={{fontSize:13,color:"#9a8e80",marginBottom:20}}>취소해도 횟수는 차감되지 않아요.</div>
-            <div style={{display:"flex",gap:8}}>
-              <button style={{...S.cancelBtn,flex:1}} onClick={()=>setConfirmCancel(null)}>아니요</button>
-              <button style={{...S.saveBtn,flex:1,background:"#c97474"}} onClick={()=>cancelBooking(confirmCancel)}>취소하기</button>
+      {/* 취소 대상 booking 조회 → 날짜·슬롯 정보 표시 / 유지하기(좌) 취소하기(우·강조) */}
+      {confirmCancel&&(()=>{
+        const cb  = bookings.find(b=>b.id===confirmCancel);
+        const slotObj = cb && TIME_SLOTS.find(t=>t.key===cb.timeSlot);
+        const cancelDay = cb ? `${fmt(cb.date)}(${DOW_KO[parseLocal(cb.date).getDay()]})` : "";
+        const cancelTime = slotObj ? `${slotObj.label} ${slotObj.time}` : "";
+        return (
+          <div style={S.overlay} onClick={()=>setConfirmCancel(null)}>
+            <div style={{...S.modal,maxWidth:320,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+              <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:12}}>예약을 취소할까요?</div>
+              {cb&&(
+                <div style={{fontSize:13,color:"#5a5a5a",background:"#f7f4ef",borderRadius:10,padding:"10px 14px",marginBottom:16,lineHeight:1.9,textAlign:"left"}}>
+                  <div style={{fontWeight:600,color:"#1e2e1e"}}>{cancelDay} {cancelTime}</div>
+                  <div style={{fontSize:11,color:"#9a8e80",marginTop:3}}>취소하면 자리가 반납됩니다.</div>
+                </div>
+              )}
+              <div style={{display:"flex",gap:8}}>
+                <button style={{...S.cancelBtn,flex:1}} onClick={()=>setConfirmCancel(null)}>유지하기</button>
+                <button style={{...S.saveBtn,flex:1,background:"#c97474"}} onClick={()=>cancelBooking(confirmCancel)}>취소하기</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ─── 마지막 1회 팝업 ────────────────────────────────── */}
       {renewPopup==="last1"&&(
