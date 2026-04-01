@@ -34,24 +34,24 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
   return (
     <>
       {/* ─── 헤더: 성별 이모지 / 이름·뱃지 / × 버튼 ─── */}
-      <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:12}}>
-        <span style={{fontSize:28}}>{GE[member.gender]}</span>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+        <span style={{fontSize:25}}>{GE[member.gender]}</span>
         <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+          <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
             <span style={{fontSize:18,fontWeight:700}}>{member.name}</span>
             {member.isNew && <span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
             <span style={{fontSize:11,borderRadius:20,padding:"2px 8px",background:tc.bg,color:tc.color,fontWeight:700}}>{tc.label}</span>
             <span style={{fontSize:11,borderRadius:20,padding:"2px 8px",background:sc.bg,color:sc.color,fontWeight:700}}>{sc.label}</span>
+            {/* 관리자 닉네임: 이름 행 내 가로 나열 */}
+            {showNickname && member.adminNickname && (
+              <span style={{display:"inline-flex",alignItems:"center",gap:3,background:"#2e3a2e",borderRadius:20,padding:"2px 8px"}}>
+                <span style={{fontSize:9,color:"#7aba7a"}}>👀</span>
+                <span style={{fontSize:10,fontWeight:700,color:"#a8e6a8"}}>{member.adminNickname}</span>
+              </span>
+            )}
           </div>
-          {/* 관리자 닉네임: 관리자 뷰에서만 표시 */}
-          {showNickname && member.adminNickname && (
-            <div style={{marginTop:4,display:"inline-flex",alignItems:"center",gap:4,background:"#2e3a2e",borderRadius:7,padding:"2px 9px"}}>
-              <span style={{fontSize:10,color:"#7aba7a"}}>👀</span>
-              <span style={{fontSize:11,fontWeight:700,color:"#a8e6a8"}}>{member.adminNickname}</span>
-            </div>
-          )}
           {member.adminNote && (
-            <div style={{marginTop:5,background:"#fffaeb",borderRadius:7,padding:"5px 9px",fontSize:11,color:"#7a5a10",border:"1px dashed #e8c44a"}}>📝 {member.adminNote}</div>
+            <div style={{marginTop:3,display:"inline-flex",alignItems:"center",gap:3,background:"#fffaeb",borderRadius:20,padding:"2px 8px",fontSize:10,color:"#7a5a10",border:"1px solid #e8c44a"}}>📝 {member.adminNote}</div>
           )}
         </div>
         <button onClick={onClose} style={{background:"#f0ece4",border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:14,color:"#9a8e80",fontFamily:FONT,flexShrink:0}}>×</button>
@@ -139,13 +139,13 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                         {/* 회원권 종류 뱃지: 중립 회색 */}
                         <span style={{fontSize:10,background:"#efefef",color:"#707070",borderRadius:4,padding:"1px 6px",fontWeight:500}}>{(TYPE_CFG[r.memberType]||TYPE_CFG["1month"]).label}</span>
                         {r.total > 0 && <span style={{fontSize:10,color:"#9a8e80"}}>등록 {r.total}회</span>}
-                        <span style={{fontSize:10,color:precs.length>0?"#3a4a3a":"#b0a090",fontWeight:700}}>출석 {precs.length}회</span>
+                        <span style={{fontSize:10,color:precs.length>0?"#171717":"#b0a090"}}>출석 {precs.length}회</span>
                         {/* 결제수단 뱃지: 네이버=슬레이트 / 현금=주황 / 카드=파랑 */}
                         {r.payment && (() => {
                           const p = r.payment.replace("3개월,","");
-                          const bg    = p.includes("네이버")?"#e8edf0":p.includes("현금")?"#fdf3e3":"#edf0f8";
-                          const color = p.includes("네이버")?"#4a5a6a":p.includes("현금")?"#8a5510":"#3d5494";
-                          return <span style={{fontSize:10,background:bg,color,borderRadius:4,padding:"1px 6px",fontWeight:600}}>{p}</span>;
+                          const bg    = "#edf0f8";
+                          const color = p.includes("네이버")?"#398f54":p.includes("현금")?"#aa7c40":"#3d4994";
+                          return <span style={{fontSize:9,background:bg,color,borderRadius:4,padding:"1px 6px",fontWeight:600}}>{p}</span>;
                         })()}
                       </div>
                     </div>
