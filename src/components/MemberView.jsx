@@ -65,7 +65,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
           </div>
           <div style={{fontSize:11,color:"#a09080"}}>{dateTimeStr}</div>
         </div>
-        <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,marginTop:4}}>로그아웃</button>
+        <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,marginTop:4}}>로그아웃</button>
       </div>
 
       <div style={{padding:"0 14px 0",maxWidth:520,margin:"0 auto",width:"100%"}}>
