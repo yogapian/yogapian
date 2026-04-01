@@ -109,26 +109,31 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
                 cursor:unselectable?"default":"pointer",userSelect:"none"
               }}>
 
-              {/* 날짜 숫자: 원형 채움 없음 — 출석은 아래 이모지로 표시 */}
-              <span style={{
+              {/* 날짜 숫자 + 출석 이모지 오버레이 */}
+              <div style={{
+                position:"relative",
                 display:"inline-flex",alignItems:"center",justifyContent:"center",
                 width:24,height:24,
-                fontSize:13,fontWeight:isSel||isToday?700:400,
-                color:numColor,lineHeight:1,
-                background:"transparent",
-                borderRadius:5,
-                textDecoration:isClosure?"line-through":"none"              /* ← 휴강일 취소선 */
               }}>
-                {day}
-              </span>
+                <span style={{
+                  fontSize:13,fontWeight:isSel||isToday?700:400,
+                  color:numColor,lineHeight:1,
+                  textDecoration:isClosure?"line-through":"none"
+                }}>
+                  {day}
+                </span>
+                {/* 출석 이모지: 숫자 뒤에 겹쳐서 표시 / opacity로 투명도 조절 */}
+                {isAtt && (
+                  <span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,opacity:0.3,pointerEvents:"none"}}>🌀</span>
+                )}
+              </div>
 
               {/* 날짜 아래 인디케이터
                   - 배지 세로정렬: height+alignItems:"center"로 고정 (lineHeight:1+marginTop 핵 제거)
                   - "오늘": 다른 상태 배지가 없을 때만 흰 글씨로 표시 */}
               <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,minHeight:11}}>
 
-                {/* 출석 완료 */}
-                {isAtt      && <span style={{fontSize:10,color:"#3a8a54",marginTop:-10}}>🪬</span>}
+                {/* 출석 완료: 숫자 위 오버레이로 이동 — 여기선 표시 안 함 */}
                 {isWait     && <span style={{fontSize:6,color:"#e8a020",marginTop:-1}}>▲</span>}
                 {isRes      && <span style={{fontSize:6,color:"#5a86e5",marginTop:-1}}>●</span>}
                 {hasDailyNote&&<span style={{fontSize:8,marginTop:-5}}>📢</span>}
