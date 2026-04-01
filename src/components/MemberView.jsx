@@ -78,10 +78,11 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
               <span style={{fontSize:20,lineHeight:1,flexShrink:0}}>{GE[m.gender]}</span>
               <span style={S.memberName}>{m.name}</span>
               {m.isNew && <span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
-              {!isOff && <span style={{fontSize:11,borderRadius:20,padding:"2px 8px",background:tc.bg,color:tc.color,fontWeight:700}}>{tc.label}</span>}
               {m.holding && <span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
             </div>
+            {/* 오른쪽: 개월수 뱃지 + 상태 뱃지 */}
             <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+              {!isOff && <span style={{fontSize:11,borderRadius:20,padding:"2px 8px",background:tc.bg,color:tc.color,fontWeight:700}}>{tc.label}</span>}
               <span style={{...S.statusBadge,background:sc.bg,color:sc.color}}><span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block",marginRight:4}}/>{sc.label}</span>
             </div>
           </div>
