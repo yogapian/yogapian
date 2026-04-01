@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, useClock } from "../utils.js";
-import { getStatus, calcDL, effEnd, getClosureExtDays, usedAsOf } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 import NoticeBoard from "./NoticeBoard.jsx";
@@ -12,7 +12,7 @@ import { MemberContactBar } from "./ContactBar.jsx";
 export default function MemberView({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,setNotices,scheduleTemplate,onLogout}){
   const m = member;
   const closuresCxt = useClosures();
-  const status = getStatus(m, closuresCxt), sc = SC[status];
+  const status = getDisplayStatus(m, closuresCxt, bookings), sc = SC[status] || SC["on"];
   const tc = TYPE_CFG[m.memberType] || TYPE_CFG["1month"];
   const dl = calcDL(m, closuresCxt);
   const end = effEnd(m, closuresCxt);
