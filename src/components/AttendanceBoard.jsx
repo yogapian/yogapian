@@ -8,7 +8,7 @@
 //           showClosureMgr(휴강설정) / showSpecialMgr(수업설정) / quickDetailM(미니상세)
 //           waitPopup(대기자 수락/거절) / showTemplateMgr(시간표 관리)
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
 import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, calc3MonthEnd, getSlotCapacity } from "../memberCalc.js";
@@ -36,6 +36,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   const [attendCheckModal,setAttendCheckModal]=useState(null); // 출석처리 모달: null 또는 booking 객체
   const [dragId,setDragId]=useState(null);            // 드래그 중인 booking id
   const [dragOver,setDragOver]=useState(null);        // 드래그 대상 슬롯 key (하이라이트용)
+  const [touchGhost,setTouchGhost]=useState(null);   // 터치 드래그 고스트 {x,y,name}
+  const touchDragRef=useRef({active:false,id:null}); // 비패시브 touchmove 핸들러에서 참조
   const [showClosureMgr,setShowClosureMgr]=useState(false); // 휴강설정 모달
   const [closureForm,setClosureForm]=useState({date:TODAY_STR,timeSlot:"",reason:"",closureType:"regular",extensionOverride:0});
   // closureForm.timeSlot: ""=전체휴강 / 슬롯key=해당 타임만 휴강
@@ -134,18 +136,58 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
 
   // ── 드래그 앤 드롭: 예약자를 다른 슬롯으로 이동 ─────────────────────────
   // 같은 슬롯이나 이미 해당 슬롯에 있는 회원이면 이동 불가
+  function doSlotMove(id, slotKey){
+    const rec=bookings.find(b=>b.id===id);
+    if(!rec||rec.timeSlot===slotKey)return;
+    const alreadyIn=dayActive.filter(b=>b.timeSlot===slotKey&&b.memberId).map(b=>b.memberId);
+    if(rec.memberId&&alreadyIn.includes(rec.memberId))return;
+    setBookings(p=>p.map(b=>b.id===id?{...b,timeSlot:slotKey}:b));
+  }
   function onDragStart(e,id){setDragId(id);e.dataTransfer.effectAllowed="move";}
   function onDragEnd(){setDragId(null);setDragOver(null);}
   function onDropSlot(e,slotKey){
     e.preventDefault();
     if(!dragId)return;
-    const rec=bookings.find(b=>b.id===dragId);
-    if(!rec||rec.timeSlot===slotKey)return;
-    const alreadyIn=dayActive.filter(b=>b.timeSlot===slotKey&&b.memberId).map(b=>b.memberId);
-    if(rec.memberId&&alreadyIn.includes(rec.memberId))return;
-    setBookings(p=>p.map(b=>b.id===dragId?{...b,timeSlot:slotKey}:b));
+    doSlotMove(dragId,slotKey);
     setDragOver(null);setDragId(null);
   }
+
+  // ── 터치 드래그: 모바일 슬롯 간 이동 ────────────────────────────────────
+  // data-slot-key 속성으로 슬롯 카드를 식별 (elementFromPoint 사용)
+  function getTouchSlot(x,y){
+    let el=document.elementFromPoint(x,y);
+    while(el){if(el.dataset?.slotKey)return el.dataset.slotKey;el=el.parentElement;}
+    return null;
+  }
+  function onTouchStartBooking(e,rec){
+    if(e.touches.length!==1)return;
+    const t=e.touches[0];
+    const name=rec.memberId?members.find(m=>m.id===rec.memberId)?.name:rec.onedayName;
+    touchDragRef.current={active:true,id:rec.id};
+    setDragId(rec.id);
+    setTouchGhost({x:t.clientX,y:t.clientY,name});
+  }
+  function onTouchEndBooking(e){
+    if(!touchDragRef.current.active)return;
+    const t=e.changedTouches[0];
+    const slotKey=getTouchSlot(t.clientX,t.clientY);
+    const id=touchDragRef.current.id;
+    touchDragRef.current={active:false,id:null};
+    if(slotKey&&id)doSlotMove(id,slotKey);
+    setDragId(null);setDragOver(null);setTouchGhost(null);
+  }
+  // window 레벨 비패시브 touchmove: e.preventDefault()로 스크롤 억제 후 슬롯 감지
+  useEffect(()=>{
+    function handleTouchMove(e){
+      if(!touchDragRef.current.active)return;
+      e.preventDefault();
+      const t=e.touches[0];
+      setTouchGhost(g=>g?{...g,x:t.clientX,y:t.clientY}:g);
+      setDragOver(getTouchSlot(t.clientX,t.clientY));
+    }
+    window.addEventListener("touchmove",handleTouchMove,{passive:false});
+    return()=>window.removeEventListener("touchmove",handleTouchMove);
+  },[]);
 
   // slotMids: 특정 슬롯에 이미 예약된 memberId 배열 (중복 방지용)
   const slotMids=k=>dayActive.filter(b=>b.timeSlot===k&&b.memberId).map(b=>b.memberId);
@@ -293,6 +335,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
             // boxShadow: 드래그hover 시 slot.bg 색으로 외곽 빛 / 기본 연한 그림자
             return(
               <div key={slot.key}
+                data-slot-key={slot.key}
                 onDragOver={e=>{e.preventDefault();setDragOver(slot.key);}}
                 onDrop={e=>onDropSlot(e,slot.key)}
                 onDragLeave={()=>setDragOver(null)}
@@ -367,6 +410,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     // 드래그중=투명도0.4 / 결석=0.5 / cursor: 드래그가능=grab / 대기·휴강=default
                     return(
                         <div key={rec.id} draggable={!slotCl&&!isWaiting} onDragStart={e=>!slotCl&&!isWaiting&&onDragStart(e,rec.id)} onDragEnd={onDragEnd}
+                          onTouchStart={e=>!slotCl&&!isWaiting&&onTouchStartBooking(e,rec)}
+                          onTouchEnd={e=>!slotCl&&!isWaiting&&onTouchEndBooking(e)}
                           style={{padding:"8px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:isDragging?0.4:isAbsent?0.5:1,background:rowBg,cursor:slotCl||isWaiting?"default":"grab",WebkitUserSelect:"none",userSelect:"none"}}>
                           {/* ⠿ 드래그 핸들: fontSize:11 / 색 #c8c0b0(연회색) / 휴강 중이면 숨김 */}
                           {!slotCl&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
@@ -415,6 +460,13 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── 터치 드래그 고스트: 손가락을 따라다니는 이름 라벨 ─────────────── */}
+      {touchGhost&&(
+        <div style={{position:"fixed",left:touchGhost.x-60,top:touchGhost.y-24,background:"#2e6e44",color:"#fff",borderRadius:8,padding:"6px 14px",fontSize:13,fontWeight:700,pointerEvents:"none",zIndex:9999,boxShadow:"0 4px 16px rgba(0,0,0,.2)",whiteSpace:"nowrap"}}>
+          {touchGhost.name}
         </div>
       )}
 
