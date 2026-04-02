@@ -84,7 +84,11 @@ export function getDisplayStatus(m, closures=[], bookings=[]) {
   if(m.holding) return "hold";
   const dl = calcDL(m, closures);
   if(dl >= 0) {
-    if(bookings.some(b=>b.memberId===m.id&&b.renewalPending)) return "renew";
+    // 현재 기수 시작일 계산 — 갱신 전 renewalPending은 무시하기 위해 기수 내 날짜만 체크
+    const rh = m.renewalHistory || [];
+    let periodStart = m.startDate || "";
+    for(let i=0;i<rh.length;i++){const r=rh[i];if(TODAY_STR>=r.startDate&&TODAY_STR<=r.endDate){periodStart=r.startDate;break;}}
+    if(bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.date>=periodStart)) return "renew";
     const used = usedAsOf(m.id, TODAY_STR, bookings, [m]);
     if(Math.max(0, m.total - used) === 0) return "renew"; // 종료일 남았는데 잔여 0
     return "on";

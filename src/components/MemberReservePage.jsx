@@ -547,7 +547,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
         <div style={{...S.overlay,alignItems:"center"}} onClick={()=>{setRenewPopup(null);setPendingSlot(null);}}>
           <div style={{...S.modal,maxWidth:320,textAlign:"center",borderRadius:16}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:34,marginBottom:10}}>🔄</div>
-            <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:8}}>{memberExpired?"회원권이 만료됐어요":"횟수를 다 사용했어요"}</div>
+            <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:8}}>회원권이 만료됐어요</div>{/* 만료/횟수소진 구분 없이 통일 */}
             <div style={{fontSize:13,color:"#7a6e60",lineHeight:1.8,marginBottom:20}}>임시 예약을 하시겠어요?<br/><span style={{color:"#9a8e80",fontSize:12}}>관리자에게 갱신 요청이 전달돼요.</span></div>
             <div style={{display:"flex",gap:8}}>
               <button style={{...S.cancelBtn,flex:1}} onClick={()=>{setRenewPopup(null);setPendingSlot(null);}}>취소</button>
