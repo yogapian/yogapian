@@ -25,10 +25,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
   const dl = calcDL(member, closures);
   const expired = dl < 0;
   const dispUsed = usedAsOf(member.id, TODAY_STR, bookings, [member]);
-  // 미래 기수가 이미 갱신됐는데 현재 기수 소진된 경우 → 새 기수 총 횟수로 잔여 표시
-  const _rawRem = Math.max(0, member.total - dispUsed);
-  const _hasNextPeriod = (member.renewalHistory||[]).some(r=>r.startDate>TODAY_STR);
-  const dispRem = expired ? 0 : (_hasNextPeriod && _rawRem===0) ? member.total : _rawRem;
+  const dispRem = expired ? 0 : Math.max(0, member.total - dispUsed);
   const tc = TYPE_CFG[member.memberType] || TYPE_CFG["1month"];
   const curRecs = currentRecs(member, bookings);
   const isActiveStatus = status === "on" || status === "hold";

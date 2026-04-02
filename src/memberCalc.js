@@ -57,7 +57,8 @@ export function usedAsOf(memberId, targetDate, bookings, members){
   if(!member) return 0;
   const rh=member.renewalHistory||[];
   let startDate=member.startDate;
-  for(let ri=0;ri<rh.length;ri++){const r=rh[ri];if(targetDate>=r.startDate&&targetDate<=r.endDate){startDate=r.startDate;break;}}
+  // 역순 순회: 기수 중복 시 최신 기수(startDate 큰 것) 우선 적용
+  for(let ri=rh.length-1;ri>=0;ri--){const r=rh[ri];if(targetDate>=r.startDate&&targetDate<=r.endDate){startDate=r.startDate;break;}}
 
   let cnt=0;
   for(let i=0;i<bookings.length;i++){
@@ -87,11 +88,11 @@ export function getDisplayStatus(m, closures=[], bookings=[]) {
     // 현재 기수 시작일 계산 — 갱신 전 renewalPending은 무시하기 위해 기수 내 날짜만 체크
     const rh = m.renewalHistory || [];
     let periodStart = m.startDate || "";
-    for(let i=0;i<rh.length;i++){const r=rh[i];if(TODAY_STR>=r.startDate&&TODAY_STR<=r.endDate){periodStart=r.startDate;break;}}
+    // 역순 순회: 기수 중복 시 최신 기수(startDate 큰 것) 우선 적용
+    for(let i=rh.length-1;i>=0;i--){const r=rh[i];if(TODAY_STR>=r.startDate&&TODAY_STR<=r.endDate){periodStart=r.startDate;break;}}
     if(bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.date>=periodStart)) return "renew";
     const used = usedAsOf(m.id, TODAY_STR, bookings, [m]);
-    // 미래 기수가 이미 갱신 완료된 경우 renew 표시 불필요 (오늘이 이전 기수 기간 내여도 이미 갱신됨)
-    if(Math.max(0, m.total - used) === 0 && !rh.some(r=>r.startDate>TODAY_STR)) return "renew"; // 종료일 남았는데 잔여 0
+    if(Math.max(0, m.total - used) === 0) return "renew"; // 종료일 남았는데 잔여 0
     return "on";
   }
   if(dl >= -30) return "renew"; // 만료 후 30일 이내
