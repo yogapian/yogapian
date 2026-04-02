@@ -118,10 +118,7 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
         {(live.confirmedAttend===undefined || live.confirmedAttend===null) && (
           <div style={{display:"flex",gap:8,marginBottom:12}}>
             <button onClick={doAttend} style={{flex:1,background:"#eef5ee",color:"#2e6e44",border:"1.5px solid #7aaa7a",borderRadius:10,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>✅ 출석</button>
-            <button onClick={()=>{
-              if(!mem) doDelete();
-              else doAbsent();
-            }} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>❌ 불참</button>
+            <button onClick={doAbsent} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>❌ 불참</button>{/* 원데이도 doAbsent: doDelete 호출 시 status=cancelled→dayActive 필터에서 제거되어 다음날 목록에서 사라지는 버그 수정 */}
           </div>
         )}
         <button onClick={onClose} style={{...S.cancelBtn,width:"100%"}}>닫기</button>

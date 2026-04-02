@@ -22,6 +22,7 @@ create table if not exists members (
   holding_days   integer default 0,
   holding     jsonb   default null,
   renewal_history jsonb default '[]'::jsonb,
+  card_color  text    default '',
   updated_at  timestamptz default now()
 );
 
