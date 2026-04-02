@@ -35,7 +35,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   function openAdd(){
     const autoEnd=endOfNextMonth(TODAY_STR);
     setEditId(null);
-    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[],manualStatus:null});
+    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[],manualStatus:null,payment:""});
     setShowForm(true);
   }
   function openEdit(m){
@@ -236,7 +236,9 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
 
             {/* 회원권 섹션 — 신규 추가 시에만 표시 */}
             {!editId&&(<>
-              <div style={S.fg}><label style={S.lbl}>회원권</label><div style={{display:"flex",gap:8}}>{[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>setForm(f=>{const newEnd=v==="1month"?endOfNextMonth(f.startDate||TODAY_STR):calc3MonthEnd(f.startDate||TODAY_STR,closures);return{...f,memberType:v,total:v==="3month"?24:f.total,endDate:newEnd};})} style={{flex:1,padding:"8px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}</div></div>
+              <div style={S.fg}><label style={S.lbl}>회원권</label><div style={{display:"flex",gap:8}}>{[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>setForm(f=>{const newEnd=v==="1month"?endOfNextMonth(f.startDate||TODAY_STR):calc3MonthEnd(f.startDate||TODAY_STR,closures);return{...f,memberType:v,total:v==="3month"?24:f.total,endDate:newEnd,payment:""};})} style={{flex:1,padding:"8px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}</div></div>
+              {/* 결제 방법: 1개월=카드/현금/네이버, 3개월=카드/현금 */}
+              <div style={S.fg}><label style={S.lbl}>결제 방법</label><div style={{display:"flex",gap:8}}>{(form.memberType==="1month"?[["카드","#edf0f8","#3d5494"],["현금","#fdf3e3","#8a5510"],["네이버","#e8f4e8","#2e6e44"]]:[["카드","#edf0f8","#3d5494"],["현금","#fdf3e3","#8a5510"]]).map(([v,bg,color])=>(<button key={v} onClick={()=>setForm(f=>({...f,payment:f.payment===v?"":v}))} style={{flex:1,padding:"8px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:form.payment===v?color:"#e0d8cc",background:form.payment===v?bg:"#faf8f5",color:form.payment===v?color:"#9a8e80",fontWeight:form.payment===v?700:400}}>{v}</button>))}</div></div>
               <div style={{display:"flex",gap:10}}>
                 <div style={{...S.fg,flex:1}}><label style={S.lbl}>총 회차</label><input style={S.inp} type="number" min="1" value={form.total||""} onChange={e=>setForm(f=>({...f,total:e.target.value}))}/></div>
                 <div style={{...S.fg,flex:1}}><label style={S.lbl}>최초 등록일</label><input style={S.inp} type="date" value={form.firstDate||""} onChange={e=>setForm(f=>({...f,firstDate:e.target.value}))}/></div>

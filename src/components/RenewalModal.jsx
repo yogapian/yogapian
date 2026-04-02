@@ -26,8 +26,8 @@ export default function RenewalModal({member,onClose,onSave}){
           </div>
         </div>
         <div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>시작일</label><input style={S.inp} type="date" value={form.startDate} onChange={e=>{const s=e.target.value;const autoEnd=form.memberType==="3month"?calc3MonthEnd(s,closures):endOfMonth(s);setForm(f=>({...f,startDate:s,endDate:autoEnd}));}}/></div><div style={{...S.fg,flex:1}}><label style={S.lbl}>종료일</label><input style={S.inp} type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/></div></div>
-        {/* parseInt 사용: +e.target.value는 "06" → 6 처리 안 돼서 leading zero 버그 발생 */}
-        <div style={S.fg}><label style={S.lbl}>총 회차</label><input style={S.inp} type="number" min="1" value={form.total} onChange={e=>{const v=parseInt(e.target.value,10);if(v>0)setForm(f=>({...f,total:v}));}}/></div>
+        {/* 빈 문자열 허용 후 유효 숫자일 때만 저장 — if(v>0)만 쓰면 backspace로 못 지우는 버그 */}
+        <div style={S.fg}><label style={S.lbl}>총 회차</label><input style={S.inp} type="number" min="1" value={form.total||""} onChange={e=>{const raw=e.target.value;if(raw===""){setForm(f=>({...f,total:""}));return;}const v=parseInt(raw,10);if(!isNaN(v)&&v>0)setForm(f=>({...f,total:v}));}}/></div>
         <div style={{...S.fg,background:"#fffaeb",borderRadius:9,padding:"10px 12px",border:"1px solid #e8c44a"}}>
           <label style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer"}}>
             <div onClick={()=>setForm(f=>({...f,includePending:!f.includePending}))} style={{width:36,height:20,borderRadius:10,background:form.includePending?"#9a5a10":"#ddd",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
@@ -37,7 +37,7 @@ export default function RenewalModal({member,onClose,onSave}){
             <span style={{fontSize:11,color:"#9a8e80"}}>— 임시 예약을 이번 회원권에 포함</span>
           </label>
         </div>
-        <div style={S.modalBtns}><button style={S.cancelBtn} onClick={onClose}>취소</button><button style={{...S.saveBtn,opacity:form.endDate?1:0.5}} disabled={!form.endDate} onClick={()=>onSave(form)}>갱신</button></div>
+        <div style={S.modalBtns}><button style={S.cancelBtn} onClick={onClose}>취소</button><button style={{...S.saveBtn,opacity:(form.endDate&&form.total)?1:0.5}} disabled={!form.endDate||!form.total} onClick={()=>onSave(form)}>갱신</button></div>
       </div>
     </div>
   );

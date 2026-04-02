@@ -45,9 +45,11 @@ export const LOGO_B64="/logo.png";
 
 // ─── 오늘 날짜 (앱 실행 시점 고정) ───────────────────────────────────────────
 // TODAY_STR: "YYYY-MM-DD" 문자열 / TODAY: 자정 기준 Date 객체
+// KST(UTC+9) 강제 계산 — 브라우저가 UTC로 동작해도 새벽 날짜 오류 방지
 const _now=new Date();
-export const TODAY_STR=`${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
-export const TODAY=new Date(_now.getFullYear(),_now.getMonth(),_now.getDate());
+const _kst=new Date(_now.getTime()+9*60*60*1000);
+export const TODAY_STR=`${_kst.getUTCFullYear()}-${String(_kst.getUTCMonth()+1).padStart(2,"0")}-${String(_kst.getUTCDate()).padStart(2,"0")}`;
+export const TODAY=new Date(_kst.getUTCFullYear(),_kst.getUTCMonth(),_kst.getUTCDate());
 
 // 관리자 로그인 PIN (4자리 숫자)
 export const ADMIN_PIN="0066";
