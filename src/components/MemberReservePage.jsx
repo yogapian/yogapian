@@ -509,8 +509,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
         const cancelDay = cb ? `${fmt(cb.date)}(${DOW_KO[parseLocal(cb.date).getDay()]})` : "";
         const cancelTime = slotObj ? `${slotObj.label} ${slotObj.time}` : "";
         return (
-          <div style={S.overlay} onClick={()=>setConfirmCancel(null)}>
-            <div style={{...S.modal,maxWidth:320,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+          <div style={{...S.overlay,alignItems:"center"}} onClick={()=>setConfirmCancel(null)}>
+            <div style={{...S.modal,maxWidth:320,textAlign:"center",borderRadius:16}} onClick={e=>e.stopPropagation()}>
               <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:12}}>예약을 취소할까요?</div>
               {cb&&(
                 <div style={{fontSize:13,color:"#5a5a5a",background:"#f7f4ef",borderRadius:10,padding:"10px 14px",marginBottom:16,lineHeight:1.9,textAlign:"left"}}>
@@ -529,8 +529,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
       {/* ─── 마지막 1회 팝업 ────────────────────────────────── */}
       {renewPopup==="last1"&&(
-        <div style={S.overlay} onClick={()=>{setRenewPopup(null);setPendingSlot(null);}}>
-          <div style={{...S.modal,maxWidth:320,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+        <div style={{...S.overlay,alignItems:"center"}} onClick={()=>{setRenewPopup(null);setPendingSlot(null);}}>
+          <div style={{...S.modal,maxWidth:320,textAlign:"center",borderRadius:16}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:34,marginBottom:10}}>🌱</div>
             <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:8}}>마지막 1회 남았어요</div>
             <div style={{fontSize:13,color:"#7a6e60",lineHeight:1.8,marginBottom:20}}>이번 예약 후 횟수를 다 사용해요.<br/><span style={{color:"#9a8e80",fontSize:12}}>다음 예약 시 갱신이 필요합니다.</span></div>
@@ -544,8 +544,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
       {/* ─── 잔여 0회/만료 팝업 ─────────────────────────────── */}
       {renewPopup==="needRenewal"&&(
-        <div style={S.overlay} onClick={()=>{setRenewPopup(null);setPendingSlot(null);}}>
-          <div style={{...S.modal,maxWidth:320,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+        <div style={{...S.overlay,alignItems:"center"}} onClick={()=>{setRenewPopup(null);setPendingSlot(null);}}>
+          <div style={{...S.modal,maxWidth:320,textAlign:"center",borderRadius:16}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:34,marginBottom:10}}>🔄</div>
             <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:8}}>{memberExpired?"회원권이 만료됐어요":"횟수를 다 사용했어요"}</div>
             <div style={{fontSize:13,color:"#7a6e60",lineHeight:1.8,marginBottom:20}}>임시 예약을 하시겠어요?<br/><span style={{color:"#9a8e80",fontSize:12}}>관리자에게 갱신 요청이 전달돼요.</span></div>
