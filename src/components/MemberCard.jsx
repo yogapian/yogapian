@@ -42,14 +42,15 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
           {m.adminNickname&&<div style={{display:"inline-flex",alignItems:"center",gap:3,background:"#2e3a2e",borderRadius:10,padding:"1px 6px",flexShrink:0}}><span style={{fontSize:9,color:"#7aba7a"}}>👀</span><span style={{fontSize:9,fontWeight:600,color:"#a8e6a8"}}>{m.adminNickname}</span></div>}
           {/* 신규 회원 N 뱃지 (isNew 필드) */}
           {m.isNew&&<span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
-          {/* 회원권 종류 뱃지 (1개월 / 3개월) — 만료 시 숨김 */}
-          {/* 크기/굵기 낮춤 (fontSize:10 / fontWeight:500) — 색상은 constants.js TYPE_CFG에서 관리 */}
-          {!isOff&&<span style={{fontSize:10,borderRadius:20,padding:"1px 7px",background:tc.bg,color:tc.color,fontWeight:500}}>{tc.label}</span>}
           {/* 홀딩 중 이모지 */}
           {m.holding&&<span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
         </div>
-        {/* 오른쪽: ON/OFF/HOLD/RENEW 상태 뱃지 */}
-        <span style={{...S.statusBadge,background:sc.bg,color:sc.color,flexShrink:0}}><span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block",marginRight:4}}/>{sc.label}</span>
+        {/* 오른쪽: 개월수 뱃지 + 상태 뱃지 (MemberView.jsx와 동일 구조) */}
+        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+          {/* 회원권 종류 뱃지 (1개월 / 3개월) — 만료 시 숨김 */}
+          {!isOff&&<span style={{fontSize:10,borderRadius:20,padding:"1px 7px",background:tc.bg,color:tc.color,fontWeight:500}}>{tc.label}</span>}
+          <span style={{...S.statusBadge,background:sc.bg,color:sc.color}}><span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block",marginRight:4}}/>{sc.label}</span>
+        </div>
       </div>
 
       {/* ── 관리자 메모 (있을 때만 표시) ────────────────────────────────── */}
