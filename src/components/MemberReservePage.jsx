@@ -180,7 +180,10 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const memberDl      = calcDL(member, closuresCxt);
   const memberExpired = memberDl < 0;
   const usedCnt       = usedAsOf(member.id, TODAY_STR, bookings, [member]);
-  const rem           = memberExpired ? 0 : Math.max(0, member.total - usedCnt);
+  // 미래 기수가 이미 갱신됐는데 현재 기수 소진된 경우 → 예약 차단 안함 (새 기수 총 횟수로 계산)
+  const _rawRem2 = Math.max(0, member.total - usedCnt);
+  const _hasNext2 = (member.renewalHistory||[]).some(r=>r.startDate>TODAY_STR);
+  const rem           = memberExpired ? 0 : (_hasNext2 && _rawRem2===0) ? member.total : _rawRem2;
 
   // 다가오는 예약 — 취소되지 않은, 오늘 이후(오늘 출석완료 제외)의 가장 빠른 예약
   const upcomingBooking = [...bookings]

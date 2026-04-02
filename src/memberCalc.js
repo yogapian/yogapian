@@ -90,7 +90,8 @@ export function getDisplayStatus(m, closures=[], bookings=[]) {
     for(let i=0;i<rh.length;i++){const r=rh[i];if(TODAY_STR>=r.startDate&&TODAY_STR<=r.endDate){periodStart=r.startDate;break;}}
     if(bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.date>=periodStart)) return "renew";
     const used = usedAsOf(m.id, TODAY_STR, bookings, [m]);
-    if(Math.max(0, m.total - used) === 0) return "renew"; // 종료일 남았는데 잔여 0
+    // 미래 기수가 이미 갱신 완료된 경우 renew 표시 불필요 (오늘이 이전 기수 기간 내여도 이미 갱신됨)
+    if(Math.max(0, m.total - used) === 0 && !rh.some(r=>r.startDate>TODAY_STR)) return "renew"; // 종료일 남았는데 잔여 0
     return "on";
   }
   if(dl >= -30) return "renew"; // 만료 후 30일 이내
