@@ -632,9 +632,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                     <span style={{fontSize:16,fontWeight:700,color:"#1e2e1e"}}>{qm.name}</span>
-                    {qm.adminNickname&&<span style={{fontSize:10,background:"#2e3a2e",color:"#a8e6a8",borderRadius:5,padding:"1px 7px",fontWeight:700}}>{qm.adminNickname}</span>}
-                    <span style={{fontSize:10,borderRadius:10,padding:"1px 7px",background:qtc.bg,color:qtc.color,fontWeight:700}}>{qtc.label}</span>
-                    <span style={{fontSize:10,borderRadius:10,padding:"1px 7px",background:qsc.bg,color:qsc.color,fontWeight:700,display:"flex",alignItems:"center",gap:3}}><span style={{width:5,height:5,borderRadius:"50%",background:qsc.dot,display:"inline-block"}}/>{qsc.label}</span>
+                    {qm.adminNickname&&<span style={{fontSize:9,background:"#2e3a2e",color:"#a8e6a8",borderRadius:10,padding:"1px 6px",fontWeight:600}}>{qm.adminNickname}</span>}
+                    <span style={{fontSize:9, borderRadius:10,padding:"1px 7px",background:qtc.bg,color:qtc.color,fontWeight:700}}>{qtc.label}</span>
+                    <span style={{fontSize:9,borderRadius:10,padding:"1px 7px",background:qsc.bg,color:qsc.color,fontWeight:700,display:"flex",alignItems:"center",gap:3}}><span style={{width:5,height:5,borderRadius:"50%",background:qsc.dot,display:"inline-block"}}/>{qsc.label}</span>
                   </div>
                   {qm.holding&&<div style={{fontSize:10,color:"#3d5494",marginTop:2}}>⏸️ 홀딩 중 ({fmt(qm.holding.startDate)}~)</div>}
                 </div>
