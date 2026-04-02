@@ -217,7 +217,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
               <div>
                 <label style={S.lbl}>상태 수동 설정</label>
                 <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                  {[["","자동","#888"],["on","ON","#4a7a5a"],["renew","RENEW","#9a5a10"],["hold","HOLD","#3d5494"],["off","OFF","#a83030"]].map(([v,l,ac])=>{
+                  {/* renew 제거: 자동 계산 상태라 수동 설정 시 갱신 후에도 갱신필요 고착되는 버그 방지 */}
+                  {[["","자동","#888"],["on","ON","#4a7a5a"],["hold","HOLD","#3d5494"],["off","OFF","#a83030"]].map(([v,l,ac])=>{
                     const active=(form.manualStatus||"")===v;
                     return(<button key={v} onClick={()=>setForm(f=>({...f,manualStatus:v||null}))} style={{padding:"4px 10px",borderRadius:7,border:`1.5px solid ${active?ac:"#e0d8cc"}`,cursor:"pointer",fontSize:11,fontFamily:FONT,background:active?ac:"#faf8f5",color:active?"#fff":"#9a8e80",fontWeight:active?700:400}}>{l}</button>);
                   })}
