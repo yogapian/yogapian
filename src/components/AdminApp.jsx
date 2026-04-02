@@ -63,7 +63,12 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   }
   function applyRenewal(mid,rf){
     setMembers(p=>p.map(m=>{if(m.id!==mid)return m;return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,holding:null,renewalHistory:[...(m.renewalHistory||[]),{id:(m.renewalHistory?.length||0)+1,...rf}]};}));
-    if(rf.includePending)setBookings(p=>p.map(b=>b.memberId===mid&&b.renewalPending?{...b,renewalPending:false}:b));
+    // 갱신 완료 시 이 회원의 renewalPending 플래그 항상 해제
+    // includePending=true: 예약 유지(정상 예약으로 전환) / false: 예약 취소
+    setBookings(p=>p.map(b=>{
+      if(b.memberId!==mid||!b.renewalPending)return b;
+      return{...b,renewalPending:false,status:rf.includePending?b.status:"cancelled"};
+    }));
     setRenewT(null);setDetailM(null);
   }
   function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(!hd)return{...m,holding:null,holdingDays:0};
