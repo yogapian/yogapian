@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Agentation } from "agentation";
 import { FONT, TODAY_STR } from "./constants.js";
 import { ClosuresContext } from "./context.js";
+import { isPushSupported, subscribePush } from "./pushUtils.js";
 import {
   _supabase,
   dbLoadAll,
@@ -9,7 +10,7 @@ import {
   dbDeleteMember, dbDeleteBooking, dbDeleteNotice, dbDeleteSpecial, dbDeleteClosure,
   dbUpsertSale, dbDeleteSale,
   saveAutoLogin, loadAutoLogin, saveScheduleTemplate,
-  fromSnakeNotice,
+  fromSnakeNotice, dbSavePushSubscription,
 } from "./db.js";
 import MemberLoginPage from "./components/MemberLoginPage.jsx";
 import AdminLoginPage from "./components/AdminLoginPage.jsx";
@@ -144,6 +145,24 @@ export default function App(){
       return next;
     });
   }, []);
+
+  // 회원 로그인 후 푸시 알림 구독 (이미 허용된 경우 조용히 처리)
+  useEffect(() => {
+    if(screen !== "memberView" || !loggedMember) return;
+    if(!isPushSupported()) return;
+    const alreadyAsked = localStorage.getItem("push_asked_" + loggedMember.id);
+    if(Notification.permission === "granted") {
+      subscribePush(loggedMember.id, dbSavePushSubscription);
+    } else if(Notification.permission === "default" && !alreadyAsked) {
+      // 1초 후 권한 요청 (UX: 로그인 직후 바로 뜨지 않도록)
+      const t = setTimeout(async () => {
+        localStorage.setItem("push_asked_" + loggedMember.id, "1");
+        const result = await Notification.requestPermission();
+        if(result === "granted") subscribePush(loggedMember.id, dbSavePushSubscription);
+      }, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [screen, loggedMember?.id]); // eslint-disable-line
 
   // 회원 화면에서 실시간 공지 수신 — 관리자가 공지 발송 즉시 팝업 표시
   useEffect(() => {

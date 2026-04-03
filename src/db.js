@@ -267,6 +267,23 @@ export async function dbDeleteSale(id) {
   if (error) console.error("sale delete:", error);
 }
 
+// 웹 푸시 구독 저장/삭제
+export async function dbSavePushSubscription(memberId, sub) {
+  const j = sub.toJSON();
+  const { error } = await _supabase.from("push_subscriptions").upsert({
+    id: memberId,
+    member_id: memberId,
+    endpoint: j.endpoint,
+    p256dh: j.keys.p256dh,
+    auth: j.keys.auth,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) console.error("push sub save:", error);
+}
+export async function dbDeletePushSubscription(memberId) {
+  await _supabase.from("push_subscriptions").delete().eq("member_id", memberId);
+}
+
 // 스케줄 템플릿 저장 (appdata 테이블)
 export async function saveScheduleTemplate(template) {
   try {
