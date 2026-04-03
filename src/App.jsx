@@ -3,11 +3,13 @@ import { Agentation } from "agentation";
 import { FONT, TODAY_STR } from "./constants.js";
 import { ClosuresContext } from "./context.js";
 import {
+  _supabase,
   dbLoadAll,
   dbUpsertMember, dbUpsertBooking, dbUpsertNotice, dbUpsertSpecial, dbUpsertClosure,
   dbDeleteMember, dbDeleteBooking, dbDeleteNotice, dbDeleteSpecial, dbDeleteClosure,
   dbUpsertSale, dbDeleteSale,
-  saveAutoLogin, loadAutoLogin, saveScheduleTemplate
+  saveAutoLogin, loadAutoLogin, saveScheduleTemplate,
+  fromSnakeNotice,
 } from "./db.js";
 import MemberLoginPage from "./components/MemberLoginPage.jsx";
 import AdminLoginPage from "./components/AdminLoginPage.jsx";
@@ -142,6 +144,21 @@ export default function App(){
       return next;
     });
   }, []);
+
+  // 회원 화면에서 실시간 공지 수신 — 관리자가 공지 발송 즉시 팝업 표시
+  useEffect(() => {
+    if(screen !== "memberView" || !loggedMember) return;
+    const channel = _supabase.channel("member-notices-" + loggedMember.id)
+      .on("postgres_changes", {event:"INSERT", schema:"public", table:"notices"},
+        payload => {
+          const n = fromSnakeNotice(payload.new);
+          if(n.targetMemberId === loggedMember.id) {
+            setNoticesState(prev => [n, ...prev]);
+          }
+        }
+      ).subscribe();
+    return () => _supabase.removeChannel(channel);
+  }, [screen, loggedMember?.id]); // eslint-disable-line
 
   const setScheduleTemplate = useCallback((updater) => {
     setScheduleTemplateState(prev => {
