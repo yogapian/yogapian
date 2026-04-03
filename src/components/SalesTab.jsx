@@ -126,7 +126,7 @@ export default function SalesTab({sales, setSales}){
               <div style={{display:"flex",gap:7}}>
                 {[["oneday","원데이"],["meditation","명상수업"],["other","기타"]].map(([v,l])=>{const tc=TYPE_COLOR[v];return(
                   <button key={v} onClick={()=>setAddForm(f=>({...f,type:v}))} style={{flex:1,padding:"9px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:addForm.type===v?tc.color:"#e0d8cc",background:addForm.type===v?tc.bg:"#faf8f5",color:addForm.type===v?tc.color:"#9a8e80",fontWeight:addForm.type===v?700:400}}>{l}</button>
-                );}}
+                );})}
               </div>
             </div>
             <div style={S.fg}><label style={S.lbl}>날짜</label><input style={S.inp} type="date" value={addForm.date} onChange={e=>setAddForm(f=>({...f,date:e.target.value}))}/></div>
