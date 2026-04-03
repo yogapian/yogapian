@@ -116,7 +116,6 @@ export default function SalesTab({sales, setSales}){
                 <span style={{fontSize:10,fontWeight:700,borderRadius:6,padding:"2px 7px",background:tc.bg,color:tc.color}}>{TYPE_LABEL[s.type]||"기타"}</span>
                 {s.payment && (()=>{const pc=PAYMENT_COLOR[s.payment];return <span style={{fontSize:10,fontWeight:600,borderRadius:6,padding:"2px 7px",background:pc?pc.bg:"#f5f2ec",color:pc?pc.color:"#9a8e80"}}>{s.payment}</span>;})()}
                 <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e",minWidth:52,textAlign:"right"}}>{(s.amount||0).toLocaleString("ko-KR")}</span>
-                <button onClick={e=>{e.stopPropagation();openEdit(s);}} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",padding:"0 2px",lineHeight:1}}>✏️</button>
               </div>
             </div>
           );
@@ -165,7 +164,7 @@ export default function SalesTab({sales, setSales}){
       {editId && editForm && (
         <div style={S.overlay} onClick={()=>setEditId(null)}>
           <div style={{...S.modal,maxWidth:360}} onClick={e=>e.stopPropagation()}>
-            <div style={{...S.modalHead,marginBottom:12}}><span>✏️</span><span style={S.modalTitle}>매출 수정</span></div>
+            <div style={{...S.modalHead,marginBottom:10}}><span>✏️</span><span style={S.modalTitle}>매출 수정</span></div>
             <div style={S.fg}>
               <label style={S.lbl}>종류</label>
               <div style={{display:"flex",gap:7}}>
