@@ -1,10 +1,8 @@
 import { useState, useMemo } from "react";
 import { FONT, TODAY_STR, SC, GE, TYPE_CFG } from "../constants.js";
-import { fmt } from "../utils.js";
-import { endOfNextMonth, endOfMonth } from "../utils.js";
+import { fmt, fmtWithDow, parseLocal, endOfNextMonth, endOfMonth, useClock } from "../utils.js";
 import { getDisplayStatus, calc3MonthEnd } from "../memberCalc.js";
 import { useClosures } from "../context.js";
-import { useClock } from "../utils.js";
 import S from "../styles.js";
 import AttendanceBoard from "./AttendanceBoard.jsx";
 import MemberCard from "./MemberCard.jsx";
@@ -26,6 +24,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   const [delT,setDelT]=useState(null);
   const [showNotices,setShowNotices]=useState(false);
   const [showPendingPopup,setShowPendingPopup]=useState(true);
+  const [onedayConfirm,setOnedayConfirm]=useState(null); // 원데이→정규 연동 확인 팝업
 
   const renewPendingMembers=useMemo(()=>members.filter(m=>bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.date===TODAY_STR)),[members,bookings]);
   const gds=(m)=>getDisplayStatus(m,closures,bookings);
@@ -58,9 +57,34 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,total:e.total,startDate:e.startDate,endDate:e.endDate,memberType:e.memberType}:r):rh;
       return{...m,...e,renewalHistory:updRH};
     }));
-    else{const id=Math.max(...members.map(m=>m.id),0)+1;setMembers(p=>[...p,{id,...e,renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]}]);}
+    else{
+      const id=Math.max(...members.map(m=>m.id),0)+1;
+      const newMember={id,...e,renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]};
+      // 원데이→정규 연동: 7일 이내 같은 이름의 방문 완료된 원데이 기록 탐색
+      const refDate=parseLocal(TODAY_STR); refDate.setDate(refDate.getDate()-7);
+      const sevenDaysAgo=`${refDate.getFullYear()}-${String(refDate.getMonth()+1).padStart(2,"0")}-${String(refDate.getDate()).padStart(2,"0")}`;
+      const matchedOneday=bookings.find(b=>b.onedayName===form.name&&b.date>=sevenDaysAgo&&b.status==="attended");
+      if(matchedOneday){setOnedayConfirm({newMember,matchedBooking:matchedOneday});setShowForm(false);return;}
+      setMembers(p=>[...p,newMember]);
+    }
     setShowForm(false);
   }
+
+  // 원데이 방문 기록을 정규 회원 1회로 인정하고 연동
+  function doLinkOneday(){
+    const {newMember,matchedBooking}=onedayConfirm;
+    // startDate를 원데이 방문일로 소급 → usedAsOf가 자동으로 1회 카운트
+    const linked={...newMember,startDate:matchedBooking.date,renewalHistory:[{...newMember.renewalHistory[0],startDate:matchedBooking.date}]};
+    setMembers(p=>[...p,linked]);
+    setBookings(p=>p.map(b=>b.id===matchedBooking.id?{...b,memberId:newMember.id,onedayName:null}:b));
+    setOnedayConfirm(null);
+  }
+  // 원데이 기록 무시하고 정규 회원만 등록
+  function doSkipOneday(){
+    setMembers(p=>[...p,onedayConfirm.newMember]);
+    setOnedayConfirm(null);
+  }
+
   function applyRenewal(mid,rf){
     // 갱신 시 manualStatus 초기화 — 갱신 전 수동으로 설정된 상태(renew 등)가 남지 않도록
     setMembers(p=>p.map(m=>{if(m.id!==mid)return m;return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,holding:null,manualStatus:null,isNew:false,/* 갱신 이력 있는 회원은 신규 아님 */renewalHistory:[...(m.renewalHistory||[]),{id:(m.renewalHistory?.length||0)+1,...rf}]};}));
@@ -273,6 +297,26 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
             <div style={{...S.modalTitle,marginBottom:6}}>회원을 삭제할까요?</div>
             <div style={{color:"#9a8e80",fontSize:13,marginBottom:18}}>삭제 후에는 복구가 어렵습니다.</div>
             <div style={S.modalBtns}><button style={S.cancelBtn} onClick={()=>setDelT(null)}>취소</button><button style={{...S.saveBtn,background:"#c97474"}} onClick={()=>{setMembers(p=>p.filter(m=>m.id!==delT));setDelT(null);}}>삭제</button></div>
+          </div>
+        </div>
+      )}
+
+      {/* 원데이→정규 연동 확인 팝업 */}
+      {onedayConfirm&&(
+        <div style={S.overlay} onClick={doSkipOneday}>
+          <div style={{...S.modal,maxWidth:320,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:28,marginBottom:8}}>🌱</div>
+            <div style={{...S.modalTitle,marginBottom:8}}>원데이 방문 기록 발견</div>
+            <div style={{fontSize:13,color:"#5a5a5a",background:"#f7f4ef",borderRadius:10,padding:"10px 14px",marginBottom:16,lineHeight:1.7}}>
+              <b style={{color:"#1e2e1e"}}>{onedayConfirm.newMember.name}</b>님이<br/>
+              <b style={{color:"#4a6a4a"}}>{fmtWithDow(onedayConfirm.matchedBooking.date)}</b>에<br/>
+              원데이 수업을 방문한 기록이 있습니다.<br/>
+              <span style={{fontSize:12,color:"#9a8e80"}}>이 방문을 1회로 인정할까요?</span>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={doSkipOneday} style={{flex:1,background:"#f0ece4",color:"#9a8e80",border:"none",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>인정 안 함</button>
+              <button onClick={doLinkOneday} style={{flex:1,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>1회 인정</button>
+            </div>
           </div>
         </div>
       )}
