@@ -22,6 +22,8 @@ export default function SalesTab({sales, setSales}){
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
   const [showAdd,   setShowAdd]   = useState(false);
   const [deleteId,  setDeleteId]  = useState(null);
+  const [editId,    setEditId]    = useState(null);
+  const [editForm,  setEditForm]  = useState(null);
   const [addForm,   setAddForm]   = useState({
     date: TODAY_STR, type: "meditation",
     memberName: "", amount: "", payment: "현금", memo: ""
@@ -56,6 +58,16 @@ export default function SalesTab({sales, setSales}){
   }
 
   function doDelete(id){ setSales(p => p.filter(s => s.id !== id)); setDeleteId(null); }
+
+  function openEdit(s){
+    setEditId(s.id);
+    setEditForm({ date: s.date, type: s.type, memberName: s.memberName||"", amount: String(s.amount||""), payment: s.payment||"현금", memo: s.memo||"" });
+  }
+  function doEdit(){
+    if(!editForm.amount || !+editForm.amount) return;
+    setSales(p => p.map(s => s.id === editId ? {...s, date:editForm.date, type:editForm.type, memberName:editForm.memberName, amount:+editForm.amount, payment:editForm.payment, memo:editForm.memo} : s));
+    setEditId(null); setEditForm(null);
+  }
 
   return (
     <div style={{paddingBottom:60}}>
@@ -94,7 +106,7 @@ export default function SalesTab({sales, setSales}){
           const nameDisp = s.memberName || s.memo || "-";
           const infoTag = s.memberType ? `${MT_LABEL[s.memberType]||""} ${s.total||""}회` : (s.memo && s.memberName ? s.memo : "");
           return (
-            <div key={s.id} style={{background:"#fff",borderRadius:11,padding:"11px 14px",border:"1px solid #e4e0d8",display:"flex",alignItems:"center",gap:10}}>
+            <div key={s.id} onClick={()=>openEdit(s)} style={{background:"#fff",borderRadius:11,padding:"11px 14px",border:"1px solid #e4e0d8",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
               <div style={{fontSize:13,color:"#9a8e80",fontWeight:600,minWidth:32,flexShrink:0}}>{mm}/{dd}</div>
               <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:5,overflow:"hidden"}}>
                 <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e",whiteSpace:"nowrap"}}>{nameDisp}</span>
@@ -104,7 +116,7 @@ export default function SalesTab({sales, setSales}){
                 <span style={{fontSize:10,fontWeight:700,borderRadius:6,padding:"2px 7px",background:tc.bg,color:tc.color}}>{TYPE_LABEL[s.type]||"기타"}</span>
                 {s.payment && (()=>{const pc=PAYMENT_COLOR[s.payment];return <span style={{fontSize:10,fontWeight:600,borderRadius:6,padding:"2px 7px",background:pc?pc.bg:"#f5f2ec",color:pc?pc.color:"#9a8e80"}}>{s.payment}</span>;})()}
                 <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e",minWidth:52,textAlign:"right"}}>{(s.amount||0).toLocaleString("ko-KR")}</span>
-                <button onClick={()=>setDeleteId(s.id)} style={{background:"none",border:"none",fontSize:16,color:"#d0b0b0",cursor:"pointer",padding:"0 2px",lineHeight:1,fontFamily:FONT}}>×</button>
+                <button onClick={e=>{e.stopPropagation();setDeleteId(s.id);}} style={{background:"none",border:"none",fontSize:16,color:"#d0b0b0",cursor:"pointer",padding:"0 2px",lineHeight:1,fontFamily:FONT}}>×</button>
               </div>
             </div>
           );
@@ -144,6 +156,39 @@ export default function SalesTab({sales, setSales}){
             <div style={S.modalBtns}>
               <button style={S.cancelBtn} onClick={()=>setShowAdd(false)}>취소</button>
               <button style={S.saveBtn} onClick={doAdd}>저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 수정 모달 */}
+      {editId && editForm && (
+        <div style={S.overlay} onClick={()=>setEditId(null)}>
+          <div style={{...S.modal,maxWidth:360}} onClick={e=>e.stopPropagation()}>
+            <div style={{...S.modalHead,marginBottom:12}}><span>✏️</span><span style={S.modalTitle}>매출 수정</span></div>
+            <div style={S.fg}>
+              <label style={S.lbl}>종류</label>
+              <div style={{display:"flex",gap:7}}>
+                {[["oneday","원데이"],["meditation","명상수업"],["other","기타"]].map(([v,l])=>{const tc=TYPE_COLOR[v];return(
+                  <button key={v} onClick={()=>setEditForm(f=>({...f,type:v}))} style={{flex:1,padding:"9px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:editForm.type===v?tc.color:"#e0d8cc",background:editForm.type===v?tc.bg:"#faf8f5",color:editForm.type===v?tc.color:"#9a8e80",fontWeight:editForm.type===v?700:400}}>{l}</button>
+                );})}
+              </div>
+            </div>
+            <div style={S.fg}><label style={S.lbl}>날짜</label><input style={S.inp} type="date" value={editForm.date} onChange={e=>setEditForm(f=>({...f,date:e.target.value}))}/></div>
+            <div style={S.fg}><label style={S.lbl}>이름 / 내용</label><input style={S.inp} value={editForm.memberName} onChange={e=>setEditForm(f=>({...f,memberName:e.target.value}))} placeholder="홍길동 / 명상수업 단체 등"/></div>
+            <div style={S.fg}><label style={S.lbl}>금액 (원)</label><input style={S.inp} type="number" min="0" value={editForm.amount} onChange={e=>setEditForm(f=>({...f,amount:e.target.value}))} placeholder="50000"/></div>
+            <div style={S.fg}>
+              <label style={S.lbl}>결제 방법</label>
+              <div style={{display:"flex",gap:7}}>
+                {["카드","현금","네이버"].map(v=>{const pc=PAYMENT_COLOR[v];return(
+                  <button key={v} onClick={()=>setEditForm(f=>({...f,payment:v}))} style={{flex:1,padding:"9px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:editForm.payment===v?pc.color:"#e0d8cc",background:editForm.payment===v?pc.bg:"#faf8f5",color:editForm.payment===v?pc.color:"#9a8e80",fontWeight:editForm.payment===v?700:400}}>{v}</button>
+                );})}
+              </div>
+            </div>
+            <div style={S.fg}><label style={S.lbl}>메모 (선택)</label><input style={S.inp} value={editForm.memo} onChange={e=>setEditForm(f=>({...f,memo:e.target.value}))} placeholder=""/></div>
+            <div style={S.modalBtns}>
+              <button style={S.cancelBtn} onClick={()=>setEditId(null)}>취소</button>
+              <button style={S.saveBtn} onClick={doEdit}>수정</button>
             </div>
           </div>
         </div>
