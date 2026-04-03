@@ -10,7 +10,7 @@ import {
   dbDeleteMember, dbDeleteBooking, dbDeleteNotice, dbDeleteSpecial, dbDeleteClosure,
   dbUpsertSale, dbDeleteSale,
   saveAutoLogin, loadAutoLogin, saveScheduleTemplate,
-  fromSnakeNotice, dbSavePushSubscription,
+  fromSnakeNotice, fromSnakeBooking, fromSnakeMember, dbSavePushSubscription,
 } from "./db.js";
 import MemberLoginPage from "./components/MemberLoginPage.jsx";
 import AdminLoginPage from "./components/AdminLoginPage.jsx";
@@ -51,10 +51,15 @@ export default function App(){
         if(all.sales?.length) setSalesState(all.sales);
 
         try {
-          const autoLogin = await loadAutoLogin();
-          if(autoLogin?.memberId && all.members.length){
-            const m = all.members.find(mb=>mb.id===autoLogin.memberId);
-            if(m){ setLoggedMember(m); setScreen("memberView"); }
+          // 관리자 자동로그인
+          if(localStorage.getItem("yogapian_admin_autologin")){
+            setScreen("admin");
+          } else {
+            const autoLogin = await loadAutoLogin();
+            if(autoLogin?.memberId && all.members.length){
+              const m = all.members.find(mb=>mb.id===autoLogin.memberId);
+              if(m){ setLoggedMember(m); setScreen("memberView"); }
+            }
           }
         } catch(e){}
       } catch(e){ console.warn("DB 로드 실패:", e); }
@@ -183,6 +188,32 @@ export default function App(){
     }
   }, [screen]); // eslint-disable-line
 
+  // 관리자 화면 실시간 동기화 — 예약/회원 변경 즉시 반영
+  useEffect(() => {
+    if(screen !== "admin") return;
+    const ch = _supabase.channel("admin-realtime")
+      .on("postgres_changes", {event:"*", schema:"public", table:"bookings"}, payload => {
+        if(payload.eventType === "INSERT"){
+          setBookingsState(prev => prev.some(b=>b.id===payload.new.id) ? prev : [...prev, fromSnakeBooking(payload.new)]);
+        } else if(payload.eventType === "UPDATE"){
+          setBookingsState(prev => prev.map(b=>b.id===payload.new.id ? fromSnakeBooking(payload.new) : b));
+        } else if(payload.eventType === "DELETE"){
+          setBookingsState(prev => prev.filter(b=>b.id!==payload.old.id));
+        }
+      })
+      .on("postgres_changes", {event:"*", schema:"public", table:"members"}, payload => {
+        if(payload.eventType === "INSERT"){
+          setMembersState(prev => prev.some(m=>m.id===payload.new.id) ? prev : [...prev, fromSnakeMember(payload.new)]);
+        } else if(payload.eventType === "UPDATE"){
+          setMembersState(prev => prev.map(m=>m.id===payload.new.id ? fromSnakeMember(payload.new) : m));
+        } else if(payload.eventType === "DELETE"){
+          setMembersState(prev => prev.filter(m=>m.id!==payload.old.id));
+        }
+      })
+      .subscribe();
+    return () => _supabase.removeChannel(ch);
+  }, [screen]); // eslint-disable-line
+
   // 회원 화면에서 실시간 공지 수신 — 관리자가 공지 발송 즉시 팝업 표시
   useEffect(() => {
     if(screen !== "memberView" || !loggedMember) return;
@@ -256,7 +287,7 @@ export default function App(){
     <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}body{background:#2e3a2e}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72}`}</style>
-      <AdminLoginPage onLogin={()=>setScreen("admin")} onGoMember={()=>setScreen("memberLogin")}/>
+      <AdminLoginPage onLogin={()=>{localStorage.setItem("yogapian_admin_autologin","1");setScreen("admin");}} onGoMember={()=>setScreen("memberLogin")}/>
     </div>
     </ClosuresContext.Provider>
   );
@@ -265,7 +296,7 @@ export default function App(){
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input,select,textarea{font-family:${FONT};outline:none;-webkit-appearance:none}.card{transition:box-shadow .2s,transform .15s}@media(hover:hover){.card:hover{box-shadow:0 6px 24px rgba(60,50,30,.14);transform:translateY(-2px)}}.pill:hover{opacity:.78}button:active{opacity:.72}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c8c0b0;border-radius:4px}@media(max-width:600px){html{font-size:14px}.admin-grid{grid-template-columns:1fr!important}.admin-pillrow{gap:5px!important}.admin-toolbar{flex-direction:column!important}}`}</style>
       <SaveBadge/>
-      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} onLogout={()=>setScreen("memberLogin")}/>
+      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
       {process.env.NODE_ENV === "development" && <Agentation />}
     </div>
     </ClosuresContext.Provider>
