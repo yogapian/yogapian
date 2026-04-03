@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { FONT, TODAY_STR, SC, GE, TYPE_CFG } from "../constants.js";
+import { FONT, TODAY_STR, SC, GE, TYPE_CFG, lookupPrice } from "../constants.js";
 import { fmt, fmtWithDow, parseLocal, endOfNextMonth, endOfMonth, useClock } from "../utils.js";
 import { getDisplayStatus, calc3MonthEnd } from "../memberCalc.js";
 import { useClosures } from "../context.js";
@@ -10,8 +10,9 @@ import AdminDetailModal from "./AdminDetailModal.jsx";
 import RenewalModal from "./RenewalModal.jsx";
 import HoldingModal from "./HoldingModal.jsx";
 import NoticeManager from "./NoticeManager.jsx";
+import SalesTab from "./SalesTab.jsx";
 
-export default function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,specialSchedules,setSpecialSchedules,closures,setClosures,scheduleTemplate,setScheduleTemplate,onLogout}){
+export default function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,specialSchedules,setSpecialSchedules,closures,setClosures,scheduleTemplate,setScheduleTemplate,sales,setSales,onLogout}){
   const [tab,setTab]=useState("attendance");
   const [filter,setFilter]=useState("on");
   const [search,setSearch]=useState("");
@@ -66,8 +67,17 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       const matchedOneday=bookings.find(b=>b.onedayName===form.name&&b.date>=sevenDaysAgo&&b.status==="attended");
       if(matchedOneday){setOnedayConfirm({newMember,matchedBooking:matchedOneday});setShowForm(false);return;}
       setMembers(p=>[...p,newMember]);
+      // 신규 회원 매출 자동 등록
+      _addMemberSale(newMember, "new_member");
     }
     setShowForm(false);
+  }
+
+  // 매출 자동 생성 헬퍼
+  function _addMemberSale(member, type){
+    const price=lookupPrice(member.memberType, member.total);
+    if(!price) return;
+    setSales(p=>[...p,{id:Date.now(),date:member.startDate,type,memberId:member.id,memberName:member.name,memberType:member.memberType,total:member.total,amount:price,payment:member.payment||"",memo:""}]);
   }
 
   // 원데이 방문 기록을 정규 회원 1회로 인정하고 연동
@@ -77,11 +87,13 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     const linked={...newMember,startDate:matchedBooking.date,renewalHistory:[{...newMember.renewalHistory[0],startDate:matchedBooking.date}]};
     setMembers(p=>[...p,linked]);
     setBookings(p=>p.map(b=>b.id===matchedBooking.id?{...b,memberId:newMember.id,onedayName:null}:b));
+    _addMemberSale(linked, "new_member");
     setOnedayConfirm(null);
   }
   // 원데이 기록 무시하고 정규 회원만 등록
   function doSkipOneday(){
     setMembers(p=>[...p,onedayConfirm.newMember]);
+    _addMemberSale(onedayConfirm.newMember, "new_member");
     setOnedayConfirm(null);
   }
 
@@ -94,6 +106,9 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       if(b.memberId!==mid||!b.renewalPending)return b;
       return{...b,renewalPending:false,status:rf.includePending?b.status:"cancelled"};
     }));
+    // 갱신 매출 자동 등록
+    const mem=members.find(m=>m.id===mid);
+    if(mem){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Date.now(),date:rf.startDate,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
     setRenewT(null);setDetailM(null);
   }
   function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(!hd)return{...m,holding:null,holdingDays:0};
@@ -160,14 +175,15 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20,flexWrap:"wrap"}}>
         {/* ─── 탭 전환 (출석/회원관리) ─── */}
         <div style={{display:"flex",gap:0,background:"#e8e4dc",borderRadius:11,padding:3}}>{/* ← 탭바 배경색/둥글기 */}
-          {[["attendance","📋 출석"],["members","🧘🏻 회원 관리"]].map(([k,l])=>(
+          {[["attendance","📋 출석"],["members","🧘🏻 회원관리"],["sales","💰 매출"]].map(([k,l])=>(
             <button key={k} onClick={()=>setTab(k)} style={{border:"none",borderRadius:9,padding:"9px 14px",fontSize:13,/* ← 탭 글씨 크기 */fontWeight:tab===k?700:400,background:tab===k?"#fff":"transparent",/* ← 선택탭 배경 */color:tab===k?"#1e2e1e":"#9a8e80",/* ← 선택/비선택 글씨색 */boxShadow:tab===k?"0 1px 5px rgba(60,50,40,.12)":"none",cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>{l}</button>
           ))}
         </div>
-        {tab==="members"&&<button style={{...S.addBtn,marginLeft:"auto"}} onClick={openAdd}>+ 회원 추가</button>}{/* ← 회원추가 버튼: styles.js S.addBtn 참고 */}
+        {tab==="members"&&<button style={{...S.addBtn,marginLeft:"auto"}} onClick={openAdd}>+ 회원 추가</button>}
       </div>
 
       {tab==="attendance"&&<AttendanceBoard members={members} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} notices={notices} setNotices={setNotices} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} onMemberClick={(m)=>setDetailM(m)}/>}
+      {tab==="sales"&&<SalesTab sales={sales} setSales={setSales}/>}
 
       {tab==="members"&&(<>
         {/* ─── 상태 필터 pill ─── */}

@@ -133,6 +133,35 @@ export function fromSnakeSpecial(r) {
     dailyNote:    r.daily_note ?? "",
   };
 }
+export function saleToSnake(s) {
+  return {
+    id:          s.id,
+    date:        s.date,
+    type:        s.type ?? "other",
+    member_id:   s.memberId ?? null,
+    member_name: s.memberName ?? "",
+    member_type: s.memberType ?? null,
+    total:       s.total ?? null,
+    amount:      s.amount ?? 0,
+    payment:     s.payment ?? "",
+    memo:        s.memo ?? "",
+    updated_at:  new Date().toISOString(),
+  };
+}
+export function fromSnakeSale(r) {
+  return {
+    id:         r.id,
+    date:       r.date,
+    type:       r.type ?? "other",
+    memberId:   r.member_id ?? null,
+    memberName: r.member_name ?? "",
+    memberType: r.member_type ?? null,
+    total:      r.total ?? null,
+    amount:     r.amount ?? 0,
+    payment:    r.payment ?? "",
+    memo:       r.memo ?? "",
+  };
+}
 export function closureToSnake(c) {
   return {
     id:                 c.id,
@@ -159,12 +188,13 @@ export function fromSnakeClosure(r) {
 
 export async function dbLoadAll() {
   // ⚠️ Supabase JS의 기본 row limit = 1000. 초과 시 최신 데이터가 잘림 → limit 명시 필수
-  const [mRes, bRes, nRes, sRes, cRes] = await Promise.all([
+  const [mRes, bRes, nRes, sRes, cRes, slRes] = await Promise.all([
     _supabase.from("members").select("*").order("id").limit(2000),
     _supabase.from("bookings").select("*").order("id").limit(10000),
     _supabase.from("notices").select("*").order("id", { ascending: false }).limit(500),
     _supabase.from("special_schedules").select("*").order("date").limit(2000),
     _supabase.from("closures").select("*").order("date").limit(2000),
+    _supabase.from("sales").select("*").order("date").limit(5000),
   ]);
   if (bRes.data?.length >= 10000) console.warn("bookings 10000개 초과 — limit 상향 필요");
   let scheduleTemplate = {};
@@ -182,6 +212,7 @@ export async function dbLoadAll() {
     notices:          (nRes.data || []).map(fromSnakeNotice),
     specialSchedules: (sRes.data || []).map(fromSnakeSpecial),
     closures:         (cRes.data || []).map(fromSnakeClosure),
+    sales:            (slRes.data || []).map(fromSnakeSale),
     scheduleTemplate,
   };
 }
@@ -226,6 +257,14 @@ export async function dbDeleteSpecial(id) {
 export async function dbDeleteClosure(id) {
   const { error } = await _supabase.from("closures").delete().eq("id", id);
   if (error) console.error("closure delete:", error);
+}
+export async function dbUpsertSale(s) {
+  const { error } = await _supabase.from("sales").upsert(saleToSnake(s));
+  if (error) console.error("sale upsert:", error);
+}
+export async function dbDeleteSale(id) {
+  const { error } = await _supabase.from("sales").delete().eq("id", id);
+  if (error) console.error("sale delete:", error);
 }
 
 // 스케줄 템플릿 저장 (appdata 테이블)

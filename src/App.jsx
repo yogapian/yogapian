@@ -6,6 +6,7 @@ import {
   dbLoadAll,
   dbUpsertMember, dbUpsertBooking, dbUpsertNotice, dbUpsertSpecial, dbUpsertClosure,
   dbDeleteMember, dbDeleteBooking, dbDeleteNotice, dbDeleteSpecial, dbDeleteClosure,
+  dbUpsertSale, dbDeleteSale,
   saveAutoLogin, loadAutoLogin, saveScheduleTemplate
 } from "./db.js";
 import MemberLoginPage from "./components/MemberLoginPage.jsx";
@@ -22,6 +23,7 @@ export default function App(){
   const [specialSchedules,setSpecialSchedulesState]=useState([]);
   const [closures,setClosuresState]=useState([]);
   const [scheduleTemplate,setScheduleTemplateState]=useState({});
+  const [sales,setSalesState]=useState([]);
   const [saving,setSaving]=useState(false);
   const [loading,setLoading]=useState(true);
   const loadedRef = useRef(false);
@@ -43,6 +45,7 @@ export default function App(){
         if(all.specialSchedules.length) setSpecialSchedulesState(all.specialSchedules);
         if(all.closures.length)         setClosuresState(all.closures);
         if(all.scheduleTemplate && Object.keys(all.scheduleTemplate).length) setScheduleTemplateState(all.scheduleTemplate);
+        if(all.sales?.length) setSalesState(all.sales);
 
         try {
           const autoLogin = await loadAutoLogin();
@@ -148,6 +151,18 @@ export default function App(){
     });
   }, []);
 
+  const setSales = useCallback((updater) => {
+    setSalesState(prev => {
+      const next = typeof updater==="function" ? updater(prev) : updater;
+      if(!loadedRef.current) return next;
+      const prevMap = new Map(prev.map(s=>[s.id, s]));
+      const nextMap = new Map(next.map(s=>[s.id, s]));
+      next.filter(s => { const old=prevMap.get(s.id); return !old||JSON.stringify(old)!==JSON.stringify(s); }).forEach(s=>dbUpsertSale(s));
+      prev.filter(s => !nextMap.has(s.id)).forEach(s=>dbDeleteSale(s.id));
+      return next;
+    });
+  }, []);
+
   const SaveBadge = ()=>(
     <div style={{position:"fixed",bottom:16,right:16,zIndex:999,display:"flex",alignItems:"center",gap:5,
       background:saving?"#fdf3e3":"#eef5ee",
@@ -195,7 +210,7 @@ export default function App(){
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input,select,textarea{font-family:${FONT};outline:none;-webkit-appearance:none}.card{transition:box-shadow .2s,transform .15s}@media(hover:hover){.card:hover{box-shadow:0 6px 24px rgba(60,50,30,.14);transform:translateY(-2px)}}.pill:hover{opacity:.78}button:active{opacity:.72}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c8c0b0;border-radius:4px}@media(max-width:600px){html{font-size:14px}.admin-grid{grid-template-columns:1fr!important}.admin-pillrow{gap:5px!important}.admin-toolbar{flex-direction:column!important}}`}</style>
       <SaveBadge/>
-      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} onLogout={()=>setScreen("memberLogin")}/>
+      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} onLogout={()=>setScreen("memberLogin")}/>
       {process.env.NODE_ENV === "development" && <Agentation />}
     </div>
     </ClosuresContext.Provider>

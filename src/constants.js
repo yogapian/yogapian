@@ -77,3 +77,15 @@ export const BOOKING_STATUS={
   waiting:  {label:"대기",bg:"#fdf3e3",color:"#9a5a10",icon:"⏳"},
   cancelled:{label:"취소",bg:"#f0ece4",color:"#9a8e80",icon:"×"},
 };
+
+// ─── 요금표 ───────────────────────────────────────────────────────────────────
+// 1개월권: 회차별 금액 / 3개월권: 회차별 금액 (원 단위)
+export const PRICE_MAP = {
+  "1month": {4:110000, 6:130000, 8:150000, 10:170000, 12:190000, 20:240000},
+  "3month": {12:300000, 18:350000, 24:400000, 30:450000, 36:500000, 60:600000},
+};
+// memberType + total 로 금액 반환 (없으면 0)
+export function lookupPrice(memberType, total) {
+  const map = PRICE_MAP[memberType];
+  return map ? (map[+total] ?? 0) : 0;
+}
