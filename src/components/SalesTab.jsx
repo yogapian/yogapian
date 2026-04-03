@@ -116,7 +116,7 @@ export default function SalesTab({sales, setSales}){
                 <span style={{fontSize:10,fontWeight:700,borderRadius:6,padding:"2px 7px",background:tc.bg,color:tc.color}}>{TYPE_LABEL[s.type]||"기타"}</span>
                 {s.payment && (()=>{const pc=PAYMENT_COLOR[s.payment];return <span style={{fontSize:10,fontWeight:600,borderRadius:6,padding:"2px 7px",background:pc?pc.bg:"#f5f2ec",color:pc?pc.color:"#9a8e80"}}>{s.payment}</span>;})()}
                 <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e",minWidth:52,textAlign:"right"}}>{(s.amount||0).toLocaleString("ko-KR")}</span>
-                <button onClick={e=>{e.stopPropagation();setDeleteId(s.id);}} style={{background:"none",border:"none",fontSize:16,color:"#d0b0b0",cursor:"pointer",padding:"0 2px",lineHeight:1,fontFamily:FONT}}>×</button>
+                <button onClick={e=>{e.stopPropagation();openEdit(s);}} style={{background:"#f5f2ec",border:"none",borderRadius:7,fontSize:12,color:"#9a8e80",cursor:"pointer",padding:"4px 8px",fontFamily:FONT}}>수정</button>
               </div>
             </div>
           );
@@ -186,9 +186,10 @@ export default function SalesTab({sales, setSales}){
               </div>
             </div>
             <div style={S.fg}><label style={S.lbl}>메모 (선택)</label><input style={S.inp} value={editForm.memo} onChange={e=>setEditForm(f=>({...f,memo:e.target.value}))} placeholder=""/></div>
-            <div style={S.modalBtns}>
-              <button style={S.cancelBtn} onClick={()=>setEditId(null)}>취소</button>
-              <button style={S.saveBtn} onClick={doEdit}>수정</button>
+            <div style={{display:"flex",gap:8,marginTop:16}}>
+              <button style={{...S.cancelBtn,flex:1}} onClick={()=>setEditId(null)}>취소</button>
+              <button style={{...S.saveBtn,background:"#c97474",flex:"0 0 auto",padding:"10px 16px"}} onClick={()=>{setDeleteId(editId);setEditId(null);}}>삭제</button>
+              <button style={{...S.saveBtn,flex:1}} onClick={doEdit}>저장</button>
             </div>
           </div>
         </div>
