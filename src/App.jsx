@@ -164,6 +164,25 @@ export default function App(){
     }
   }, [screen, loggedMember?.id]); // eslint-disable-line
 
+  // 관리자 로그인 후 푸시 알림 구독 (예약/취소 알림 수신)
+  useEffect(() => {
+    if(screen !== "admin") return;
+    if(!isPushSupported()) return;
+    if(Notification.permission === "granted") {
+      subscribePush("admin", dbSavePushSubscription);
+    } else if(Notification.permission === "default") {
+      const alreadyAsked = localStorage.getItem("push_asked_admin");
+      if(!alreadyAsked) {
+        const t = setTimeout(async () => {
+          localStorage.setItem("push_asked_admin", "1");
+          const result = await Notification.requestPermission();
+          if(result === "granted") subscribePush("admin", dbSavePushSubscription);
+        }, 1000);
+        return () => clearTimeout(t);
+      }
+    }
+  }, [screen]); // eslint-disable-line
+
   // 회원 화면에서 실시간 공지 수신 — 관리자가 공지 발송 즉시 팝업 표시
   useEffect(() => {
     if(screen !== "memberView" || !loggedMember) return;
