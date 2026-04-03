@@ -3,11 +3,12 @@ import { FONT, TODAY_STR } from "../constants.js";
 import { parseLocal } from "../utils.js";
 import S from "../styles.js";
 
-const TYPE_LABEL    = {new_member:"신규", renewal:"갱신", meditation:"명상", other:"기타"};
+const TYPE_LABEL    = {new_member:"신규", renewal:"갱신", oneday:"원데이", meditation:"명상", other:"기타"};
 const PAYMENT_COLOR = {카드:{bg:"#edf0f8",color:"#3d5494"}, 현금:{bg:"#fdf3e3",color:"#8a5510"}, 네이버:{bg:"#e8f4e8",color:"#2e6e44"}};
 const TYPE_COLOR  = {
   new_member: {bg:"#fefce8", color:"#a07a10"},
   renewal:    {bg:"#f0ece4", color:"#7a6e60"},
+  oneday:     {bg:"#e8f4e8", color:"#2e6e44"},
   meditation: {bg:"#f2edf8", color:"#6a4090"},
   other:      {bg:"#f5f0e8", color:"#7a6040"},
 };
@@ -71,7 +72,7 @@ export default function SalesTab({sales, setSales}){
         <div style={{fontSize:11,color:"#9a8e80",marginBottom:3}}>이달 총 매출</div>
         <div style={{fontSize:28,fontWeight:700,color:"#1e2e1e",marginBottom:12,letterSpacing:"-0.5px"}}>{won(total)}</div>
         <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-          {["new_member","renewal","meditation","other"].map(k => {
+          {["new_member","renewal","oneday","meditation","other"].map(k => {
             const cnt = monthSales.filter(s=>s.type===k).length;
             return cnt > 0 ? (
               <div key={k} style={{background:TYPE_COLOR[k].bg,color:TYPE_COLOR[k].color,borderRadius:8,padding:"5px 11px",fontSize:12,fontWeight:600}}>
@@ -112,7 +113,7 @@ export default function SalesTab({sales, setSales}){
 
       {/* 수기 입력 버튼 */}
       <button onClick={()=>setShowAdd(true)} style={{...S.addBtn,width:"100%",padding:"12px 0",fontSize:13}}>
-        + 수기 입력 (명상수업 / 기타)
+        + 수기 입력 (원데이 / 명상수업 / 기타)
       </button>
 
       {/* 수기 입력 폼 */}
@@ -123,9 +124,9 @@ export default function SalesTab({sales, setSales}){
             <div style={S.fg}>
               <label style={S.lbl}>종류</label>
               <div style={{display:"flex",gap:7}}>
-                {[["meditation","명상수업"],["other","기타"]].map(([v,l])=>(
-                  <button key={v} onClick={()=>setAddForm(f=>({...f,type:v}))} style={{flex:1,padding:"9px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:addForm.type===v?"#6a4090":"#e0d8cc",background:addForm.type===v?"#f2edf8":"#faf8f5",color:addForm.type===v?"#6a4090":"#9a8e80",fontWeight:addForm.type===v?700:400}}>{l}</button>
-                ))}
+                {[["oneday","원데이"],["meditation","명상수업"],["other","기타"]].map(([v,l])=>{const tc=TYPE_COLOR[v];return(
+                  <button key={v} onClick={()=>setAddForm(f=>({...f,type:v}))} style={{flex:1,padding:"9px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:addForm.type===v?tc.color:"#e0d8cc",background:addForm.type===v?tc.bg:"#faf8f5",color:addForm.type===v?tc.color:"#9a8e80",fontWeight:addForm.type===v?700:400}}>{l}</button>
+                );}}
               </div>
             </div>
             <div style={S.fg}><label style={S.lbl}>날짜</label><input style={S.inp} type="date" value={addForm.date} onChange={e=>setAddForm(f=>({...f,date:e.target.value}))}/></div>
