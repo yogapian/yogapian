@@ -27,16 +27,14 @@ export const calcDL=(m, closures=[])=>{
 };
 
 export function calc3MonthEnd(startStr, closures=[]) {
-  const closedDates = new Set(closures.filter(cl=>!cl.timeSlot).map(cl=>cl.date));
-  let workdays = 0, cur = parseLocal(startStr);
-  while(workdays < 60) {
-    const dow = cur.getDay();
-    const ds = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
-    if(dow !== 0 && dow !== 6 && !closedDates.has(ds)) workdays++;
-    cur.setDate(cur.getDate()+1);
-  }
-  cur.setDate(cur.getDate()-1);
-  return `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
+  // 캘린더 3개월 후 날짜 반환 (60평일 방식 → 캘린더 방식으로 변경)
+  // closures 파라미터는 하위 호환 유지용 — 휴강 연장은 effEnd의 getClosureExtDays가 별도 처리
+  const d = parseLocal(startStr);
+  const y = d.getFullYear(), mo = d.getMonth() + 3, day = d.getDate();
+  // 말일 초과 처리: 예) 1/31 + 3개월 → 4/30 (5/1 아님)
+  const lastDay = new Date(y, mo + 1, 0).getDate();
+  const r = new Date(y, mo, Math.min(day, lastDay));
+  return `${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}-${String(r.getDate()).padStart(2,'0')}`;
 }
 
 export function holdingElapsed(holding) {
