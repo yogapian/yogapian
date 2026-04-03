@@ -46,9 +46,8 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
 
       {/* 개인 공지 팝업 */}
       {popupNotice && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 24px"}}>
-          <div style={{background:"#fff",borderRadius:18,padding:"24px 20px",width:"100%",maxWidth:360,boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}}>
-            <div style={{fontSize:20,marginBottom:8,textAlign:"center"}}>📢</div>
+        <div style={{...S.overlay,zIndex:300}}>
+          <div style={{...S.modal,maxWidth:360,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:15,fontWeight:700,color:"#1e2e1e",marginBottom:12,textAlign:"center"}}>{popupNotice.title}</div>
             <div style={{fontSize:13,color:"#5a5a5a",lineHeight:1.8,whiteSpace:"pre-wrap",background:"#f7f4ef",borderRadius:10,padding:"12px 14px",marginBottom:16}}>{popupNotice.content}</div>
             <button onClick={() => markRead(popupNotice)} style={{width:"100%",background:"#4a6a4a",color:"#fff",border:"none",borderRadius:12,padding:"13px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>확인했어요</button>

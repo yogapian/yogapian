@@ -102,6 +102,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     const waiters = bookings.filter(bk=>bk.date===b.date && bk.timeSlot===b.timeSlot && bk.status==="waiting" && bk.id!==id).sort((a,c)=>a.id-c.id);
     const firstWaiter = isAttendedCancelled && waiters.length > 0 ? waiters[0] : null;
     const slotLabel = TIME_SLOTS.find(t=>t.key===b.timeSlot)?.label||"";
+    const slotTime  = TIME_SLOTS.find(t=>t.key===b.timeSlot)?.time||"";
     setBookings(p => {
       const next = p.map(bk => bk.id === id ? { ...bk, status: "cancelled", cancelledBy: "admin", cancelNote: note } : bk);
       if(firstWaiter){
@@ -111,11 +112,11 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     });
     if(sendNotice && b.memberId){
       const nid1 = Date.now();
-      setNotices(prev=>[{id:nid1, title:"📢 예약 취소 안내", content:`${fmt(b.date)} ${slotLabel} 수업 예약이 취소되었습니다.${note?" ("+note+")":""}`, pinned:false, createdAt:TODAY_STR, targetMemberId:b.memberId}, ...prev]);
+      setNotices(prev=>[{id:nid1, title:"예약 취소 안내", content:`${fmtWithDow(b.date)} ${slotLabel} ${slotTime} 수업 예약이 취소되었습니다.${note?" ("+note+")":""}`, pinned:false, createdAt:TODAY_STR, targetMemberId:b.memberId}, ...prev]);
     }
     if(firstWaiter){
       const nid2 = Date.now()+1;
-      setNotices(prev=>[{id:nid2, title:"📢 예약 확정 안내", content:`${fmt(b.date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...prev]);
+      setNotices(prev=>[{id:nid2, title:"예약 확정 안내", content:`${fmtWithDow(b.date)} ${slotLabel} ${slotTime} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...prev]);
     }
     setCancelModal(null);
   }
@@ -624,7 +625,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                   const noticeId=Math.max(...(notices||[]).map(n=>n.id),0)+1;
                   const autoNotice={
                     id:noticeId,
-                    title:`📢 ${fmt(closureForm.date)} ${typeLabel} 안내`,
+                    title:`${fmtWithDow(closureForm.date)} ${typeLabel} 안내`,
                     content:`${fmt(closureForm.date)} 수업이 휴강됩니다.\n사유: ${closureForm.reason}\n\n회원권 기간 내 전체 회원님의 회원권이 ${extLabel} 연장됩니다. 🙏`,
                     pinned:true,
                     createdAt:TODAY_STR
@@ -718,17 +719,19 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
               <button style={{flex:1,background:"#f0ece4",color:"#c97474",border:"1px solid #e8c0c0",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}
                 onClick={()=>{
                   const slotLabel=TIME_SLOTS.find(t=>t.key===waitPopup.slotKey)?.label||"";
+                  const slotTime=TIME_SLOTS.find(t=>t.key===waitPopup.slotKey)?.time||"";
                   const nid=Date.now()+1;
                   setBookings(p=>p.map(b=>b.id===waitPopup.rec.id?{...b,status:"cancelled",cancelledBy:"admin"}:b));
-                  if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"📢 대기 취소 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 취소되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
+                  if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"대기 취소 안내",content:`${fmtWithDow(date)} ${slotLabel} ${slotTime} 수업 대기가 취소되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
                   setWaitPopup(null);
                 }}>거절</button>
               <button style={{flex:1,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}
                 onClick={()=>{
                   const slotLabel=TIME_SLOTS.find(t=>t.key===waitPopup.slotKey)?.label||"";
+                  const slotTime=TIME_SLOTS.find(t=>t.key===waitPopup.slotKey)?.time||"";
                   const nid=Date.now();
                   setBookings(p=>p.map(b=>b.id===waitPopup.rec.id?{...b,status:"reserved"}:b));
-                  if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmt(date)} ${slotLabel} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
+                  if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"예약 확정 안내",content:`${fmtWithDow(date)} ${slotLabel} ${slotTime} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
                   setWaitPopup(null);
                 }}>수락</button>
             </div>
