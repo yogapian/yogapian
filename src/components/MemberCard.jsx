@@ -66,9 +66,13 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
         <>
           {/* ── 횟수 프로그레스바 ──────────────────────────────────────────── */}
           <div style={{marginBottom:10}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
-              <span style={{fontSize:11,color:"#9a8e80"}}>등록 <b style={{color:"#3a4a3a"}}>{m.total}회</b></span>
-              <span style={{fontSize:11,color:"#9a8e80"}}>사용 <b style={{color:"#3a4a3a"}}>{usedCnt}</b></span>
+            {/* 등록·사용 왼쪽 한 줄 / 잔여 횟수 우측 강조 — MemberView와 동일 형식 */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+              <span style={{fontSize:11,color:"#9a8e80"}}>
+                등록 <b style={{color:"#3a4a3a"}}>{m.total}회</b>
+                <span style={{color:"#c8c0b0",margin:"0 5px"}}>·</span>
+                사용 <b style={{color:"#3a4a3a"}}>{usedCnt}회</b>
+              </span>
               {/* 잔여 0이면 주황색, 아니면 초록색 */}
               <span style={{fontSize:13,fontWeight:700,color:rem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:20}}>{rem}</span>회</span>
             </div>

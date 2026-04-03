@@ -161,11 +161,10 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   }
   function onTouchStartBooking(e,rec){
     if(e.touches.length!==1)return;
-    const t=e.touches[0];
     const name=rec.memberId?members.find(m=>m.id===rec.memberId)?.name:rec.onedayName;
-    touchDragRef.current={active:true,id:rec.id};
+    touchDragRef.current={active:true,id:rec.id,name}; // name을 ref에 저장 — touchmove에서 ghost 지연 표시
     setDragId(rec.id);
-    setTouchGhost({x:t.clientX,y:t.clientY,name});
+    // touchGhost는 여기서 설정하지 않음 — 탭 시 잠깐 뜨는 버그 방지, handleTouchMove에서 첫 이동 시 설정
   }
   function onTouchEndBooking(e){
     if(!touchDragRef.current.active)return;
@@ -182,7 +181,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
       if(!touchDragRef.current.active)return;
       e.preventDefault();
       const t=e.touches[0];
-      setTouchGhost(g=>g?{...g,x:t.clientX,y:t.clientY}:g);
+      // 첫 이동 시 ghost 생성 (touch start에서 즉시 생성하면 탭 시 깜빡이는 버그)
+      setTouchGhost(g=>g?{...g,x:t.clientX,y:t.clientY}:{x:t.clientX,y:t.clientY,name:touchDragRef.current.name});
       setDragOver(getTouchSlot(t.clientX,t.clientY));
     }
     window.addEventListener("touchmove",handleTouchMove,{passive:false});
@@ -322,6 +322,33 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         <button onClick={()=>{const nc=closures.filter(cl=>cl.id!==dayClosure.id);setClosures(nc);setMembers(prev=>prev.map(m=>{if(m.memberType!=="3month")return m;const nd=calc3MonthEnd(m.startDate,nc);const rh=m.renewalHistory||[];const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,endDate:nd}:r):rh;return{...m,endDate:nd,renewalHistory:updRH};}));}} style={{background:"none",border:"none",color:"#c97474",cursor:"pointer",fontSize:12,fontFamily:FONT}}>삭제</button>
       </div>}
 
+      {/* ── 비활성 슬롯 예약 (스케줄에 없는 timeSlot의 예약, 원데이 포함) ────── */}
+      {/* 예: 목요일에 추가된 dawn 슬롯 예약처럼 당일 스케줄에 없는 슬롯의 예약이 숨겨지지 않도록 */}
+      {(()=>{
+        const orphaned=dayActive.filter(b=>!slots.some(s=>s.key===b.timeSlot));
+        if(!orphaned.length)return null;
+        return(
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:11,color:"#9a8e80",fontWeight:600,marginBottom:6}}>비활성 시간대 예약</div>
+            {orphaned.map(rec=>{
+              const isOneday=!rec.memberId;
+              const mem=isOneday?null:members.find(m=>m.id===rec.memberId);
+              const slotLabel=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.label||rec.timeSlot;
+              return(
+                <div key={rec.id} style={{padding:"8px 12px",background:"#fafaf8",borderRadius:8,marginBottom:4,border:"1px solid #e8e4dc",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:11,color:"#9a8e80",flexShrink:0,background:"#f0ede8",borderRadius:4,padding:"1px 5px"}}>{slotLabel}</span>
+                  <span style={{fontSize:14,flexShrink:0}}>{isOneday?"👤":GE[mem?.gender]||"🧘🏿"}</span>
+                  <span style={{fontSize:13,fontWeight:500,color:isOneday?"#9a6020":"#1e2e1e",flex:1}}>{isOneday?rec.onedayName:mem?.name}</span>
+                  <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,flexShrink:0}}>
+                    {rec.confirmedAttend===true?(rec.walkIn?"☑️":"✅"):rec.confirmedAttend===false?"❌":"🕉"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {/* ── 슬롯 카드 그리드 (전일 휴강이면 숨김) ─────────────────────────── */}
       {/* 열 너비: minmax(160px,1fr) → 160px 미만이면 자동 줄바꿈 / gap:10 = 카드 간격 */}
       {slots.length>0&&!dayClosure&&(
@@ -399,7 +426,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     const remCount=mem?Math.max(0,mem.total-usedAsOf(mem.id,date,bookings,members)):null;
                     const isDragging=dragId===rec.id;
                     // remCount<=2이면 잔여 경고 텍스트 표시 (1이하=빨강, 2=주황)
-                    const showRemWarn=!isOneday&&!isWaiting&&remCount!==null&&remCount<=2;
+                    // 종료일이 지난 회원(갱신필요)은 잔여 경고 대신 갱신 뱃지가 표시되어야 함
+                    const memDl=mem?calcDL(mem,closures):null;
+                    const showRemWarn=!isOneday&&!isWaiting&&remCount!==null&&remCount<=2&&(memDl===null||memDl>=0);
                     const remColor=showRemWarn?(remCount<=1?"#a83030":"#9a5a10"):undefined;
                     const cardColor=mem?.cardColor||"";
                     const isAttended=rec.confirmedAttend===true;  // 출석 확정

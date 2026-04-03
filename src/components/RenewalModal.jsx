@@ -8,7 +8,11 @@ import { TODAY_STR } from "../constants.js";
 
 export default function RenewalModal({member,onClose,onSave}){
   const closures=useClosures();
-  const [form,setForm]=useState({startDate:TODAY_STR,endDate:"",total:member.memberType==="3month"?24:10,memberType:member.memberType,payment:"",includePending:true});
+  // 열릴 때 memberType에 맞게 종료일 미리 계산 — endDate:""이면 갱신 버튼 비활성화되는 문제 방지
+  const [form,setForm]=useState(()=>{
+    const initEnd=member.memberType==="3month"?calc3MonthEnd(TODAY_STR,closures):endOfMonth(TODAY_STR);
+    return{startDate:TODAY_STR,endDate:initEnd,total:member.memberType==="3month"?24:10,memberType:member.memberType,payment:"",includePending:true};
+  });
   return(
     <div style={S.overlay} onClick={onClose}>
       <div style={{...S.modal,maxWidth:420}} onClick={e=>e.stopPropagation()}>
