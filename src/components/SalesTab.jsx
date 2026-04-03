@@ -116,7 +116,7 @@ export default function SalesTab({sales, setSales}){
                 <span style={{fontSize:10,fontWeight:700,borderRadius:6,padding:"2px 7px",background:tc.bg,color:tc.color}}>{TYPE_LABEL[s.type]||"기타"}</span>
                 {s.payment && (()=>{const pc=PAYMENT_COLOR[s.payment];return <span style={{fontSize:10,fontWeight:600,borderRadius:6,padding:"2px 7px",background:pc?pc.bg:"#f5f2ec",color:pc?pc.color:"#9a8e80"}}>{s.payment}</span>;})()}
                 <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e",minWidth:52,textAlign:"right"}}>{(s.amount||0).toLocaleString("ko-KR")}</span>
-                <button onClick={e=>{e.stopPropagation();openEdit(s);}} style={{background:"#f5f2ec",border:"none",borderRadius:7,fontSize:12,color:"#9a8e80",cursor:"pointer",padding:"4px 8px",fontFamily:FONT}}>수정</button>
+                <button onClick={e=>{e.stopPropagation();openEdit(s);}} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",padding:"0 2px",lineHeight:1}}>✏️</button>
               </div>
             </div>
           );
@@ -143,7 +143,7 @@ export default function SalesTab({sales, setSales}){
             </div>
             <div style={S.fg}><label style={S.lbl}>날짜</label><input style={S.inp} type="date" value={addForm.date} onChange={e=>setAddForm(f=>({...f,date:e.target.value}))}/></div>
             <div style={S.fg}><label style={S.lbl}>이름 / 내용</label><input style={S.inp} value={addForm.memberName} onChange={e=>setAddForm(f=>({...f,memberName:e.target.value}))} placeholder="홍길동 / 명상수업 단체 등"/></div>
-            <div style={S.fg}><label style={S.lbl}>금액 (원)</label><input style={S.inp} type="number" min="0" value={addForm.amount} onChange={e=>setAddForm(f=>({...f,amount:e.target.value}))} placeholder="50000"/></div>
+            <div style={S.fg}><label style={S.lbl}>금액 (원)</label><input style={S.inp} type="text" inputMode="numeric" value={addForm.amount ? Number(addForm.amount.replace(/,/g,"")).toLocaleString("ko-KR") : ""} onChange={e=>setAddForm(f=>({...f,amount:e.target.value.replace(/,/g,"")}))} placeholder="50,000"/></div>
             <div style={S.fg}>
               <label style={S.lbl}>결제 방법</label>
               <div style={{display:"flex",gap:7}}>
@@ -176,7 +176,7 @@ export default function SalesTab({sales, setSales}){
             </div>
             <div style={S.fg}><label style={S.lbl}>날짜</label><input style={S.inp} type="date" value={editForm.date} onChange={e=>setEditForm(f=>({...f,date:e.target.value}))}/></div>
             <div style={S.fg}><label style={S.lbl}>이름 / 내용</label><input style={S.inp} value={editForm.memberName} onChange={e=>setEditForm(f=>({...f,memberName:e.target.value}))} placeholder="홍길동 / 명상수업 단체 등"/></div>
-            <div style={S.fg}><label style={S.lbl}>금액 (원)</label><input style={S.inp} type="number" min="0" value={editForm.amount} onChange={e=>setEditForm(f=>({...f,amount:e.target.value}))} placeholder="50000"/></div>
+            <div style={S.fg}><label style={S.lbl}>금액 (원)</label><input style={S.inp} type="text" inputMode="numeric" value={editForm.amount ? Number(editForm.amount.replace(/,/g,"")).toLocaleString("ko-KR") : ""} onChange={e=>setEditForm(f=>({...f,amount:e.target.value.replace(/,/g,"")}))} placeholder="50,000"/></div>
             <div style={S.fg}>
               <label style={S.lbl}>결제 방법</label>
               <div style={{display:"flex",gap:7}}>
