@@ -115,7 +115,8 @@ export function specialToSnake(s) {
     fee_note:      s.feeNote ?? "",
     active_slots:  s.activeSlots ?? [],
     custom_times:  s.customTimes ?? {},
-    slot_capacity: s.slotCapacity ?? {},
+    slot_capacity: s.slotCapacity ?? {},   // DB 컬럼 필요: ALTER TABLE special_schedules ADD COLUMN IF NOT EXISTS slot_capacity jsonb DEFAULT '{}'::jsonb;
+    daily_note:    s.dailyNote ?? "",      // DB 컬럼 필요: ALTER TABLE special_schedules ADD COLUMN IF NOT EXISTS daily_note text DEFAULT '';
     updated_at:    new Date().toISOString(),
   };
 }
@@ -129,6 +130,7 @@ export function fromSnakeSpecial(r) {
     activeSlots:  r.active_slots ?? [],
     customTimes:  r.custom_times ?? {},
     slotCapacity: r.slot_capacity ?? {},
+    dailyNote:    r.daily_note ?? "",
   };
 }
 export function closureToSnake(c) {
