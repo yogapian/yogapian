@@ -112,11 +112,11 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     });
     if(sendNotice && b.memberId){
       const nid1 = Date.now();
-      setNotices(prev=>[{id:nid1, title:"예약 취소 안내", content:`${fmtWithDow(b.date)} ${slotLabel} ${slotTime} 수업 예약이 취소되었습니다.${note?" ("+note+")":""}`, pinned:false, createdAt:TODAY_STR, targetMemberId:b.memberId}, ...prev]);
+      setNotices(prev=>[{id:nid1, title:"📢 예약 취소 안내", content:`${fmtWithDow(b.date)} ${slotLabel} ${slotTime} 수업 예약이 취소되었습니다.${note?" ("+note+")":""}`, pinned:false, createdAt:TODAY_STR, targetMemberId:b.memberId}, ...prev]);
     }
     if(firstWaiter){
       const nid2 = Date.now()+1;
-      setNotices(prev=>[{id:nid2, title:"예약 확정 안내", content:`${fmtWithDow(b.date)} ${slotLabel} ${slotTime} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...prev]);
+      setNotices(prev=>[{id:nid2, title:"📢 예약 확정 안내", content:`${fmtWithDow(b.date)} ${slotLabel} ${slotTime} 수업 대기가 예약으로 확정되었습니다!`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...prev]);
     }
     setCancelModal(null);
   }
@@ -722,7 +722,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                   const slotTime=TIME_SLOTS.find(t=>t.key===waitPopup.slotKey)?.time||"";
                   const nid=Date.now()+1;
                   setBookings(p=>p.map(b=>b.id===waitPopup.rec.id?{...b,status:"cancelled",cancelledBy:"admin"}:b));
-                  if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"대기 취소 안내",content:`${fmtWithDow(date)} ${slotLabel} ${slotTime} 수업 대기가 취소되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
+                  if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"📢 대기 취소 안내",content:`${fmtWithDow(date)} ${slotLabel} ${slotTime} 수업 대기가 취소되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
                   setWaitPopup(null);
                 }}>거절</button>
               <button style={{flex:1,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}
@@ -731,7 +731,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                   const slotTime=TIME_SLOTS.find(t=>t.key===waitPopup.slotKey)?.time||"";
                   const nid=Date.now();
                   setBookings(p=>p.map(b=>b.id===waitPopup.rec.id?{...b,status:"reserved"}:b));
-                  if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"예약 확정 안내",content:`${fmtWithDow(date)} ${slotLabel} ${slotTime} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
+                  if(waitPopup.mem) setNotices(prev=>[{id:nid,title:"📢 예약 확정 안내",content:`${fmtWithDow(date)} ${slotLabel} ${slotTime} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:waitPopup.mem.id},...(prev||[])]);
                   setWaitPopup(null);
                 }}>수락</button>
             </div>

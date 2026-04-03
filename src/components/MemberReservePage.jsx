@@ -267,7 +267,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     });
     if(firstWaiter){
       // 공지: 상단 이모지 제거 / 날짜 + 슬롯명 + 시간 명시
-      setNotices(prev=>[{id:Date.now(),title:"예약 확정 안내",content:`${fmtWithDow(cancelled.date)} ${slotLabel} ${slotTime} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
+      setNotices(prev=>[{id:Date.now(),title:"📢 예약 확정 안내",content:`${fmtWithDow(cancelled.date)} ${slotLabel} ${slotTime} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
     }
     setConfirmCancel(null);
   }
