@@ -205,6 +205,10 @@ export async function dbUpsertClosure(c) {
   if (error) console.error("closure upsert:", error);
 }
 
+export async function dbDeleteMember(id) {
+  const { error } = await _supabase.from("members").delete().eq("id", id);
+  if (error) console.error("member delete:", error);
+}
 export async function dbDeleteBooking(id) {
   const { error } = await _supabase.from("bookings").delete().eq("id", id);
   if (error) console.error("booking delete:", error);

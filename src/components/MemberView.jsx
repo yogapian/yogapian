@@ -105,7 +105,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
                 </div>
                 <div style={{background:"#e8e4dc",borderRadius:8,height:20,overflow:"hidden"}}>
                   <div style={{height:"100%",width:`${pct}%`,background:barColor,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transition:"width .4s"}}>
-                    {pct>15&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{usedCnt}회</span>}
+                    {pct>15&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{usedCnt}</span>}
                   </div>
                 </div>
               </div>

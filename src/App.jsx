@@ -5,7 +5,7 @@ import { ClosuresContext } from "./context.js";
 import {
   dbLoadAll,
   dbUpsertMember, dbUpsertBooking, dbUpsertNotice, dbUpsertSpecial, dbUpsertClosure,
-  dbDeleteBooking, dbDeleteNotice, dbDeleteSpecial, dbDeleteClosure,
+  dbDeleteMember, dbDeleteBooking, dbDeleteNotice, dbDeleteSpecial, dbDeleteClosure,
   saveAutoLogin, loadAutoLogin, saveScheduleTemplate
 } from "./db.js";
 import MemberLoginPage from "./components/MemberLoginPage.jsx";
@@ -62,11 +62,15 @@ export default function App(){
       const next = typeof updater==="function" ? updater(prev) : updater;
       if(!loadedRef.current) return next;
       const prevMap = new Map(prev.map(m=>[m.id, m]));
+      const nextMap = new Map(next.map(m=>[m.id, m]));
       const changed = next.filter(m => {
         const old = prevMap.get(m.id);
         return !old || JSON.stringify(old) !== JSON.stringify(m);
       });
+      // 삭제된 회원 DB에서도 제거 (기존에 누락되어 새로고침 시 복구되는 버그)
+      const toDelete = prev.filter(m => !nextMap.has(m.id));
       changed.forEach(m => dbUpsertMember(m));
+      toDelete.forEach(m => dbDeleteMember(m.id));
       return next;
     });
   }, []);
