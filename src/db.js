@@ -278,20 +278,16 @@ export async function saveScheduleTemplate(template) {
   } catch(e) { console.warn("schedule_template save:", e); }
 }
 
-// 자동로그인 (appdata 테이블)
+// 자동로그인 — DB 공유 버그 수정: localStorage 사용 (기기별 독립 저장)
 export async function saveAutoLogin(memberId) {
   try {
-    await _supabase.from("appdata").upsert({
-      key: "yogapian_autologin",
-      value: JSON.stringify({ memberId }),
-      updated_at: new Date().toISOString(),
-    });
+    if(memberId) localStorage.setItem("yogapian_autologin", JSON.stringify({ memberId }));
+    else localStorage.removeItem("yogapian_autologin");
   } catch(e) { console.warn("autologin save:", e); }
 }
 export async function loadAutoLogin() {
   try {
-    const { data } = await _supabase.from("appdata")
-      .select("value").eq("key", "yogapian_autologin").maybeSingle();
-    return data ? JSON.parse(data.value) : null;
+    const v = localStorage.getItem("yogapian_autologin");
+    return v ? JSON.parse(v) : null;
   } catch(e) { return null; }
 }
