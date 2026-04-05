@@ -78,7 +78,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   function _addMemberSale(member, type){
     const price=lookupPrice(member.memberType, member.total);
     if(!price) return;
-    setSales(p=>[...p,{id:Date.now(),date:member.startDate,type,memberId:member.id,memberName:member.name,memberType:member.memberType,total:member.total,amount:price,payment:member.payment||"",memo:""}]);
+    // Date.now() → Math.max 방식으로 변경: sales.id INTEGER 오버플로우 방지
+    setSales(p=>[...p,{id:Math.max(...p.map(s=>s.id),0)+1,date:member.startDate,type,memberId:member.id,memberName:member.name,memberType:member.memberType,total:member.total,amount:price,payment:member.payment||"",memo:""}]);
   }
 
   // 원데이 방문 기록을 정규 회원 1회로 인정하고 연동
@@ -109,7 +110,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     }));
     // 갱신 매출 자동 등록
     const mem=members.find(m=>m.id===mid);
-    if(mem){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Date.now(),date:rf.startDate,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
+    // Date.now() → Math.max 방식으로 변경: sales.id INTEGER 오버플로우 방지
+    if(mem){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Math.max(...p.map(s=>s.id),0)+1,date:rf.startDate,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
     setRenewT(null);setDetailM(null);
   }
   function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(!hd)return{...m,holding:null,holdingDays:0};

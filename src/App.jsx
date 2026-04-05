@@ -188,6 +188,28 @@ export default function App(){
     }
   }, [screen]); // eslint-disable-line
 
+  // 관리자 화면 진입 시 데이터 풀 리로드 — 오래 열어둔 상태에서 누락된 변경 사항 복구
+  useEffect(() => {
+    if(screen !== "admin") return;
+    (async () => {
+      try {
+        const all = await dbLoadAll();
+        if(all.bookings.length) {
+          const processed = all.bookings.map(b => {
+            if(b.status==="attended" && b.date<TODAY_STR && b.confirmedAttend==null)
+              return {...b, confirmedAttend:true};
+            return b;
+          });
+          setBookingsState(processed);
+        }
+        if(all.members.length)          setMembersState(all.members);
+        if(all.specialSchedules.length) setSpecialSchedulesState(all.specialSchedules);
+        if(all.closures.length)         setClosuresState(all.closures);
+        if(all.sales?.length)           setSalesState(all.sales);
+      } catch(e){ console.warn("관리자 재로드 실패:", e); }
+    })();
+  }, [screen]); // eslint-disable-line
+
   // 관리자 화면 실시간 동기화 — 예약/회원 변경 즉시 반영
   useEffect(() => {
     if(screen !== "admin") return;

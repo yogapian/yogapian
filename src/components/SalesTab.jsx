@@ -43,9 +43,9 @@ export default function SalesTab({sales, setSales}){
 
   function doAdd(){
     if(!addForm.amount || !+addForm.amount) return;
-    const id = Date.now();
+    // Date.now() → Math.max 방식으로 변경: sales.id INTEGER 오버플로우 방지
     setSales(p => [...p, {
-      id, date: addForm.date, type: addForm.type,
+      id: Math.max(...p.map(s=>s.id), 0) + 1, date: addForm.date, type: addForm.type,
       memberId: null, memberName: addForm.memberName,
       memberType: null, total: null,
       amount: +addForm.amount, payment: addForm.payment,

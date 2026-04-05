@@ -25,9 +25,9 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
       b.id === waiter.id ? { ...b, status: "reserved" } : b
     );
 
-    const nid = Date.now();
+    // Date.now() → Math.max 방식으로 변경: INTEGER 오버플로우 방지
     setNotices(prev => [{
-      id: nid,
+      id: Math.max(...prev.map(n=>n.id), 0) + 1,
       title: "📢 예약 확정 안내",
       content: `${fmtWithDow(rec.date)} ${slotLabel} ${slotTime} 수업 대기가 예약으로 확정되었습니다!`,
       pinned: false, createdAt: TODAY_STR, targetMemberId: waiter.memberId
@@ -61,8 +61,8 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
       return next;
     });
     if(sendNotice && mem) {
-      const nid = Date.now();
-      setNotices(prev=>[{id:nid, title:"📢 예약 취소 안내", content:`${fmtWithDow(rec.date)} ${slotLabel} ${slotTime} 수업 예약이 취소되었습니다.`, pinned:false, createdAt:TODAY_STR, targetMemberId:mem.id}, ...prev]);
+      // Date.now() → Math.max 방식으로 변경: INTEGER 오버플로우 방지
+      setNotices(prev=>[{id:Math.max(...prev.map(n=>n.id),0)+1, title:"📢 예약 취소 안내", content:`${fmtWithDow(rec.date)} ${slotLabel} ${slotTime} 수업 예약이 취소되었습니다.`, pinned:false, createdAt:TODAY_STR, targetMemberId:mem.id}, ...prev]);
     }
     onClose();
   }
