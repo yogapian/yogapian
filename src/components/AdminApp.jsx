@@ -169,19 +169,21 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
             <span style={S.studioName}>요가피안</span>
             <span style={{fontSize:11,background:"#2e3a2e",color:"#7a9a7a",borderRadius:5,padding:"2px 7px",fontWeight:700,marginLeft:4}}>관리자</span>
           </div>
-          <div style={S.sub}>{dateTimeStr}</div>
+          {/* 날짜·시간 + 새로고침 버튼(아이콘만): 시간 옆 작은 버튼으로 레이아웃 영향 최소화 */}
+          <div style={{display:"flex",alignItems:"center",gap:5}}>
+            <div style={S.sub}>{dateTimeStr}</div>
+            <button
+              onClick={async()=>{if(!onRefresh||refreshing)return;setRefreshing(true);try{await onRefresh();}finally{setRefreshing(false);}}}
+              disabled={refreshing}
+              style={{background:"none",border:"none",padding:"0 2px",fontSize:12,color:refreshing?"#bbb":"#7a9a7a",cursor:refreshing?"default":"pointer",lineHeight:1,flexShrink:0}}
+              title="최신 데이터 불러오기"
+            >{refreshing?"⏳":"🔄"}</button>
+          </div>
         </div>
-        {/* 헤더 우측 버튼 그룹: 모바일 1줄 유지 위해 gap 줄이고 padding 최소화 */}
-        <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"nowrap"}}>
-          <button style={{...S.navBtn,fontSize:11,padding:"6px 8px",color:"#92610a",background:"#fef3c7",border:"1px solid #e8c44a",fontWeight:600,whiteSpace:"nowrap"}} onClick={()=>setShowNotices(true)}>📢 공지</button>
-          {/* 새로고침 버튼: DB에서 최신 데이터 즉시 재로드 — 앱 재시작 없이 누락 booking 복구 */}
-          <button
-            onClick={async()=>{if(!onRefresh||refreshing)return;setRefreshing(true);try{await onRefresh();}finally{setRefreshing(false);}}}
-            disabled={refreshing}
-            style={{background:refreshing?"#e8e4dc":"#eef5ee",border:"1px solid #a0d0a0",borderRadius:8,padding:"6px 8px",fontSize:14,color:refreshing?"#aaa":"#2e6e44",cursor:refreshing?"default":"pointer",fontFamily:FONT,lineHeight:1,flexShrink:0}}
-            title="최신 데이터 불러오기"
-          >{refreshing?"⏳":"🔄"}</button>
-          <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"6px 8px",fontSize:11,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>로그아웃</button>
+        {/* 헤더 우측 버튼 그룹: 공지관리 + 로그아웃만 */}
+        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"nowrap"}}>
+          <button style={{...S.navBtn,fontSize:12,padding:"7px 11px",color:"#92610a",background:"#fef3c7",border:"1px solid #e8c44a",fontWeight:600,whiteSpace:"nowrap"}} onClick={()=>setShowNotices(true)}>📢 공지관리</button>
+          <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>로그아웃</button>
         </div>
       </div>
 
