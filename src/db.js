@@ -190,7 +190,9 @@ export async function dbLoadAll() {
   // ⚠️ Supabase JS의 기본 row limit = 1000. 초과 시 최신 데이터가 잘림 → limit 명시 필수
   const [mRes, bRes, nRes, sRes, cRes, slRes] = await Promise.all([
     _supabase.from("members").select("*").order("id").limit(2000),
-    _supabase.from("bookings").select("*").order("id").limit(10000),
+    // Supabase 서버의 max_rows=1000 제한 우회: 최근 4개월 데이터만 조회
+    // 오래된 booking은 앱 화면에 표시 불필요 + 신규 데이터 누락 방지
+    (()=>{ const d=new Date(); d.setMonth(d.getMonth()-4); const from=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`; return _supabase.from("bookings").select("*").gte("date",from).order("id").limit(10000); })(),
     _supabase.from("notices").select("*").order("id", { ascending: false }).limit(500),
     _supabase.from("special_schedules").select("*").order("date").limit(2000),
     _supabase.from("closures").select("*").order("date").limit(2000),
