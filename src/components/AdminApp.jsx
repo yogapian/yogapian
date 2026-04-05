@@ -171,16 +171,17 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
           </div>
           <div style={S.sub}>{dateTimeStr}</div>
         </div>
-        <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
-          <button style={{...S.navBtn,fontSize:12,padding:"7px 11px",color:"#92610a",background:"#fef3c7",border:"1px solid #e8c44a",fontWeight:600}} onClick={()=>setShowNotices(true)}>📢 공지관리</button>
+        {/* 헤더 우측 버튼 그룹: 모바일 1줄 유지 위해 gap 줄이고 padding 최소화 */}
+        <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"nowrap"}}>
+          <button style={{...S.navBtn,fontSize:11,padding:"6px 8px",color:"#92610a",background:"#fef3c7",border:"1px solid #e8c44a",fontWeight:600,whiteSpace:"nowrap"}} onClick={()=>setShowNotices(true)}>📢 공지</button>
           {/* 새로고침 버튼: DB에서 최신 데이터 즉시 재로드 — 앱 재시작 없이 누락 booking 복구 */}
           <button
             onClick={async()=>{if(!onRefresh||refreshing)return;setRefreshing(true);try{await onRefresh();}finally{setRefreshing(false);}}}
             disabled={refreshing}
-            style={{background:refreshing?"#e8e4dc":"#eef5ee",border:"1px solid #a0d0a0",borderRadius:8,padding:"8px 10px",fontSize:14,color:refreshing?"#aaa":"#2e6e44",cursor:refreshing?"default":"pointer",fontFamily:FONT,lineHeight:1}}
+            style={{background:refreshing?"#e8e4dc":"#eef5ee",border:"1px solid #a0d0a0",borderRadius:8,padding:"6px 8px",fontSize:14,color:refreshing?"#aaa":"#2e6e44",cursor:refreshing?"default":"pointer",fontFamily:FONT,lineHeight:1,flexShrink:0}}
             title="최신 데이터 불러오기"
           >{refreshing?"⏳":"🔄"}</button>
-          <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#7a6e60",cursor:"pointer",fontFamily:FONT}}>로그아웃</button>
+          <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"6px 8px",fontSize:11,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>로그아웃</button>
         </div>
       </div>
 
