@@ -3,6 +3,9 @@
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(clients.claim()));
 
+// Android Chrome PWA 설치 프롬프트 조건: fetch 핸들러 필수
+self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
+
 // 푸시 메시지 수신 → 알림 표시
 self.addEventListener('push', e => {
   const data = e.data ? e.data.json() : {};
