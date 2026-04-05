@@ -53,9 +53,10 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     const e={...form,phone,phone4,endDate:autoEnd||form.endDate,total:+form.total,extensionDays:+(form.extensionDays||0),holdingDays:+(form.holdingDays||0),isNew:!!form.isNew,manualStatus:form.manualStatus||null};
     if(editId)setMembers(p=>p.map(m=>{
       if(m.id!==editId)return m;
-      // 편집 시 renewalHistory 마지막 항목도 동기화 (total/날짜 불일치 버그 방지)
+      // 편집 시 renewalHistory 마지막 항목 동기화:
+      // total/memberType 변경만 반영. startDate/endDate는 갱신폼 전용 — 편집 시 덮어쓰면 기수 날짜가 오염되는 버그 방지
       const rh=m.renewalHistory||[];
-      const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,total:e.total,startDate:e.startDate,endDate:e.endDate,memberType:e.memberType}:r):rh;
+      const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,total:e.total,memberType:e.memberType}:r):rh;
       return{...m,...e,renewalHistory:updRH};
     }));
     else{
