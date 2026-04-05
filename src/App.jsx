@@ -251,6 +251,26 @@ export default function App(){
     return () => _supabase.removeChannel(channel);
   }, [screen, loggedMember?.id]); // eslint-disable-line
 
+  // 수동 새로고침 — 관리자가 🔄 버튼 클릭 시 DB에서 최신 데이터 즉시 재로드
+  const handleRefresh = useCallback(async () => {
+    try {
+      const all = await dbLoadAll();
+      if(all.bookings.length){
+        const processed = all.bookings.map(b=>{
+          if(b.status==="attended" && b.date<TODAY_STR && b.confirmedAttend==null)
+            return {...b, confirmedAttend:true};
+          return b;
+        });
+        setBookingsState(processed);
+      }
+      if(all.members.length)          setMembersState(all.members);
+      if(all.specialSchedules.length) setSpecialSchedulesState(all.specialSchedules);
+      if(all.closures.length)         setClosuresState(all.closures);
+      if(all.sales?.length)           setSalesState(all.sales);
+      if(all.notices.length)          setNoticesState(all.notices);
+    } catch(e){ console.warn("수동 새로고침 실패:", e); }
+  }, []); // eslint-disable-line
+
   const setScheduleTemplate = useCallback((updater) => {
     setScheduleTemplateState(prev => {
       const next = typeof updater==="function" ? updater(prev) : updater;
@@ -318,7 +338,8 @@ export default function App(){
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input,select,textarea{font-family:${FONT};outline:none;-webkit-appearance:none}.card{transition:box-shadow .2s,transform .15s}@media(hover:hover){.card:hover{box-shadow:0 6px 24px rgba(60,50,30,.14);transform:translateY(-2px)}}.pill:hover{opacity:.78}button:active{opacity:.72}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c8c0b0;border-radius:4px}@media(max-width:600px){html{font-size:14px}.admin-grid{grid-template-columns:1fr!important}.admin-pillrow{gap:5px!important}.admin-toolbar{flex-direction:column!important}}`}</style>
       <SaveBadge/>
-      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
+      {/* onRefresh: 🔄 버튼으로 DB 최신 데이터 즉시 재로드 */}
+      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}} onRefresh={handleRefresh}/>
       {process.env.NODE_ENV === "development" && <Agentation />}
     </div>
     </ClosuresContext.Provider>

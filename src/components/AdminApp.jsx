@@ -12,11 +12,13 @@ import HoldingModal from "./HoldingModal.jsx";
 import NoticeManager from "./NoticeManager.jsx";
 import SalesTab from "./SalesTab.jsx";
 
-export default function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,specialSchedules,setSpecialSchedules,closures,setClosures,scheduleTemplate,setScheduleTemplate,sales,setSales,onLogout}){
+// onRefresh: 관리자가 수동으로 DB 데이터를 즉시 다시 불러올 수 있도록 App.jsx에서 주입
+export default function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,specialSchedules,setSpecialSchedules,closures,setClosures,scheduleTemplate,setScheduleTemplate,sales,setSales,onLogout,onRefresh}){
   const [tab,setTab]=useState("attendance");
   const [filter,setFilter]=useState("on");
   const [search,setSearch]=useState("");
   const [showForm,setShowForm]=useState(false);
+  const [refreshing,setRefreshing]=useState(false); // 새로고침 버튼 로딩 상태
   const [editId,setEditId]=useState(null);
   const [form,setForm]=useState({});
   const [detailM,setDetailM]=useState(null);
@@ -171,6 +173,13 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
         </div>
         <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
           <button style={{...S.navBtn,fontSize:12,padding:"7px 11px",color:"#92610a",background:"#fef3c7",border:"1px solid #e8c44a",fontWeight:600}} onClick={()=>setShowNotices(true)}>📢 공지관리</button>
+          {/* 새로고침 버튼: DB에서 최신 데이터 즉시 재로드 — 앱 재시작 없이 누락 booking 복구 */}
+          <button
+            onClick={async()=>{if(!onRefresh||refreshing)return;setRefreshing(true);try{await onRefresh();}finally{setRefreshing(false);}}}
+            disabled={refreshing}
+            style={{background:refreshing?"#e8e4dc":"#eef5ee",border:"1px solid #a0d0a0",borderRadius:8,padding:"8px 10px",fontSize:14,color:refreshing?"#aaa":"#2e6e44",cursor:refreshing?"default":"pointer",fontFamily:FONT,lineHeight:1}}
+            title="최신 데이터 불러오기"
+          >{refreshing?"⏳":"🔄"}</button>
           <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#7a6e60",cursor:"pointer",fontFamily:FONT}}>로그아웃</button>
         </div>
       </div>
