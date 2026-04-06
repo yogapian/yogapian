@@ -4,11 +4,12 @@ import { parseLocal, fmt, addDays } from "../utils.js";
 import { holdingElapsed } from "../memberCalc.js";
 import S from "../styles.js";
 
-// closures: 홀딩 기간 내 전체 휴강일 수 계산 → 연장일수에서 차감
-// (어차피 수업 없는 날은 홀딩 일수에서 제외)
+// 홀딩 기간 내 정기 휴강(extensionOverride 없음)만 차감
+// - 정기 휴강: 연장 없음 → 주말과 동일, 수업 없으니 홀딩 일수에서 제외
+// - 연장 있는 휴강: 이미 종료일 연장이 별도 적용됨 → 홀딩 일수에서 건드리지 않음
 function countClosuresInRange(closures=[], startDate, endDate) {
   if(!startDate || !endDate) return 0;
-  return closures.filter(cl => !cl.timeSlot && cl.date >= startDate && cl.date <= endDate).length;
+  return closures.filter(cl => !cl.timeSlot && !cl.extensionOverride && cl.date >= startDate && cl.date <= endDate).length;
 }
 
 export default function HoldingModal({member,onClose,onSave,closures=[]}){
