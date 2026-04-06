@@ -27,6 +27,10 @@ export function ContactBar(){
           전화 문의
         </a>
       </div>
+      {/* 카피라이트 문구 */}
+      <div style={{textAlign:"center",marginTop:10,fontSize:10,color:"#c0b8aa"}}>
+        © 2026 요가피안. All rights reserved.
+      </div>
     </div>
   );
 }
@@ -59,6 +63,10 @@ export function MemberContactBar(){
           <span style={{fontSize:12,opacity:0.7}}>📞</span>
           전화 문의
         </a>
+      </div>
+      {/* 카피라이트 문구 */}
+      <div style={{textAlign:"center",marginTop:10,fontSize:10,color:"#c0b8aa"}}>
+        © 2026 요가피안. All rights reserved.
       </div>
       <div style={{paddingBottom:24}}/>
     </div>
