@@ -123,7 +123,7 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
       )}
 
       {/* ── 액션 버튼 (상세보기 → AdminDetailModal 열림) ────────────────── */}
-      <div style={S.actions}>
+      <div style={{...S.actions,marginTop:8}}>
         <button style={S.detailBtn} onClick={onDetail}>상세보기</button>
       </div>
     </div>
