@@ -134,7 +134,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
                 return (
                   <div style={{fontSize:11,color:"#6a7090",background:"#f0f2f5",borderRadius:8,padding:"8px 12px",marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
                     <div>홀딩 기간 <b style={{color:"#3d5494"}}>{h ? `${fd(h.startDate)} ~ ${fd(h.endDate)}` : `${m.extensionDays}일`}</b></div>
-                    <div>종료일 <b style={{color:"#5a6070"}}>{fmt(m.endDate)}</b> → 연장 후 <b style={{color:"#2e6e44"}}>{fmt(end)}</b></div>
+                    <div>종료일 <b style={{color:"#5a6070"}}>{fmt(m.endDate)}</b> → 연장 후 <b style={{color:"#b86a10"}}>{fmt(end)}</b></div>
                   </div>
                 );
               })()}

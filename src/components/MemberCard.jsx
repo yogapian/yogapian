@@ -3,6 +3,7 @@
 // 표시 내용: 상태 뱃지 / 횟수 프로그레스바 / 등록·종료일 / D-day 칩 / 상세보기 버튼
 // 스타일 공통 토큰: S.card, S.cardTop, S.statusBadge, S.dateRow, S.dChip, S.actions (styles.js)
 
+import { useState } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt } from "../utils.js";
 import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf } from "../memberCalc.js";
@@ -12,6 +13,7 @@ import S from "../styles.js";
 export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   // ── 계산값 ─────────────────────────────────────────────────────────────────
   const closures=useClosures();
+  const [showHoldDetail,setShowHoldDetail]=useState(false); // 홀딩 상세 펼침 여부
   const dl=calcDL(m,closures);           // 종료까지 남은 일수 (음수 = 이미 지남)
   const expired=dl<0;
   const usedCnt=usedAsOf(m.id,TODAY_STR,bookings,[m]); // 오늘까지 출석(attended) 횟수
@@ -95,13 +97,28 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
                 <span style={{...S.dateVal,color:dl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(end)}</span>
                 {/* 별도휴강 연장일 뱃지 */}
                 {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
-                {/* 홀딩 연장일 뱃지 */}
-                {(m.extensionDays||0)>0&&<span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{m.extensionDays}일</span>}
+                {/* 홀딩 연장일 뱃지 — 클릭 시 기간 상세 펼침 (회원 화면과 동일) */}
+                {(m.extensionDays||0)>0&&(
+                  <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
+                    홀딩+{m.extensionDays}일 {showHoldDetail?"▲":"▼"}
+                  </button>
+                )}
               </div>
             </div>
             {/* D-day 칩: 음수=D+n (초과), 0=D-Day, 양수=D-n */}
             <div style={{...S.dChip,background:dl<0?"#f5eeee":dl<=7?"#fdf3e3":"#eef4ee",color:dl<0?"#c97474":dl<=7?"#9a5a10":"#2e6e44"}}>{dl<0?`D+${Math.abs(dl)}`:dl===0?"D-Day":`D-${dl}`}</div>
           </div>
+          {/* 홀딩 상세 펼침: 홀딩 기간 + 연장 후 종료일 (주황) */}
+          {showHoldDetail&&(m.extensionDays||0)>0&&(()=>{
+            const h=m.holdingHistory?.slice(-1)[0];
+            const fd=s=>s?s.replace(/-/g,"."):""
+            return(
+              <div style={{fontSize:11,color:"#6a7090",background:"#f0f2f5",borderRadius:8,padding:"8px 12px",marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
+                <div>홀딩 기간 <b style={{color:"#3d5494"}}>{h?`${fd(h.startDate)} ~ ${fd(h.endDate)}`:`${m.extensionDays}일`}</b></div>
+                <div>종료일 <b style={{color:"#5a6070"}}>{fmt(m.endDate)}</b> → 연장 후 <b style={{color:"#b86a10"}}>{fmt(end)}</b></div>
+              </div>
+            );
+          })()}
         </>
       )}
 
