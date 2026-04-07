@@ -58,7 +58,11 @@ export function usedAsOf(memberId, targetDate, bookings, members){
   const rh=member.renewalHistory||[];
   let startDate=member.startDate;
   // 역순 순회: 기수 중복 시 최신 기수(startDate 큰 것) 우선 적용
-  for(let ri=rh.length-1;ri>=0;ri--){const r=rh[ri];if(targetDate>=r.startDate&&targetDate<=r.endDate){startDate=r.startDate;break;}}
+  let found=false;
+  for(let ri=rh.length-1;ri>=0;ri--){const r=rh[ri];if(targetDate>=r.startDate&&targetDate<=r.endDate){startDate=r.startDate;found=true;break;}}
+  // 해당 날짜가 모든 기수 범위 밖(홀딩 중 기간 만료 등): 가장 최신 기수 startDate 사용
+  // — 폴백이 member.startDate이면 전체 이력을 다 카운트해 잔여횟수가 0이 되는 버그 방지
+  if(!found && rh.length>0) startDate=rh[rh.length-1].startDate;
 
   let cnt=0;
   for(let i=0;i<bookings.length;i++){
