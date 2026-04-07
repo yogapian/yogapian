@@ -645,7 +645,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         const qm=members.find(m=>m.id===quickDetailM.id)||quickDetailM;
         const qdl=calcDL(qm,closures);
         const qend=effEnd(qm,closures);
-        const qexpired=qdl<0;
+        // 홀딩 중이면 endDate 초과해도 expired 아님
+        const qexpired=qdl<0&&!qm.holding;
         const qusedCnt=usedAsOf(qm.id,TODAY_STR,bookings,[qm]);
         const qrem = qexpired ? 0 : Math.max(0, Number(qm.total) - qusedCnt);
         const qstatus=getDisplayStatus(qm,closures,bookings);

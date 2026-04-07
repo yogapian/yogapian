@@ -17,7 +17,9 @@ export function getClosureExtDays(m, closures=[]) {
 
 export const effEnd=(m, closures=[])=>{
   const closureExt = getClosureExtDays(m, closures);
-  const total = closureExt + (m.extensionDays||0) + (m.holdingDays||0);
+  // 진행 중인 홀딩 경과일 동적 포함 — 홀딩 기간 제한 없으므로 endDate 초과해도 expired 처리 안 되게
+  const activeHoldDays = m.holding ? holdingElapsed(m.holding) : 0;
+  const total = closureExt + (m.extensionDays||0) + (m.holdingDays||0) + activeHoldDays;
   return total > 0 ? addDays(m.endDate, total) : m.endDate;
 };
 

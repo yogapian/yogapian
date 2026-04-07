@@ -16,7 +16,8 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   const tc = TYPE_CFG[m.memberType] || TYPE_CFG["1month"];
   const dl = calcDL(m, closuresCxt);
   const end = effEnd(m, closuresCxt);
-  const expired = dl < 0;
+  // 홀딩 중이면 endDate 초과해도 expired 아님 — effEnd가 동적 연장되지만 이중 안전장치
+  const expired = dl < 0 && !m.holding;
   const usedCnt = usedAsOf(m.id, TODAY_STR, bookings, [m]);
   const rem = expired ? 0 : Math.max(0, m.total - usedCnt);
   const pct = expired ? 100 : Math.round(usedCnt / Math.max(m.total, 1) * 100);
