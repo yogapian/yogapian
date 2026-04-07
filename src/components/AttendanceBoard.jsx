@@ -9,7 +9,7 @@
 //           waitPopup(대기자 수락/거절) / showTemplateMgr(시간표 관리)
 
 import { useState, useRef, useEffect } from "react";
-import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
+import { FONT, TODAY_STR, getTodayStr, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
 import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, calc3MonthEnd, getSlotCapacity } from "../memberCalc.js";
 import S from "../styles.js";
@@ -20,7 +20,8 @@ import ScheduleTemplateManager from "./ScheduleTemplateManager.jsx";
 
 export default function AttendanceBoard({members,bookings,setBookings,setMembers,specialSchedules,setSpecialSchedules,closures,setClosures,notices,setNotices,scheduleTemplate,setScheduleTemplate,onMemberClick}){
   // ── State ──────────────────────────────────────────────────────────────────
-  const [date,setDate]=useState(TODAY_STR);         // 현재 선택된 날짜 (YYYY-MM-DD)
+  // getTodayStr() 호출로 항상 현재 KST 날짜 사용 — TODAY_STR은 모듈 로드 시 고정이라 stale 가능
+  const [date,setDate]=useState(()=>getTodayStr()); // 현재 선택된 날짜 (YYYY-MM-DD)
   const [showCal,setShowCal]=useState(false);        // 달력 피커 열림 여부
   const [addModal,setAddModal]=useState(null);        // 출석 추가 모달: null 또는 slotKey
   const [addForm,setAddForm]=useState({type:"member",memberId:"",onedayName:"",walkIn:false});
