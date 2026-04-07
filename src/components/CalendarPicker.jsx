@@ -47,16 +47,16 @@ export default function CalendarPicker({value,onChange,onClose,closures=[],speci
 
           let color="#2e2e2e";
           if(sel2) color="#fff";
-          else if(fullClosure) color="#c97474";
+          else if(fullClosure) color="#939393"; // 회원 달력과 동일하게 휴강일=회색
           else if(holiday||dow===0) color="#e05050";
           else if(dow===6) color="#4a70d0";
 
-          const textDecor=fullClosure&&!sel2?"line-through":"none";
+          const textDecor="none"; // 회원 달력과 동일하게 취소선 제거
 
           let ind=null;
           if(!sel2){
             if(fullClosure) ind=<div style={{fontSize:8,color:"#a83030",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#fde8e8",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>휴강</div>;
-            else if(partialClosure){const slabel={dawn:"새벽",morning:"오전",lunch:"점심",afternoon:"오후",evening:"저녁"}[partialClosure.timeSlot]||partialClosure.timeSlot;ind=<div style={{fontSize:8,color:"#9a5a10",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#fdf0d8",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>{slabel}✕</div>;}
+            else if(partialClosure){const slabel={dawn:"새벽",morning:"오전",lunch:"점심",afternoon:"오후",evening:"저녁"}[partialClosure.timeSlot]||partialClosure.timeSlot;ind=<div style={{fontSize:8,color:"#c97050",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#fdf0ec",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>{slabel}✕</div>;} // 회원 달력 부분휴강 색상 통일
             else if(isOpen) ind=<div style={{fontSize:8,color:"#1a6e4a",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#d8f5ec",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>오픈</div>;
             else if(isRegular&&hasTimeChange) ind=<div style={{fontSize:8,color:"#c97474",fontWeight:700,lineHeight:1.2,marginTop:1}}>변경❗</div>;
             else if(isRegular&&special?.dailyNote) ind=<div style={{fontSize:8,color:"transparent",fontWeight:700,lineHeight:1.2,marginTop:1}}>📌</div>;
