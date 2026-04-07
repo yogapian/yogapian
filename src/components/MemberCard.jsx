@@ -15,7 +15,8 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const closures=useClosures();
   const [showHoldDetail,setShowHoldDetail]=useState(false); // 홀딩 상세 펼침 여부
   const dl=calcDL(m,closures);           // 종료까지 남은 일수 (음수 = 이미 지남)
-  const expired=dl<0;
+  // 홀딩 중이면 endDate 초과해도 expired 아님 — effEnd가 동적 연장되지만 이중 안전장치
+  const expired=dl<0&&!m.holding;
   const usedCnt=usedAsOf(m.id,TODAY_STR,bookings,[m]); // 오늘까지 출석(attended) 횟수
   const rem=expired?0:Math.max(0,m.total-usedCnt);     // 잔여 횟수 (만료면 0)
   const pct=expired?100:Math.round(usedCnt/m.total*100); // 프로그레스바 % (0~100)
