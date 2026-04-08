@@ -12,13 +12,15 @@ import HoldingModal from "./HoldingModal.jsx";
 import NoticeManager from "./NoticeManager.jsx";
 import SalesTab from "./SalesTab.jsx";
 
-export default function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,specialSchedules,setSpecialSchedules,closures,setClosures,scheduleTemplate,setScheduleTemplate,sales,setSales,adminNotifLog=[],adminNotifUnread=0,onMarkNotifRead,onClearNotifLog,onLogout}){
+// onRefresh: 관리자가 수동으로 DB 데이터를 즉시 다시 불러올 수 있도록 App.jsx에서 주입
+export default function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,specialSchedules,setSpecialSchedules,closures,setClosures,scheduleTemplate,setScheduleTemplate,sales,setSales,adminNotifLog=[],adminNotifUnread=0,onMarkNotifRead,onClearNotifLog,onRefresh,onLogout}){
   const [tab,setTab]=useState("attendance");
   const [filter,setFilter]=useState("on");
   const [search,setSearch]=useState("");
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const [showNotifPanel,setShowNotifPanel]=useState(false); // 알림 패널 열림 여부
+  const [refreshing,setRefreshing]=useState(false); // 새로고침 버튼 로딩 상태
   const [form,setForm]=useState({});
   const [detailM,setDetailM]=useState(null);
   const [renewT,setRenewT]=useState(null);
@@ -165,8 +167,18 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
             <span style={S.studioName}>요가피안</span>
             <span style={{fontSize:11,background:"#2e3a2e",color:"#7a9a7a",borderRadius:5,padding:"2px 7px",fontWeight:700,marginLeft:4}}>관리자</span>
           </div>
-          <div style={S.sub}>{dateTimeStr}</div>
+          {/* 날짜·시간 + 🔄 새로고침: 시간 옆 작은 버튼으로 레이아웃 영향 최소화 */}
+          <div style={{display:"flex",alignItems:"center",gap:5}}>
+            <div style={S.sub}>{dateTimeStr}</div>
+            <button
+              onClick={async()=>{if(!onRefresh||refreshing)return;setRefreshing(true);try{await onRefresh();}finally{setRefreshing(false);}}}
+              disabled={refreshing}
+              style={{background:"none",border:"none",padding:"0 2px",fontSize:12,color:refreshing?"#bbb":"#7a9a7a",cursor:refreshing?"default":"pointer",lineHeight:1,flexShrink:0}}
+              title="최신 데이터 불러오기"
+            >{refreshing?"⏳":"🔄"}</button>
+          </div>
         </div>
+        {/* 헤더 우측: 🔔 알림 + 📢 공지 + 로그아웃 */}
         <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
           {/* 🔔 알림 버튼 — 오늘 예약/취소 로그 */}
           <div style={{position:"relative"}}>
@@ -179,30 +191,6 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
                 </span>
               )}
             </button>
-            {/* 알림 드롭다운 패널 */}
-            {showNotifPanel&&(
-              <div style={{position:"absolute",right:0,top:"calc(100% + 6px)",width:280,background:"#fff",borderRadius:12,boxShadow:"0 4px 24px rgba(40,35,25,.18)",zIndex:200,border:"1px solid #e8e4dc",overflow:"hidden"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px 8px",borderBottom:"1px solid #f0ece4"}}>
-                  <span style={{fontSize:12,fontWeight:700,color:"#3a4a3a",fontFamily:FONT}}>오늘 알림</span>
-                  {adminNotifLog.length>0&&(
-                    <button onClick={()=>{onClearNotifLog&&onClearNotifLog();}} style={{fontSize:10,color:"#9a8e80",background:"none",border:"none",cursor:"pointer",fontFamily:FONT,padding:"2px 6px"}}>전체 지우기</button>
-                  )}
-                </div>
-                <div style={{maxHeight:320,overflowY:"auto"}}>
-                  {adminNotifLog.length===0?(
-                    <div style={{padding:"24px 0",textAlign:"center",fontSize:12,color:"#b0a090",fontFamily:FONT}}>오늘 알림이 없습니다</div>
-                  ):adminNotifLog.map(n=>(
-                    <div key={n.id} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 14px",borderBottom:"1px solid #f8f6f2"}}>
-                      <span style={{fontSize:16,flexShrink:0}}>{n.type==="cancel"?"❌":n.type==="waiting"?"⏳":"✅"}</span>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:12,color:"#2a3a2a",fontFamily:FONT,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.text}</div>
-                      </div>
-                      <span style={{fontSize:10,color:"#b0a090",flexShrink:0,fontFamily:FONT}}>{n.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
           <button style={{...S.navBtn,fontSize:11,padding:"6px 9px",color:"#92610a",background:"#fef3c7",border:"1px solid #e8c44a",fontWeight:600}} onClick={()=>setShowNotices(true)}>📢 공지</button>
           <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"7px 10px",fontSize:11,color:"#7a6e60",cursor:"pointer",fontFamily:FONT}}>로그아웃</button>
@@ -243,8 +231,33 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       {renewT&&<RenewalModal member={members.find(m=>m.id===renewT)} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)}/>}
       {holdT&&<HoldingModal member={members.find(m=>m.id===holdT)} onClose={()=>setHoldT(null)} onSave={hd=>applyHolding(holdT,hd)}/>}
       {showNotices&&<NoticeManager notices={notices} setNotices={setNotices} onClose={()=>setShowNotices(false)}/>}
-      {/* 알림 패널 외부 클릭 시 닫기 */}
-      {showNotifPanel&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setShowNotifPanel(false)}/>}
+      {/* 🔔 알림 패널 — position:fixed로 모바일에서도 화면 밖으로 안 나가도록 */}
+      {showNotifPanel&&(
+        <>
+          <div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setShowNotifPanel(false)}/>
+          <div style={{position:"fixed",top:72,right:12,width:"min(300px, calc(100vw - 24px))",background:"#fff",borderRadius:12,boxShadow:"0 4px 24px rgba(40,35,25,.18)",zIndex:200,border:"1px solid #e8e4dc",overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px 8px",borderBottom:"1px solid #f0ece4"}}>
+              <span style={{fontSize:12,fontWeight:700,color:"#3a4a3a",fontFamily:FONT}}>오늘 알림</span>
+              {adminNotifLog.length>0&&(
+                <button onClick={()=>{onClearNotifLog&&onClearNotifLog();setShowNotifPanel(false);}} style={{fontSize:10,color:"#9a8e80",background:"none",border:"none",cursor:"pointer",fontFamily:FONT,padding:"2px 6px"}}>전체 지우기</button>
+              )}
+            </div>
+            <div style={{maxHeight:"50vh",overflowY:"auto"}}>
+              {adminNotifLog.length===0?(
+                <div style={{padding:"24px 0",textAlign:"center",fontSize:12,color:"#b0a090",fontFamily:FONT}}>오늘 알림이 없습니다</div>
+              ):adminNotifLog.map(n=>(
+                <div key={n.id} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid #f8f6f2"}}>
+                  <span style={{fontSize:16,flexShrink:0}}>{n.type==="cancel"?"❌":n.type==="waiting"?"⏳":"✅"}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,color:"#2a3a2a",fontFamily:FONT,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.text}</div>
+                  </div>
+                  <span style={{fontSize:10,color:"#b0a090",flexShrink:0,fontFamily:FONT}}>{n.time}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {showForm&&(
         <div style={S.overlay} onClick={()=>setShowForm(false)}>
