@@ -127,15 +127,16 @@ export default function App(){
         const kst = new Date(new Date().getTime() + 9*3600*1000);
         const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
         // buildNotifText는 선언 전이므로 여기서 인라인 처리 (동일 포맷)
+        // 포맷: ✅예약 [이름] MM.DD (요일) 슬롯명 시간
         const name  = payload.memberName || "?";
         const label = payload.slotLabel || payload.slotKey || "?";
         const time  = payload.slotTime  ? ` ${payload.slotTime}` : "";
         const [py, pm, pd] = (payload.date||"").split("-");
-        const date  = (py && pm && pd) ? ` ${pm}.${pd}(${DOW_KO[new Date(Number(py),Number(pm)-1,Number(pd)).getDay()]})` : "";
+        const date  = (py && pm && pd) ? ` ${pm}.${pd} (${DOW_KO[new Date(Number(py),Number(pm)-1,Number(pd)).getDay()]})` : "";
         let text, type;
-        if      (payload.event === "reserve") { text = `✅예약 ${name}${date} ${label}${time}`; type = "reserve"; }
-        else if (payload.event === "waiting") { text = `⏳대기 ${name}${date} ${label}${time}`; type = "waiting"; }
-        else if (payload.event === "cancel")  { text = `❌취소 ${name}${date} ${label}${time}`; type = "cancel"; }
+        if      (payload.event === "reserve") { text = `✅예약 [${name}]${date} ${label}${time}`; type = "reserve"; }
+        else if (payload.event === "waiting") { text = `⏳대기 [${name}]${date} ${label}${time}`; type = "waiting"; }
+        else if (payload.event === "cancel")  { text = `❌취소 [${name}]${date} ${label}${time}`; type = "cancel"; }
         if (!text) return;
         const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
         setAdminNotifLog(prev => [entry, ...prev]);
@@ -146,12 +147,12 @@ export default function App(){
     return () => { _supabase.removeChannel(ch); adminNotifChRef.current = null; };
   }, []); // eslint-disable-line
 
-  // notifDateLabel: "2026-04-10" → "04.10(금)" 형식으로 변환 (관리자 벨 알림용)
+  // notifDateLabel: "2026-04-10" → "04.10 (금)" 형식으로 변환 (관리자 벨 알림용)
   const notifDateLabel = (dateStr) => {
     if (!dateStr) return "";
     const [y, m, d] = dateStr.split("-");
     const dow = DOW_KO[new Date(Number(y), Number(m) - 1, Number(d)).getDay()];
-    return `${m}.${d}(${dow})`;
+    return `${m}.${d} (${dow})`;
   };
 
   // buildNotifText: 알림 종류별 텍스트 생성 (벨 + 브로드캐스트 수신 공통 사용)
@@ -161,9 +162,9 @@ export default function App(){
     const label = data.slotLabel  || data.slotKey || "?";
     const time  = data.slotTime   ? ` ${data.slotTime}` : "";
     const date  = data.date ? ` ${notifDateLabel(data.date)}` : "";
-    if (data.event === "reserve") return { text:`✅예약 ${name}${date} ${label}${time}`, type:"reserve" };
-    if (data.event === "waiting") return { text:`⏳대기 ${name}${date} ${label}${time}`, type:"waiting" };
-    if (data.event === "cancel")  return { text:`❌취소 ${name}${date} ${label}${time}`, type:"cancel" };
+    if (data.event === "reserve") return { text:`✅예약 [${name}]${date} ${label}${time}`, type:"reserve" };
+    if (data.event === "waiting") return { text:`⏳대기 [${name}]${date} ${label}${time}`, type:"waiting" };
+    if (data.event === "cancel")  return { text:`❌취소 [${name}]${date} ${label}${time}`, type:"cancel" };
     return null;
   };
 
