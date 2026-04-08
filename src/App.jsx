@@ -117,12 +117,12 @@ export default function App(){
   }, [adminNotifLog]);
 
   // ── 관리자 알림 브로드캐스트 채널 — 앱 전체에서 단일 인스턴스 유지 ─────────
-  // 동일 클라이언트에서 채널명 중복 방지를 위해 mountEffect에서 1회만 생성
-  // member 모드: onBookingNotif prop으로 전달받아 ch.send() 호출 (전송)
-  // admin 모드: screenRef로 판별 후 알림 로그에 적재 (수신)
+  // 크로스 디바이스(회원 폰 → 관리자 PC) 전용 수신
+  // 같은 탭 시나리오는 onBookingNotif에서 직접 state 업데이트로 처리
   useEffect(() => {
     const ch = _supabase.channel("yogapian-admin-notif")
       .on("broadcast", { event: "booking_change" }, ({ payload }) => {
+        // Supabase는 sender에게 echo 안 함 → 여기 오는 건 다른 기기에서 온 것
         if (!payload || screenRef.current !== "admin") return;
         const kst = new Date(new Date().getTime() + 9*3600*1000);
         const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
@@ -145,11 +145,32 @@ export default function App(){
     return () => { _supabase.removeChannel(ch); adminNotifChRef.current = null; };
   }, []); // eslint-disable-line
 
-  // onBookingNotif: 회원이 예약/취소 시 호출 → 관리자 브로드캐스트 채널로 전송
+  // onBookingNotif: 회원이 예약/취소 시 호출
+  // 동작 1) 직접 state 업데이트 → 같은 탭에서 회원→관리자 전환 시 즉시 알림 표시
+  //         (Supabase broadcast는 sender 에게 echo 없음 → 같은 탭 전환 시 수신 불가)
+  // 동작 2) 브로드캐스트 전송 → 다른 기기/탭의 관리자 화면에서 수신
   const onBookingNotif = useCallback((data) => {
+    // ── 1. 직접 state 업데이트 (같은 탭 시나리오) ─────────────────────────────
+    const _kst = new Date(new Date().getTime() + 9*3600*1000);
+    const _t = `${String(_kst.getUTCHours()).padStart(2,"0")}:${String(_kst.getUTCMinutes()).padStart(2,"0")}`;
+    const _dateStr = data.date && data.date !== getTodayStr()
+      ? ` (${data.date.slice(5).replace("-",".")})` : "";
+    const _name  = data.memberName || "?";
+    const _icon  = data.slotIcon   || "📍";
+    const _label = data.slotLabel  || data.slotKey || "?";
+    let _text, _type;
+    if      (data.event === "reserve") { _text = `${_name} ${_icon}${_label}${_dateStr} 예약`; _type = "reserve"; }
+    else if (data.event === "waiting") { _text = `${_name} ${_icon}${_label}${_dateStr} 대기`; _type = "waiting"; }
+    else if (data.event === "cancel")  { _text = `${_name} ${_icon}${_label}${_dateStr} 취소`; _type = "cancel"; }
+    if (_text) {
+      const _entry = { id: `${Date.now()}-${Math.random()}`, time: _t, text: _text, type: _type };
+      setAdminNotifLog(prev => [_entry, ...prev]);
+      setAdminNotifUnread(prev => prev + 1);
+    }
+    // ── 2. 브로드캐스트 (다른 기기/탭의 관리자에게 전송) ──────────────────────
     adminNotifChRef.current?.send({ type: "broadcast", event: "booking_change", payload: data })
-      .catch(e => console.warn("알림 전송 실패:", e));
-  }, []);
+      .catch(() => {});
+  }, []); // eslint-disable-line
 
   const setBookings = useCallback((updater) => {
     setBookingsState(prev => {
