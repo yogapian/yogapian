@@ -134,9 +134,9 @@ export default function App(){
         const [py, pm, pd] = (payload.date||"").split("-");
         const date  = (py && pm && pd) ? ` ${pm}.${pd} (${DOW_KO[new Date(Number(py),Number(pm)-1,Number(pd)).getDay()]})` : "";
         let text, type;
-        if      (payload.event === "reserve") { text = `✅예약 [${name}]${date} ${label}${time}`; type = "reserve"; }
-        else if (payload.event === "waiting") { text = `⏳대기 [${name}]${date} ${label}${time}`; type = "waiting"; }
-        else if (payload.event === "cancel")  { text = `❌취소 [${name}]${date} ${label}${time}`; type = "cancel"; }
+        if      (payload.event === "reserve") { text = `예약 [${name}]${date} ${label}${time}`; type = "reserve"; }
+        else if (payload.event === "waiting") { text = `대기 [${name}]${date} ${label}${time}`; type = "waiting"; }
+        else if (payload.event === "cancel")  { text = `취소 [${name}]${date} ${label}${time}`; type = "cancel"; }
         if (!text) return;
         const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
         setAdminNotifLog(prev => [entry, ...prev]);
@@ -162,9 +162,9 @@ export default function App(){
     const label = data.slotLabel  || data.slotKey || "?";
     const time  = data.slotTime   ? ` ${data.slotTime}` : "";
     const date  = data.date ? ` ${notifDateLabel(data.date)}` : "";
-    if (data.event === "reserve") return { text:`✅예약 [${name}]${date} ${label}${time}`, type:"reserve" };
-    if (data.event === "waiting") return { text:`⏳대기 [${name}]${date} ${label}${time}`, type:"waiting" };
-    if (data.event === "cancel")  return { text:`❌취소 [${name}]${date} ${label}${time}`, type:"cancel" };
+    if (data.event === "reserve") return { text:`예약 [${name}]${date} ${label}${time}`, type:"reserve" };
+    if (data.event === "waiting") return { text:`대기 [${name}]${date} ${label}${time}`, type:"waiting" };
+    if (data.event === "cancel")  return { text:`취소 [${name}]${date} ${label}${time}`, type:"cancel" };
     return null;
   };
 
