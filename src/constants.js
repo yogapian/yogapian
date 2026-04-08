@@ -43,9 +43,14 @@ export const KR_HOLIDAYS={
 
 export const LOGO_B64="/logo.png";
 
-// ─── 오늘 날짜 (앱 실행 시점 고정) ───────────────────────────────────────────
-// TODAY_STR: "YYYY-MM-DD" 문자열 / TODAY: 자정 기준 Date 객체
-// KST(UTC+9) 강제 계산 — 브라우저가 UTC로 동작해도 새벽 날짜 오류 방지
+// ─── 오늘 날짜 ────────────────────────────────────────────────────────────────
+// getTodayStr(): 호출 시점 KST 날짜를 반환 — 자정 이후에도 항상 정확한 날짜
+// TODAY_STR / TODAY: 모듈 로드 시 한 번만 계산 (하위 호환 유지)
+//   → 자정 이후 앱을 열어둔 경우 stale 방지를 위해 App.jsx에서 자정 리로드 처리
+export function getTodayStr(){
+  const _n=new Date(),_k=new Date(_n.getTime()+9*3600*1000);
+  return`${_k.getUTCFullYear()}-${String(_k.getUTCMonth()+1).padStart(2,"0")}-${String(_k.getUTCDate()).padStart(2,"0")}`;
+}
 const _now=new Date();
 const _kst=new Date(_now.getTime()+9*60*60*1000);
 export const TODAY_STR=`${_kst.getUTCFullYear()}-${String(_kst.getUTCMonth()+1).padStart(2,"0")}-${String(_kst.getUTCDate()).padStart(2,"0")}`;

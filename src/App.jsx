@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Agentation } from "agentation";
-import { FONT, TODAY_STR } from "./constants.js";
+import { FONT, TODAY_STR, getTodayStr } from "./constants.js";
 import { ClosuresContext } from "./context.js";
 import { isPushSupported, subscribePush } from "./pushUtils.js";
 import {
@@ -290,6 +290,19 @@ export default function App(){
       return next;
     });
   }, []);
+
+  // KST 자정에 페이지 자동 리로드 — TODAY_STR·TODAY 상수가 모듈 로드 시 한 번만 계산되므로
+  // 앱을 열어둔 채 자정이 지나면 날짜가 틀려지는 버그 방지
+  useEffect(()=>{
+    function msUntilKSTMidnight(){
+      const now=new Date();
+      const kst=new Date(now.getTime()+9*3600*1000);
+      const next=new Date(Date.UTC(kst.getUTCFullYear(),kst.getUTCMonth(),kst.getUTCDate()+1));
+      return next.getTime()-now.getTime();
+    }
+    const t=setTimeout(()=>window.location.reload(),msUntilKSTMidnight());
+    return()=>clearTimeout(t);
+  },[]);
 
   const SaveBadge = ()=>(
     <div style={{position:"fixed",bottom:16,right:16,zIndex:999,display:"flex",alignItems:"center",gap:5,
