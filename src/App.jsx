@@ -229,46 +229,43 @@ export default function App(){
         }
 
         // ── 관리자 알림 로그 추가 ─────────────────────────────────────────────
-        // 알림 발생 시각이 오늘인 모든 예약·취소 기록
-        // (예약 날짜가 오늘이 아니어도 기록 — 회원이 미래 날짜 예약/취소하는 경우 포함)
-        // 관리자가 직접 취소한 것(cancelledBy==="admin")만 제외
-        try {
-          const nb = payload.new && payload.new.id ? fromSnakeBooking(payload.new) : null;
-          const ob = payload.old && payload.old.id ? fromSnakeBooking(payload.old) : null;
-          const b = nb || ob;
-          if (!b || !b.date) return;
-          const kst = new Date(new Date().getTime() + 9*3600*1000);
-          const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
-          // 예약 날짜가 오늘과 다를 때만 날짜 표시 (오늘 예약이면 날짜 생략)
-          const bookingDateStr = b.date !== getTodayStr()
-            ? ` (${b.date.slice(5).replace("-",".")})`  : "";
-          const memberName = b.memberId
-            ? (membersRef.current.find(m=>m.id===b.memberId)?.name || "?")
-            : (b.onedayName || "원데이");
-          const slotIcon  = TIME_SLOTS.find(s=>s.key===b.timeSlot)?.icon  || "📍";
-          const slotLabel = TIME_SLOTS.find(s=>s.key===b.timeSlot)?.label || b.timeSlot;
-          let text = null, type = "reserve";
+        // INSERT: 예약/대기 등록 — 모두 기록
+        // UPDATE: 취소(cancelledBy 무관) / 대기→예약 전환 — 모두 기록
+        // try/catch 제거 → 에러 발생 시 콘솔에 노출되도록 변경
+        const _nb = payload.new && payload.new.id ? fromSnakeBooking(payload.new) : null;
+        const _ob = payload.old && payload.old.id ? fromSnakeBooking(payload.old) : null;
+        const _b  = _nb || _ob;
+        console.log("[알림디버그]", payload.eventType, JSON.stringify(payload.new||{}), JSON.stringify(payload.old||{}));
+        if (_b && _b.date) {
+          const _kst = new Date(new Date().getTime() + 9*3600*1000);
+          const _t = `${String(_kst.getUTCHours()).padStart(2,"0")}:${String(_kst.getUTCMinutes()).padStart(2,"0")}`;
+          const _dateStr = _b.date !== getTodayStr() ? ` (${_b.date.slice(5).replace("-",".")})` : "";
+          const _name = _b.memberId
+            ? (membersRef.current.find(m=>m.id===_b.memberId)?.name || `id:${_b.memberId}`)
+            : (_b.onedayName || "원데이");
+          const _icon  = TIME_SLOTS.find(s=>s.key===_b.timeSlot)?.icon  || "📍";
+          const _label = TIME_SLOTS.find(s=>s.key===_b.timeSlot)?.label || (_b.timeSlot || "?");
+          let _text = null, _type = "reserve";
           if (payload.eventType === "INSERT") {
-            if (b.status === "reserved")
-              { text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 예약`; type = "reserve"; }
-            else if (b.status === "waiting")
-              { text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 대기 등록`; type = "waiting"; }
-          } else if (payload.eventType === "UPDATE" && nb) {
-            // Supabase Realtime UPDATE payload.old는 PK(id)만 포함할 수 있어
-            // ob.status 의존 불가 → cancelledBy 필드만으로 판별
-            if (nb.status === "cancelled" && nb.cancelledBy === "member") {
-              // 회원이 직접 취소한 경우만 알림 (관리자 취소는 로그 안함)
-              text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 취소`; type = "cancel";
-            } else if (nb.status === "reserved" && ob?.status === "waiting") {
-              // 대기 → 예약 전환 (ob에 status 있을 때만)
-              text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 대기→예약`; type = "reserve";
-            }
+            if (_nb.status === "reserved")
+              { _text = `${_name} ${_icon}${_label}${_dateStr} 예약`; _type = "reserve"; }
+            else if (_nb.status === "waiting")
+              { _text = `${_name} ${_icon}${_label}${_dateStr} 대기`; _type = "waiting"; }
+          } else if (payload.eventType === "UPDATE" && _nb) {
+            if (_nb.status === "cancelled")
+              { _text = `${_name} ${_icon}${_label}${_dateStr} 취소`; _type = "cancel"; }
+            else if (_nb.status === "reserved" && _nb.cancelledBy !== "admin")
+              { _text = `${_name} ${_icon}${_label}${_dateStr} 예약확정`; _type = "reserve"; }
           }
-          if (!text) return;
-          const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
-          setAdminNotifLog(prev => [entry, ...prev]);
-          setAdminNotifUnread(prev => prev + 1);
-        } catch(e) { console.warn("알림 로그 오류:", e); }
+          console.log("[알림디버그] text=", _text, "_nb.status=", _nb?.status, "_nb.cancelledBy=", _nb?.cancelledBy);
+          if (_text) {
+            const _entry = { id: `${Date.now()}-${Math.random()}`, time: _t, text: _text, type: _type };
+            setAdminNotifLog(prev => { console.log("[알림디버그] prev len=", prev.length, "→", prev.length+1); return [_entry, ...prev]; });
+            setAdminNotifUnread(prev => prev + 1);
+          }
+        } else {
+          console.log("[알림디버그] _b=", _b, "_b?.date=", _b?.date, "→ 알림 스킵");
+        }
       })
       .on("postgres_changes", {event:"*", schema:"public", table:"members"}, payload => {
         if(payload.eventType === "INSERT"){
