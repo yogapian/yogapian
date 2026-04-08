@@ -229,34 +229,43 @@ export default function App(){
         }
 
         // ── 관리자 알림 로그 추가 ─────────────────────────────────────────────
-        // 오늘 날짜 예약만 기록 / 관리자가 직접 취소한 것(cancelledBy==="admin")은 제외
+        // 알림 발생 시각이 오늘인 모든 예약·취소 기록
+        // (예약 날짜가 오늘이 아니어도 기록 — 회원이 미래 날짜 예약/취소하는 경우 포함)
+        // 관리자가 직접 취소한 것(cancelledBy==="admin")만 제외
         try {
-          const nb = payload.new ? fromSnakeBooking(payload.new) : null;
-          const ob = payload.old ? fromSnakeBooking(payload.old) : null;
+          const nb = payload.new && payload.new.id ? fromSnakeBooking(payload.new) : null;
+          const ob = payload.old && payload.old.id ? fromSnakeBooking(payload.old) : null;
           const b = nb || ob;
-          if (!b || b.date !== getTodayStr()) return;
+          if (!b || !b.date) return;
           const kst = new Date(new Date().getTime() + 9*3600*1000);
           const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
-          const memberName = b.memberId ? (membersRef.current.find(m=>m.id===b.memberId)?.name || "?") : (b.onedayName || "원데이");
+          // 예약 날짜가 오늘과 다를 때만 날짜 표시 (오늘 예약이면 날짜 생략)
+          const bookingDateStr = b.date !== getTodayStr()
+            ? ` (${b.date.slice(5).replace("-",".")})`  : "";
+          const memberName = b.memberId
+            ? (membersRef.current.find(m=>m.id===b.memberId)?.name || "?")
+            : (b.onedayName || "원데이");
           const slotIcon  = TIME_SLOTS.find(s=>s.key===b.timeSlot)?.icon  || "📍";
           const slotLabel = TIME_SLOTS.find(s=>s.key===b.timeSlot)?.label || b.timeSlot;
           let text = null, type = "reserve";
           if (payload.eventType === "INSERT") {
-            if (b.status === "reserved")  { text = `${memberName} ${slotIcon}${slotLabel} 예약`; type = "reserve"; }
-            else if (b.status === "waiting") { text = `${memberName} ${slotIcon}${slotLabel} 대기 등록`; type = "waiting"; }
+            if (b.status === "reserved")
+              { text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 예약`; type = "reserve"; }
+            else if (b.status === "waiting")
+              { text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 대기 등록`; type = "waiting"; }
           } else if (payload.eventType === "UPDATE" && ob) {
             if (nb.status === "cancelled" && ob.status !== "cancelled") {
               if (nb.cancelledBy === "admin") return; // 관리자 취소는 로그 안함
-              text = `${memberName} ${slotIcon}${slotLabel} 예약 취소`; type = "cancel";
+              text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 취소`; type = "cancel";
             } else if (nb.status === "reserved" && ob.status === "waiting") {
-              text = `${memberName} ${slotIcon}${slotLabel} 대기→예약 전환`; type = "reserve";
+              text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 대기→예약`; type = "reserve";
             }
           }
           if (!text) return;
           const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
           setAdminNotifLog(prev => [entry, ...prev]);
           setAdminNotifUnread(prev => prev + 1);
-        } catch {}
+        } catch(e) { console.warn("알림 로그 오류:", e); }
       })
       .on("postgres_changes", {event:"*", schema:"public", table:"members"}, payload => {
         if(payload.eventType === "INSERT"){
