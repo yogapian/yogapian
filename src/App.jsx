@@ -253,11 +253,14 @@ export default function App(){
               { text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 예약`; type = "reserve"; }
             else if (b.status === "waiting")
               { text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 대기 등록`; type = "waiting"; }
-          } else if (payload.eventType === "UPDATE" && ob) {
-            if (nb.status === "cancelled" && ob.status !== "cancelled") {
-              if (nb.cancelledBy === "admin") return; // 관리자 취소는 로그 안함
+          } else if (payload.eventType === "UPDATE" && nb) {
+            // Supabase Realtime UPDATE payload.old는 PK(id)만 포함할 수 있어
+            // ob.status 의존 불가 → cancelledBy 필드만으로 판별
+            if (nb.status === "cancelled" && nb.cancelledBy === "member") {
+              // 회원이 직접 취소한 경우만 알림 (관리자 취소는 로그 안함)
               text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 취소`; type = "cancel";
-            } else if (nb.status === "reserved" && ob.status === "waiting") {
+            } else if (nb.status === "reserved" && ob?.status === "waiting") {
+              // 대기 → 예약 전환 (ob에 status 있을 때만)
               text = `${memberName} ${slotIcon}${slotLabel}${bookingDateStr} 대기→예약`; type = "reserve";
             }
           }
