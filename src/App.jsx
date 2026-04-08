@@ -220,6 +220,7 @@ export default function App(){
     if(screen !== "admin") return;
     const ch = _supabase.channel("admin-realtime")
       .on("postgres_changes", {event:"*", schema:"public", table:"bookings"}, payload => {
+        console.log("[리얼타임bookings] 콜백 호출됨", payload.eventType); // 콜백 진입 확인
         if(payload.eventType === "INSERT"){
           setBookingsState(prev => prev.some(b=>b.id===payload.new.id) ? prev : [...prev, fromSnakeBooking(payload.new)]);
         } else if(payload.eventType === "UPDATE"){
@@ -276,7 +277,10 @@ export default function App(){
           setMembersState(prev => prev.filter(m=>m.id!==payload.old.id));
         }
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        // 구독 상태 디버그 로그 — SUBSCRIBED면 정상, CHANNEL_ERROR면 연결 실패
+        console.log("[리얼타임구독]", status, err || "");
+      });
     return () => _supabase.removeChannel(ch);
   }, [screen]); // eslint-disable-line
 
