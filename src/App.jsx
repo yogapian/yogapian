@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Agentation } from "agentation";
-import { FONT, TODAY_STR, getTodayStr, TIME_SLOTS } from "./constants.js";
+import { FONT, TODAY_STR, getTodayStr, TIME_SLOTS, DOW_KO } from "./constants.js";
 import { ClosuresContext } from "./context.js";
 import { isPushSupported, subscribePush } from "./pushUtils.js";
 import {
@@ -126,15 +126,16 @@ export default function App(){
         if (!payload || screenRef.current !== "admin") return;
         const kst = new Date(new Date().getTime() + 9*3600*1000);
         const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
-        const dateStr = payload.date && payload.date !== getTodayStr()
-          ? ` (${payload.date.slice(5).replace("-",".")})` : "";
+        // buildNotifText는 선언 전이므로 여기서 인라인 처리 (동일 포맷)
         const name  = payload.memberName || "?";
-        const icon  = payload.slotIcon  || "📍";
         const label = payload.slotLabel || payload.slotKey || "?";
+        const time  = payload.slotTime  ? ` ${payload.slotTime}` : "";
+        const [py, pm, pd] = (payload.date||"").split("-");
+        const date  = (py && pm && pd) ? ` ${pm}.${pd}(${DOW_KO[new Date(Number(py),Number(pm)-1,Number(pd)).getDay()]})` : "";
         let text, type;
-        if      (payload.event === "reserve") { text = `${name} ${icon}${label}${dateStr} 예약`; type = "reserve"; }
-        else if (payload.event === "waiting") { text = `${name} ${icon}${label}${dateStr} 대기`; type = "waiting"; }
-        else if (payload.event === "cancel")  { text = `${name} ${icon}${label}${dateStr} 취소`; type = "cancel"; }
+        if      (payload.event === "reserve") { text = `✅예약 ${name}${date} ${label}${time}`; type = "reserve"; }
+        else if (payload.event === "waiting") { text = `⏳대기 ${name}${date} ${label}${time}`; type = "waiting"; }
+        else if (payload.event === "cancel")  { text = `❌취소 ${name}${date} ${label}${time}`; type = "cancel"; }
         if (!text) return;
         const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
         setAdminNotifLog(prev => [entry, ...prev]);
@@ -145,6 +146,27 @@ export default function App(){
     return () => { _supabase.removeChannel(ch); adminNotifChRef.current = null; };
   }, []); // eslint-disable-line
 
+  // notifDateLabel: "2026-04-10" → "04.10(금)" 형식으로 변환 (관리자 벨 알림용)
+  const notifDateLabel = (dateStr) => {
+    if (!dateStr) return "";
+    const [y, m, d] = dateStr.split("-");
+    const dow = DOW_KO[new Date(Number(y), Number(m) - 1, Number(d)).getDay()];
+    return `${m}.${d}(${dow})`;
+  };
+
+  // buildNotifText: 알림 종류별 텍스트 생성 (벨 + 브로드캐스트 수신 공통 사용)
+  // 포맷: {타입이모지}{타입} {이름} {MM.DD(요일)} {슬롯명} {시간}
+  const buildNotifText = (data) => {
+    const name  = data.memberName || "?";
+    const label = data.slotLabel  || data.slotKey || "?";
+    const time  = data.slotTime   ? ` ${data.slotTime}` : "";
+    const date  = data.date ? ` ${notifDateLabel(data.date)}` : "";
+    if (data.event === "reserve") return { text:`✅예약 ${name}${date} ${label}${time}`, type:"reserve" };
+    if (data.event === "waiting") return { text:`⏳대기 ${name}${date} ${label}${time}`, type:"waiting" };
+    if (data.event === "cancel")  return { text:`❌취소 ${name}${date} ${label}${time}`, type:"cancel" };
+    return null;
+  };
+
   // onBookingNotif: 회원이 예약/취소 시 호출
   // 동작 1) 직접 state 업데이트 → 같은 탭에서 회원→관리자 전환 시 즉시 알림 표시
   //         (Supabase broadcast는 sender 에게 echo 없음 → 같은 탭 전환 시 수신 불가)
@@ -153,17 +175,9 @@ export default function App(){
     // ── 1. 직접 state 업데이트 (같은 탭 시나리오) ─────────────────────────────
     const _kst = new Date(new Date().getTime() + 9*3600*1000);
     const _t = `${String(_kst.getUTCHours()).padStart(2,"0")}:${String(_kst.getUTCMinutes()).padStart(2,"0")}`;
-    const _dateStr = data.date && data.date !== getTodayStr()
-      ? ` (${data.date.slice(5).replace("-",".")})` : "";
-    const _name  = data.memberName || "?";
-    const _icon  = data.slotIcon   || "📍";
-    const _label = data.slotLabel  || data.slotKey || "?";
-    let _text, _type;
-    if      (data.event === "reserve") { _text = `${_name} ${_icon}${_label}${_dateStr} 예약`; _type = "reserve"; }
-    else if (data.event === "waiting") { _text = `${_name} ${_icon}${_label}${_dateStr} 대기`; _type = "waiting"; }
-    else if (data.event === "cancel")  { _text = `${_name} ${_icon}${_label}${_dateStr} 취소`; _type = "cancel"; }
-    if (_text) {
-      const _entry = { id: `${Date.now()}-${Math.random()}`, time: _t, text: _text, type: _type };
+    const built = buildNotifText(data);
+    if (built) {
+      const _entry = { id: `${Date.now()}-${Math.random()}`, time: _t, text: built.text, type: built.type };
       setAdminNotifLog(prev => [_entry, ...prev]);
       setAdminNotifUnread(prev => prev + 1);
     }
