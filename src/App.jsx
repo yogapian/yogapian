@@ -218,54 +218,16 @@ export default function App(){
   // 관리자 화면 실시간 동기화 — 예약/회원 변경 즉시 반영
   useEffect(() => {
     if(screen !== "admin") return;
+
+    // ── postgres_changes: 상태 동기화 전용 (알림은 Broadcast로 별도 처리) ──
     const ch = _supabase.channel("admin-realtime")
       .on("postgres_changes", {event:"*", schema:"public", table:"bookings"}, payload => {
-        console.log("[리얼타임bookings] 콜백 호출됨", payload.eventType); // 콜백 진입 확인
         if(payload.eventType === "INSERT"){
           setBookingsState(prev => prev.some(b=>b.id===payload.new.id) ? prev : [...prev, fromSnakeBooking(payload.new)]);
         } else if(payload.eventType === "UPDATE"){
           setBookingsState(prev => prev.map(b=>b.id===payload.new.id ? fromSnakeBooking(payload.new) : b));
         } else if(payload.eventType === "DELETE"){
           setBookingsState(prev => prev.filter(b=>b.id!==payload.old.id));
-        }
-
-        // ── 관리자 알림 로그 추가 ─────────────────────────────────────────────
-        // INSERT: 예약/대기 등록 — 모두 기록
-        // UPDATE: 취소(cancelledBy 무관) / 대기→예약 전환 — 모두 기록
-        // try/catch 제거 → 에러 발생 시 콘솔에 노출되도록 변경
-        const _nb = payload.new && payload.new.id ? fromSnakeBooking(payload.new) : null;
-        const _ob = payload.old && payload.old.id ? fromSnakeBooking(payload.old) : null;
-        const _b  = _nb || _ob;
-        console.log("[알림디버그]", payload.eventType, JSON.stringify(payload.new||{}), JSON.stringify(payload.old||{}));
-        if (_b && _b.date) {
-          const _kst = new Date(new Date().getTime() + 9*3600*1000);
-          const _t = `${String(_kst.getUTCHours()).padStart(2,"0")}:${String(_kst.getUTCMinutes()).padStart(2,"0")}`;
-          const _dateStr = _b.date !== getTodayStr() ? ` (${_b.date.slice(5).replace("-",".")})` : "";
-          const _name = _b.memberId
-            ? (membersRef.current.find(m=>m.id===_b.memberId)?.name || `id:${_b.memberId}`)
-            : (_b.onedayName || "원데이");
-          const _icon  = TIME_SLOTS.find(s=>s.key===_b.timeSlot)?.icon  || "📍";
-          const _label = TIME_SLOTS.find(s=>s.key===_b.timeSlot)?.label || (_b.timeSlot || "?");
-          let _text = null, _type = "reserve";
-          if (payload.eventType === "INSERT") {
-            if (_nb.status === "reserved")
-              { _text = `${_name} ${_icon}${_label}${_dateStr} 예약`; _type = "reserve"; }
-            else if (_nb.status === "waiting")
-              { _text = `${_name} ${_icon}${_label}${_dateStr} 대기`; _type = "waiting"; }
-          } else if (payload.eventType === "UPDATE" && _nb) {
-            if (_nb.status === "cancelled")
-              { _text = `${_name} ${_icon}${_label}${_dateStr} 취소`; _type = "cancel"; }
-            else if (_nb.status === "reserved" && _nb.cancelledBy !== "admin")
-              { _text = `${_name} ${_icon}${_label}${_dateStr} 예약확정`; _type = "reserve"; }
-          }
-          console.log("[알림디버그] text=", _text, "_nb.status=", _nb?.status, "_nb.cancelledBy=", _nb?.cancelledBy);
-          if (_text) {
-            const _entry = { id: `${Date.now()}-${Math.random()}`, time: _t, text: _text, type: _type };
-            setAdminNotifLog(prev => { console.log("[알림디버그] prev len=", prev.length, "→", prev.length+1); return [_entry, ...prev]; });
-            setAdminNotifUnread(prev => prev + 1);
-          }
-        } else {
-          console.log("[알림디버그] _b=", _b, "_b?.date=", _b?.date, "→ 알림 스킵");
         }
       })
       .on("postgres_changes", {event:"*", schema:"public", table:"members"}, payload => {
@@ -277,11 +239,39 @@ export default function App(){
           setMembersState(prev => prev.filter(m=>m.id!==payload.old.id));
         }
       })
-      .subscribe((status, err) => {
-        // 구독 상태 디버그 로그 — SUBSCRIBED면 정상, CHANNEL_ERROR면 연결 실패
-        console.log("[리얼타임구독]", status, err || "");
-      });
-    return () => _supabase.removeChannel(ch);
+      .subscribe();
+
+    // ── Broadcast: 회원 예약/취소 알림 수신 전용 ─────────────────────────────
+    // db.js의 broadcastAdminNotif()가 회원 액션 시 이 채널로 메시지를 전송
+    // postgres_changes가 이 프로젝트에서 WAL 이벤트를 전달하지 않아 Broadcast로 대체
+    const notifCh = _supabase.channel("yogapian-admin-notif")
+      .on("broadcast", { event: "booking_change" }, ({ payload }) => {
+        if (!payload) return;
+        const kst = new Date(new Date().getTime() + 9*3600*1000);
+        const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
+        const dateStr = payload.date && payload.date !== getTodayStr()
+          ? ` (${payload.date.slice(5).replace("-",".")})` : "";
+        const name  = payload.memberName || "?";
+        const icon  = payload.slotIcon  || "📍";
+        const label = payload.slotLabel || payload.slotKey || "?";
+        let text, type;
+        if (payload.event === "reserve")
+          { text = `${name} ${icon}${label}${dateStr} 예약`; type = "reserve"; }
+        else if (payload.event === "waiting")
+          { text = `${name} ${icon}${label}${dateStr} 대기`; type = "waiting"; }
+        else if (payload.event === "cancel")
+          { text = `${name} ${icon}${label}${dateStr} 취소`; type = "cancel"; }
+        if (!text) return;
+        const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
+        setAdminNotifLog(prev => [entry, ...prev]);
+        setAdminNotifUnread(prev => prev + 1);
+      })
+      .subscribe();
+
+    return () => {
+      _supabase.removeChannel(ch);
+      _supabase.removeChannel(notifCh);
+    };
   }, [screen]); // eslint-disable-line
 
   // 회원 화면에서 실시간 공지 수신 — 관리자가 공지 발송 즉시 팝업 표시
