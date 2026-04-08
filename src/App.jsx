@@ -31,6 +31,8 @@ export default function App(){
   const [loading,setLoading]=useState(true);
   const loadedRef = useRef(false);
   const membersRef = useRef([]); // stale closure 방지용 — realtime 리스너에서 회원명 조회에 사용
+  const adminNotifChRef = useRef(null); // 관리자 알림 브로드캐스트 채널 (앱 전체 단일 인스턴스)
+  const screenRef = useRef("memberLogin"); // 현재 screen — 브로드캐스트 수신 시 admin 여부 판별용
 
   // 관리자 알림 로그 — localStorage에 오늘 날짜 키로 저장, 자정 지나면 자동 초기화
   const [adminNotifLog, setAdminNotifLog] = useState(() => {
@@ -97,8 +99,9 @@ export default function App(){
     });
   }, []);
 
-  // membersRef를 항상 최신 상태로 유지 (realtime 리스너의 stale closure 방지)
+  // ref를 항상 최신 상태로 유지 (realtime 리스너의 stale closure 방지)
   membersRef.current = members;
+  screenRef.current = screen;
 
   // 알림 로그를 localStorage에 저장 (오늘 날짜 키, 구일 자동 삭제)
   useEffect(() => {
@@ -112,6 +115,41 @@ export default function App(){
       }
     } catch {}
   }, [adminNotifLog]);
+
+  // ── 관리자 알림 브로드캐스트 채널 — 앱 전체에서 단일 인스턴스 유지 ─────────
+  // 동일 클라이언트에서 채널명 중복 방지를 위해 mountEffect에서 1회만 생성
+  // member 모드: onBookingNotif prop으로 전달받아 ch.send() 호출 (전송)
+  // admin 모드: screenRef로 판별 후 알림 로그에 적재 (수신)
+  useEffect(() => {
+    const ch = _supabase.channel("yogapian-admin-notif")
+      .on("broadcast", { event: "booking_change" }, ({ payload }) => {
+        if (!payload || screenRef.current !== "admin") return;
+        const kst = new Date(new Date().getTime() + 9*3600*1000);
+        const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
+        const dateStr = payload.date && payload.date !== getTodayStr()
+          ? ` (${payload.date.slice(5).replace("-",".")})` : "";
+        const name  = payload.memberName || "?";
+        const icon  = payload.slotIcon  || "📍";
+        const label = payload.slotLabel || payload.slotKey || "?";
+        let text, type;
+        if      (payload.event === "reserve") { text = `${name} ${icon}${label}${dateStr} 예약`; type = "reserve"; }
+        else if (payload.event === "waiting") { text = `${name} ${icon}${label}${dateStr} 대기`; type = "waiting"; }
+        else if (payload.event === "cancel")  { text = `${name} ${icon}${label}${dateStr} 취소`; type = "cancel"; }
+        if (!text) return;
+        const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
+        setAdminNotifLog(prev => [entry, ...prev]);
+        setAdminNotifUnread(prev => prev + 1);
+      })
+      .subscribe();
+    adminNotifChRef.current = ch;
+    return () => { _supabase.removeChannel(ch); adminNotifChRef.current = null; };
+  }, []); // eslint-disable-line
+
+  // onBookingNotif: 회원이 예약/취소 시 호출 → 관리자 브로드캐스트 채널로 전송
+  const onBookingNotif = useCallback((data) => {
+    adminNotifChRef.current?.send({ type: "broadcast", event: "booking_change", payload: data })
+      .catch(e => console.warn("알림 전송 실패:", e));
+  }, []);
 
   const setBookings = useCallback((updater) => {
     setBookingsState(prev => {
@@ -241,37 +279,7 @@ export default function App(){
       })
       .subscribe();
 
-    // ── Broadcast: 회원 예약/취소 알림 수신 전용 ─────────────────────────────
-    // db.js의 broadcastAdminNotif()가 회원 액션 시 이 채널로 메시지를 전송
-    // postgres_changes가 이 프로젝트에서 WAL 이벤트를 전달하지 않아 Broadcast로 대체
-    const notifCh = _supabase.channel("yogapian-admin-notif")
-      .on("broadcast", { event: "booking_change" }, ({ payload }) => {
-        if (!payload) return;
-        const kst = new Date(new Date().getTime() + 9*3600*1000);
-        const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
-        const dateStr = payload.date && payload.date !== getTodayStr()
-          ? ` (${payload.date.slice(5).replace("-",".")})` : "";
-        const name  = payload.memberName || "?";
-        const icon  = payload.slotIcon  || "📍";
-        const label = payload.slotLabel || payload.slotKey || "?";
-        let text, type;
-        if (payload.event === "reserve")
-          { text = `${name} ${icon}${label}${dateStr} 예약`; type = "reserve"; }
-        else if (payload.event === "waiting")
-          { text = `${name} ${icon}${label}${dateStr} 대기`; type = "waiting"; }
-        else if (payload.event === "cancel")
-          { text = `${name} ${icon}${label}${dateStr} 취소`; type = "cancel"; }
-        if (!text) return;
-        const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
-        setAdminNotifLog(prev => [entry, ...prev]);
-        setAdminNotifUnread(prev => prev + 1);
-      })
-      .subscribe();
-
-    return () => {
-      _supabase.removeChannel(ch);
-      _supabase.removeChannel(notifCh);
-    };
+    return () => _supabase.removeChannel(ch);
   }, [screen]); // eslint-disable-line
 
   // 회원 화면에서 실시간 공지 수신 — 관리자가 공지 발송 즉시 팝업 표시
@@ -372,7 +380,7 @@ export default function App(){
     <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72;transform:scale(.97)}@media(max-width:390px){html{font-size:14px}}.member-header{flex-wrap:wrap;gap:8px!important}`}</style>
-      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} scheduleTemplate={scheduleTemplate} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");saveAutoLogin(null);}}/>
+      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} scheduleTemplate={scheduleTemplate} onBookingNotif={onBookingNotif} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");saveAutoLogin(null);}}/>
     </div>
     </ClosuresContext.Provider>
   );
