@@ -252,6 +252,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       slotKey,
       slotIcon:  _slotObj?.icon  || "📍",
       slotLabel: _slotObj?.label || slotKey,
+      slotTime:  _slotObj?.time  || "",
       date: selDate,
     });
     setPendingSlot(null); setRenewPopup(null);
@@ -284,11 +285,12 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       slotKey: cancelled.timeSlot,
       slotIcon:  _slotObj2?.icon  || "📍",
       slotLabel: _slotObj2?.label || cancelled.timeSlot,
+      slotTime:  _slotObj2?.time  || "",
       date: cancelled.date,
     });
     if(firstWaiter){
       // 공지: 상단 이모지 제거 / 날짜 + 슬롯명 + 시간 명시
-      setNotices(prev=>[{id:Date.now(),title:"📢 예약 확정 안내",content:`${fmtWithDow(cancelled.date)} ${slotLabel} ${slotTime} 수업 대기가 예약으로 확정되었습니다!`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
+      setNotices(prev=>[{id:Date.now(),title:`✅예약확정✅`,content:`${fmtWithDow(cancelled.date)} ${slotLabel} ${slotTime} 수업 예약이 확정되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
     }
     setConfirmCancel(null);
   }
