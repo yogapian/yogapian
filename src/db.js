@@ -7,16 +7,8 @@ export const _supabase = createClient(
 );
 
 // ─── 관리자 알림 브로드캐스트 ────────────────────────────────────────────────
-// 회원이 예약/취소 시 이 채널로 메시지를 전송 → 관리자 앱이 수신하여 🔔 알림 표시
-// postgres_changes 대신 Broadcast 사용 (postgres_changes는 WAL 설정 의존)
-const _adminNotifCh = _supabase.channel("yogapian-admin-notif");
-_adminNotifCh.subscribe(); // 전송 전 채널 조인 필요
-export function broadcastAdminNotif(data) {
-  // event: "reserve" | "waiting" | "cancel"
-  // memberName, slotKey, slotIcon, slotLabel, date
-  _adminNotifCh.send({ type: "broadcast", event: "booking_change", payload: data })
-    .catch(e => console.warn("broadcastAdminNotif 실패:", e));
-}
+// App.jsx에서 단일 채널 인스턴스로 통합 관리 (동일 클라이언트 내 중복 채널명 방지)
+// 채널 인스턴스는 App.jsx의 adminNotifChRef에 저장되며 onBookingNotif prop으로 전달됨
 
 // camelCase ↔ snake_case 변환 헬퍼
 export function toSnake(m) {

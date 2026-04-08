@@ -13,7 +13,7 @@
 import { useState } from "react";
 import { Agentation } from "agentation";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, DOW_KO, KR_HOLIDAYS } from "../constants.js";
-import { broadcastAdminNotif } from "../db.js"; // 관리자 알림 브로드캐스트
+// broadcastAdminNotif는 App.jsx에서 onBookingNotif prop으로 전달받음 (채널 단일 인스턴스 유지)
 import { parseLocal, fmt, fmtWithDow, addDays, toDateStr } from "../utils.js";
 import { calcDL, getClosureExtDays, usedAsOf, getSlotCapacity, holdingElapsed } from "../memberCalc.js";
 import { useClosures } from "../context.js";
@@ -158,7 +158,7 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
 }
 
 // ─── 회원 예약 페이지 ────────────────────────────────────────────────────────
-export default function MemberReservePage({member,bookings,setBookings,setMembers,setNotices,specialSchedules,closures,scheduleTemplate}){
+export default function MemberReservePage({member,bookings,setBookings,setMembers,setNotices,specialSchedules,closures,scheduleTemplate,onBookingNotif}){
   // ── State ──────────────────────────────────────────────────────────────────
   const [selDate, setSelDate] = useState(null);       // 달력에서 선택한 날짜 (null=미선택)
   const [confirmCancel, setConfirmCancel] = useState(null); // 취소 확인 모달: null 또는 bookingId
@@ -244,9 +244,9 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       const nid = Math.max(...p.map(b=>b.id),0)+1;
       return [...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}];
     });
-    // 관리자 알림 브로드캐스트 — postgres_changes 미작동으로 대체
+    // 관리자 알림 브로드캐스트 (App.jsx 단일 채널 인스턴스 사용)
     const _slotObj = TIME_SLOTS.find(s=>s.key===slotKey);
-    broadcastAdminNotif({
+    onBookingNotif?.({
       event: isWaiting ? "waiting" : "reserve",
       memberName: member.name,
       slotKey,
@@ -276,9 +276,9 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       const next = p.map(b=>b.id===bId?{...b,status:"cancelled",cancelledBy:"member"}:b);
       return firstWaiter?next.map(b=>b.id===firstWaiter.id?{...b,status:"reserved"}:b):next;
     });
-    // 관리자 알림 브로드캐스트 — postgres_changes 미작동으로 대체
+    // 관리자 알림 브로드캐스트 (App.jsx 단일 채널 인스턴스 사용)
     const _slotObj2 = TIME_SLOTS.find(s=>s.key===cancelled.timeSlot);
-    broadcastAdminNotif({
+    onBookingNotif?.({
       event: "cancel",
       memberName: member.name,
       slotKey: cancelled.timeSlot,

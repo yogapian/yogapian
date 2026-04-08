@@ -9,7 +9,7 @@ import MemberReservePage from "./MemberReservePage.jsx";
 import MemberDetailModal from "./MemberDetailModal.jsx";
 import { MemberContactBar } from "./ContactBar.jsx";
 
-export default function MemberView({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,setNotices,scheduleTemplate,onLogout}){
+export default function MemberView({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,setNotices,scheduleTemplate,onBookingNotif,onLogout}){
   const m = member;
   const closuresCxt = useClosures();
   const status = getDisplayStatus(m, closuresCxt, bookings), sc = SC[status] || SC["on"];
@@ -157,6 +157,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
         closures={closures}
         notices={notices}
         scheduleTemplate={scheduleTemplate}
+        onBookingNotif={onBookingNotif}
         onBack={()=>{}}
       />
 
