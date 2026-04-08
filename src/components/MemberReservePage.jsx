@@ -289,8 +289,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       date: cancelled.date,
     });
     if(firstWaiter){
-      // 공지: 상단 이모지 제거 / 날짜 + 슬롯명 + 시간 명시
-      setNotices(prev=>[{id:Date.now(),title:`✅예약확정✅`,content:`${fmtWithDow(cancelled.date)} ${slotLabel} ${slotTime} 수업 예약이 확정되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
+      // 공지: 날짜 줄바꿈 후 메시지 (팝업 2줄 표시용)
+      setNotices(prev=>[{id:Date.now(),title:`✅예약확정✅`,content:`${fmtWithDow(cancelled.date)}\n수업 예약이 확정되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
     }
     setConfirmCancel(null);
   }

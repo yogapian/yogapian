@@ -30,7 +30,7 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
     setNotices(prev => [{
       id: nid,
       title: `✅예약확정✅`,
-      content: `${fmtWithDow(rec.date)} ${slotLabel} ${slotTime} 수업 예약이 확정되었습니다.`,
+      content: `${fmtWithDow(rec.date)}\n수업 예약이 확정되었습니다.`,
       pinned: false, createdAt: TODAY_STR, targetMemberId: waiter.memberId
     }, ...prev]);
 
@@ -63,7 +63,7 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
     });
     if(sendNotice && mem) {
       const nid = Date.now();
-      setNotices(prev=>[{id:nid, title:`❌예약취소❌`, content:`${fmtWithDow(rec.date)} ${slotLabel} ${slotTime} 수업 예약이 취소되었습니다.${note?" ("+note+")":""}`, pinned:false, createdAt:TODAY_STR, targetMemberId:mem.id}, ...prev]);
+      setNotices(prev=>[{id:nid, title:`❌예약취소❌`, content:`${fmtWithDow(rec.date)}\n수업 예약이 취소되었습니다.${note?" ("+note+")":""}`, pinned:false, createdAt:TODAY_STR, targetMemberId:mem.id}, ...prev]);
     }
     onClose();
   }

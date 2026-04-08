@@ -9,7 +9,7 @@ import MemberReservePage from "./MemberReservePage.jsx";
 import MemberDetailModal from "./MemberDetailModal.jsx";
 import { MemberContactBar } from "./ContactBar.jsx";
 
-export default function MemberView({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,setNotices,scheduleTemplate,onBookingNotif,onLogout}){
+export default function MemberView({member,bookings,setBookings,setMembers,specialSchedules,closures,notices,setNotices,scheduleTemplate,onBookingNotif,onRefresh,onLogout}){
   const m = member;
   const closuresCxt = useClosures();
   const status = getDisplayStatus(m, closuresCxt, bookings), sc = SC[status] || SC["on"];
@@ -27,6 +27,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
 
   const [showDetail, setShowDetail] = useState(false);
   const [showHoldDetail, setShowHoldDetail] = useState(false); // 홀딩 상세 펼침 여부
+  const [refreshing, setRefreshing] = useState(false); // 새로고침 버튼 로딩 상태
 
   // 개인 공지 팝업
   const [popupNotice, setPopupNotice] = useState(null);
@@ -50,7 +51,12 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
         <div style={{...S.overlay,zIndex:300}}>
           <div style={{...S.modal,maxWidth:360,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:15,fontWeight:700,color:"#1e2e1e",marginBottom:12,textAlign:"center"}}>{popupNotice.title}</div>
-            <div style={{fontSize:13,color:"#5a5a5a",lineHeight:1.8,whiteSpace:"pre-wrap",background:"#f7f4ef",borderRadius:10,padding:"12px 14px",marginBottom:16}}>{popupNotice.content}</div>
+            {/* content를 \n 기준으로 나눠 두 줄 가운데 정렬 — 1번째 줄: 날짜, 2번째 줄: 메시지 */}
+            <div style={{background:"#f7f4ef",borderRadius:10,padding:"14px",marginBottom:16,textAlign:"center"}}>
+              {popupNotice.content.split("\n").map((line,i)=>(
+                <div key={i} style={{fontSize:i===0?14:13,fontWeight:i===0?700:400,color:i===0?"#3a4a3a":"#5a5a5a",lineHeight:1.9}}>{line}</div>
+              ))}
+            </div>
             <button onClick={() => markRead(popupNotice)} style={{width:"100%",background:"#4a6a4a",color:"#fff",border:"none",borderRadius:12,padding:"13px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>확인했어요</button>
           </div>
         </div>
@@ -63,7 +69,15 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
             <span style={{fontSize:20,color:"#5a7a5a"}}>ॐ</span>
             <span style={{fontSize:21,fontWeight:700,color:"#1e2e1e"}}>요가피안</span>
           </div>
-          <div style={{fontSize:11,color:"#a09080"}}>{dateTimeStr}</div>
+          {/* 날짜·시간 + 🔄 새로고침: 관리자와 동일하게 시간 옆 작은 버튼 */}
+          <div style={{display:"flex",alignItems:"center",gap:5}}>
+            <div style={{fontSize:11,color:"#a09080"}}>{dateTimeStr}</div>
+            <button
+              onClick={async()=>{if(!onRefresh||refreshing)return;setRefreshing(true);try{await onRefresh();}finally{setRefreshing(false);}}}
+              disabled={refreshing}
+              style={{background:"none",border:"none",padding:"0 2px",fontSize:12,color:refreshing?"#bbb":"#a09080",cursor:refreshing?"default":"pointer",lineHeight:1,flexShrink:0}}
+            >{refreshing?"…":"🔄"}</button>
+          </div>
         </div>
         <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,marginTop:4}}>로그아웃</button>
       </div>

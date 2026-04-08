@@ -147,12 +147,12 @@ export default function App(){
     return () => { _supabase.removeChannel(ch); adminNotifChRef.current = null; };
   }, []); // eslint-disable-line
 
-  // notifDateLabel: "2026-04-10" → "04.10 (금)" 형식으로 변환 (관리자 벨 알림용)
+  // notifDateLabel: "2026-04-10" → "04.10(금)" 형식으로 변환 (관리자 벨 알림용)
   const notifDateLabel = (dateStr) => {
     if (!dateStr) return "";
     const [y, m, d] = dateStr.split("-");
     const dow = DOW_KO[new Date(Number(y), Number(m) - 1, Number(d)).getDay()];
-    return `${m}.${d} (${dow})`;
+    return `${m}.${d}(${dow})`;
   };
 
   // buildNotifText: 알림 종류별 텍스트 생성 (벨 + 브로드캐스트 수신 공통 사용)
@@ -416,7 +416,7 @@ export default function App(){
     <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72;transform:scale(.97)}@media(max-width:390px){html{font-size:14px}}.member-header{flex-wrap:wrap;gap:8px!important}`}</style>
-      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} scheduleTemplate={scheduleTemplate} onBookingNotif={onBookingNotif} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");saveAutoLogin(null);}}/>
+      <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} scheduleTemplate={scheduleTemplate} onBookingNotif={onBookingNotif} onRefresh={handleRefresh} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");saveAutoLogin(null);}}/>
     </div>
     </ClosuresContext.Provider>
   );
