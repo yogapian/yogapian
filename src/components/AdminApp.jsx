@@ -12,14 +12,13 @@ import HoldingModal from "./HoldingModal.jsx";
 import NoticeManager from "./NoticeManager.jsx";
 import SalesTab from "./SalesTab.jsx";
 
-// onRefresh: 관리자가 수동으로 DB 데이터를 즉시 다시 불러올 수 있도록 App.jsx에서 주입
-export default function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,specialSchedules,setSpecialSchedules,closures,setClosures,scheduleTemplate,setScheduleTemplate,sales,setSales,onLogout,onRefresh}){
+export default function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,specialSchedules,setSpecialSchedules,closures,setClosures,scheduleTemplate,setScheduleTemplate,sales,setSales,adminNotifLog=[],adminNotifUnread=0,onMarkNotifRead,onClearNotifLog,onLogout}){
   const [tab,setTab]=useState("attendance");
   const [filter,setFilter]=useState("on");
   const [search,setSearch]=useState("");
   const [showForm,setShowForm]=useState(false);
-  const [refreshing,setRefreshing]=useState(false); // 새로고침 버튼 로딩 상태
   const [editId,setEditId]=useState(null);
+  const [showNotifPanel,setShowNotifPanel]=useState(false); // 알림 패널 열림 여부
   const [form,setForm]=useState({});
   const [detailM,setDetailM]=useState(null);
   const [renewT,setRenewT]=useState(null);
@@ -55,10 +54,9 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     const e={...form,phone,phone4,endDate:autoEnd||form.endDate,total:+form.total,extensionDays:+(form.extensionDays||0),holdingDays:+(form.holdingDays||0),isNew:!!form.isNew,manualStatus:form.manualStatus||null};
     if(editId)setMembers(p=>p.map(m=>{
       if(m.id!==editId)return m;
-      // 편집 시 renewalHistory 마지막 항목 동기화:
-      // total/memberType 변경만 반영. startDate/endDate는 갱신폼 전용 — 편집 시 덮어쓰면 기수 날짜가 오염되는 버그 방지
+      // 편집 시 renewalHistory 마지막 항목도 동기화 (total/날짜 불일치 버그 방지)
       const rh=m.renewalHistory||[];
-      const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,total:e.total,memberType:e.memberType}:r):rh;
+      const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,total:e.total,startDate:e.startDate,endDate:e.endDate,memberType:e.memberType}:r):rh;
       return{...m,...e,renewalHistory:updRH};
     }));
     else{
@@ -80,8 +78,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   function _addMemberSale(member, type){
     const price=lookupPrice(member.memberType, member.total);
     if(!price) return;
-    // Date.now() → Math.max 방식으로 변경: sales.id INTEGER 오버플로우 방지
-    setSales(p=>[...p,{id:Math.max(...p.map(s=>s.id),0)+1,date:member.startDate,type,memberId:member.id,memberName:member.name,memberType:member.memberType,total:member.total,amount:price,payment:member.payment||"",memo:""}]);
+    setSales(p=>[...p,{id:Date.now(),date:member.startDate,type,memberId:member.id,memberName:member.name,memberType:member.memberType,total:member.total,amount:price,payment:member.payment||"",memo:""}]);
   }
 
   // 원데이 방문 기록을 정규 회원 1회로 인정하고 연동
@@ -112,8 +109,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     }));
     // 갱신 매출 자동 등록
     const mem=members.find(m=>m.id===mid);
-    // Date.now() → Math.max 방식으로 변경: sales.id INTEGER 오버플로우 방지
-    if(mem){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Math.max(...p.map(s=>s.id),0)+1,date:rf.startDate,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
+    if(mem){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Date.now(),date:rf.startDate,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
     setRenewT(null);setDetailM(null);
   }
   function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(!hd)return{...m,holding:null,holdingDays:0};
@@ -169,21 +165,47 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
             <span style={S.studioName}>요가피안</span>
             <span style={{fontSize:11,background:"#2e3a2e",color:"#7a9a7a",borderRadius:5,padding:"2px 7px",fontWeight:700,marginLeft:4}}>관리자</span>
           </div>
-          {/* 날짜·시간 + 새로고침 버튼(아이콘만): 시간 옆 작은 버튼으로 레이아웃 영향 최소화 */}
-          <div style={{display:"flex",alignItems:"center",gap:5}}>
-            <div style={S.sub}>{dateTimeStr}</div>
-            <button
-              onClick={async()=>{if(!onRefresh||refreshing)return;setRefreshing(true);try{await onRefresh();}finally{setRefreshing(false);}}}
-              disabled={refreshing}
-              style={{background:"none",border:"none",padding:"0 2px",fontSize:12,color:refreshing?"#bbb":"#7a9a7a",cursor:refreshing?"default":"pointer",lineHeight:1,flexShrink:0}}
-              title="최신 데이터 불러오기"
-            >{refreshing?"⏳":"🔄"}</button>
-          </div>
+          <div style={S.sub}>{dateTimeStr}</div>
         </div>
-        {/* 헤더 우측 버튼 그룹: 공지관리 + 로그아웃만 */}
-        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"nowrap"}}>
-          <button style={{...S.navBtn,fontSize:12,padding:"7px 11px",color:"#92610a",background:"#fef3c7",border:"1px solid #e8c44a",fontWeight:600,whiteSpace:"nowrap"}} onClick={()=>setShowNotices(true)}>📢 공지관리</button>
-          <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>로그아웃</button>
+        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+          {/* 🔔 알림 버튼 — 오늘 예약/취소 로그 */}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>{setShowNotifPanel(v=>!v);onMarkNotifRead&&onMarkNotifRead();}}
+              style={{background:showNotifPanel?"#e8eaed":"#f0ece4",border:"none",borderRadius:8,padding:"7px 10px",fontSize:16,cursor:"pointer",fontFamily:FONT,lineHeight:1,position:"relative"}}>
+              🔔
+              {adminNotifUnread>0&&(
+                <span style={{position:"absolute",top:2,right:2,background:"#c94040",color:"#fff",borderRadius:"50%",width:14,height:14,fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>
+                  {adminNotifUnread>9?"9+":adminNotifUnread}
+                </span>
+              )}
+            </button>
+            {/* 알림 드롭다운 패널 */}
+            {showNotifPanel&&(
+              <div style={{position:"absolute",right:0,top:"calc(100% + 6px)",width:280,background:"#fff",borderRadius:12,boxShadow:"0 4px 24px rgba(40,35,25,.18)",zIndex:200,border:"1px solid #e8e4dc",overflow:"hidden"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px 8px",borderBottom:"1px solid #f0ece4"}}>
+                  <span style={{fontSize:12,fontWeight:700,color:"#3a4a3a",fontFamily:FONT}}>오늘 알림</span>
+                  {adminNotifLog.length>0&&(
+                    <button onClick={()=>{onClearNotifLog&&onClearNotifLog();}} style={{fontSize:10,color:"#9a8e80",background:"none",border:"none",cursor:"pointer",fontFamily:FONT,padding:"2px 6px"}}>전체 지우기</button>
+                  )}
+                </div>
+                <div style={{maxHeight:320,overflowY:"auto"}}>
+                  {adminNotifLog.length===0?(
+                    <div style={{padding:"24px 0",textAlign:"center",fontSize:12,color:"#b0a090",fontFamily:FONT}}>오늘 알림이 없습니다</div>
+                  ):adminNotifLog.map(n=>(
+                    <div key={n.id} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 14px",borderBottom:"1px solid #f8f6f2"}}>
+                      <span style={{fontSize:16,flexShrink:0}}>{n.type==="cancel"?"❌":n.type==="waiting"?"⏳":"✅"}</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12,color:"#2a3a2a",fontFamily:FONT,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.text}</div>
+                      </div>
+                      <span style={{fontSize:10,color:"#b0a090",flexShrink:0,fontFamily:FONT}}>{n.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <button style={{...S.navBtn,fontSize:11,padding:"6px 9px",color:"#92610a",background:"#fef3c7",border:"1px solid #e8c44a",fontWeight:600}} onClick={()=>setShowNotices(true)}>📢 공지</button>
+          <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"7px 10px",fontSize:11,color:"#7a6e60",cursor:"pointer",fontFamily:FONT}}>로그아웃</button>
         </div>
       </div>
 
@@ -219,9 +241,10 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
 
       {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(changes)=>applyAdjust(detailM.id,changes)} onEdit={()=>{const m=members.find(x=>x.id===detailM.id)||detailM;setDetailM(null);openEdit(m);}} onDel={()=>{const id=detailM.id;setDetailM(null);setDelT(id);}}/>}
       {renewT&&<RenewalModal member={members.find(m=>m.id===renewT)} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)}/>}
-      {/* closures 전달: 홀딩 기간 내 휴강일 차감 계산에 사용 */}
-      {holdT&&<HoldingModal member={members.find(m=>m.id===holdT)} onClose={()=>setHoldT(null)} onSave={hd=>applyHolding(holdT,hd)} closures={closures}/>}
+      {holdT&&<HoldingModal member={members.find(m=>m.id===holdT)} onClose={()=>setHoldT(null)} onSave={hd=>applyHolding(holdT,hd)}/>}
       {showNotices&&<NoticeManager notices={notices} setNotices={setNotices} onClose={()=>setShowNotices(false)}/>}
+      {/* 알림 패널 외부 클릭 시 닫기 */}
+      {showNotifPanel&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setShowNotifPanel(false)}/>}
 
       {showForm&&(
         <div style={S.overlay} onClick={()=>setShowForm(false)}>

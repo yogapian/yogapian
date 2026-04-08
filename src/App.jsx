@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Agentation } from "agentation";
-import { FONT, TODAY_STR, getTodayStr } from "./constants.js";
+import { FONT, TODAY_STR, getTodayStr, TIME_SLOTS } from "./constants.js";
 import { ClosuresContext } from "./context.js";
 import { isPushSupported, subscribePush } from "./pushUtils.js";
 import {
@@ -30,6 +30,17 @@ export default function App(){
   const [saving,setSaving]=useState(false);
   const [loading,setLoading]=useState(true);
   const loadedRef = useRef(false);
+  const membersRef = useRef([]); // stale closure 방지용 — realtime 리스너에서 회원명 조회에 사용
+
+  // 관리자 알림 로그 — localStorage에 오늘 날짜 키로 저장, 자정 지나면 자동 초기화
+  const [adminNotifLog, setAdminNotifLog] = useState(() => {
+    try {
+      const k = `yogapian_admin_notif_${getTodayStr()}`;
+      const s = localStorage.getItem(k);
+      return s ? JSON.parse(s) : [];
+    } catch { return []; }
+  });
+  const [adminNotifUnread, setAdminNotifUnread] = useState(0);
 
   useEffect(()=>{
     (async()=>{
@@ -85,6 +96,22 @@ export default function App(){
       return next;
     });
   }, []);
+
+  // membersRef를 항상 최신 상태로 유지 (realtime 리스너의 stale closure 방지)
+  membersRef.current = members;
+
+  // 알림 로그를 localStorage에 저장 (오늘 날짜 키, 구일 자동 삭제)
+  useEffect(() => {
+    const todayKey = `yogapian_admin_notif_${getTodayStr()}`;
+    try {
+      localStorage.setItem(todayKey, JSON.stringify(adminNotifLog));
+      // 구일 로그 청소
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k?.startsWith("yogapian_admin_notif_") && k !== todayKey) localStorage.removeItem(k);
+      }
+    } catch {}
+  }, [adminNotifLog]);
 
   const setBookings = useCallback((updater) => {
     setBookingsState(prev => {
@@ -188,28 +215,6 @@ export default function App(){
     }
   }, [screen]); // eslint-disable-line
 
-  // 관리자 화면 진입 시 데이터 풀 리로드 — 오래 열어둔 상태에서 누락된 변경 사항 복구
-  useEffect(() => {
-    if(screen !== "admin") return;
-    (async () => {
-      try {
-        const all = await dbLoadAll();
-        if(all.bookings.length) {
-          const processed = all.bookings.map(b => {
-            if(b.status==="attended" && b.date<TODAY_STR && b.confirmedAttend==null)
-              return {...b, confirmedAttend:true};
-            return b;
-          });
-          setBookingsState(processed);
-        }
-        if(all.members.length)          setMembersState(all.members);
-        if(all.specialSchedules.length) setSpecialSchedulesState(all.specialSchedules);
-        if(all.closures.length)         setClosuresState(all.closures);
-        if(all.sales?.length)           setSalesState(all.sales);
-      } catch(e){ console.warn("관리자 재로드 실패:", e); }
-    })();
-  }, [screen]); // eslint-disable-line
-
   // 관리자 화면 실시간 동기화 — 예약/회원 변경 즉시 반영
   useEffect(() => {
     if(screen !== "admin") return;
@@ -222,6 +227,36 @@ export default function App(){
         } else if(payload.eventType === "DELETE"){
           setBookingsState(prev => prev.filter(b=>b.id!==payload.old.id));
         }
+
+        // ── 관리자 알림 로그 추가 ─────────────────────────────────────────────
+        // 오늘 날짜 예약만 기록 / 관리자가 직접 취소한 것(cancelledBy==="admin")은 제외
+        try {
+          const nb = payload.new ? fromSnakeBooking(payload.new) : null;
+          const ob = payload.old ? fromSnakeBooking(payload.old) : null;
+          const b = nb || ob;
+          if (!b || b.date !== getTodayStr()) return;
+          const kst = new Date(new Date().getTime() + 9*3600*1000);
+          const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
+          const memberName = b.memberId ? (membersRef.current.find(m=>m.id===b.memberId)?.name || "?") : (b.onedayName || "원데이");
+          const slotIcon  = TIME_SLOTS.find(s=>s.key===b.timeSlot)?.icon  || "📍";
+          const slotLabel = TIME_SLOTS.find(s=>s.key===b.timeSlot)?.label || b.timeSlot;
+          let text = null, type = "reserve";
+          if (payload.eventType === "INSERT") {
+            if (b.status === "reserved")  { text = `${memberName} ${slotIcon}${slotLabel} 예약`; type = "reserve"; }
+            else if (b.status === "waiting") { text = `${memberName} ${slotIcon}${slotLabel} 대기 등록`; type = "waiting"; }
+          } else if (payload.eventType === "UPDATE" && ob) {
+            if (nb.status === "cancelled" && ob.status !== "cancelled") {
+              if (nb.cancelledBy === "admin") return; // 관리자 취소는 로그 안함
+              text = `${memberName} ${slotIcon}${slotLabel} 예약 취소`; type = "cancel";
+            } else if (nb.status === "reserved" && ob.status === "waiting") {
+              text = `${memberName} ${slotIcon}${slotLabel} 대기→예약 전환`; type = "reserve";
+            }
+          }
+          if (!text) return;
+          const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
+          setAdminNotifLog(prev => [entry, ...prev]);
+          setAdminNotifUnread(prev => prev + 1);
+        } catch {}
       })
       .on("postgres_changes", {event:"*", schema:"public", table:"members"}, payload => {
         if(payload.eventType === "INSERT"){
@@ -250,26 +285,6 @@ export default function App(){
       ).subscribe();
     return () => _supabase.removeChannel(channel);
   }, [screen, loggedMember?.id]); // eslint-disable-line
-
-  // 수동 새로고침 — 관리자가 🔄 버튼 클릭 시 DB에서 최신 데이터 즉시 재로드
-  const handleRefresh = useCallback(async () => {
-    try {
-      const all = await dbLoadAll();
-      if(all.bookings.length){
-        const processed = all.bookings.map(b=>{
-          if(b.status==="attended" && b.date<TODAY_STR && b.confirmedAttend==null)
-            return {...b, confirmedAttend:true};
-          return b;
-        });
-        setBookingsState(processed);
-      }
-      if(all.members.length)          setMembersState(all.members);
-      if(all.specialSchedules.length) setSpecialSchedulesState(all.specialSchedules);
-      if(all.closures.length)         setClosuresState(all.closures);
-      if(all.sales?.length)           setSalesState(all.sales);
-      if(all.notices.length)          setNoticesState(all.notices);
-    } catch(e){ console.warn("수동 새로고침 실패:", e); }
-  }, []); // eslint-disable-line
 
   const setScheduleTemplate = useCallback((updater) => {
     setScheduleTemplateState(prev => {
@@ -351,8 +366,7 @@ export default function App(){
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input,select,textarea{font-family:${FONT};outline:none;-webkit-appearance:none}.card{transition:box-shadow .2s,transform .15s}@media(hover:hover){.card:hover{box-shadow:0 6px 24px rgba(60,50,30,.14);transform:translateY(-2px)}}.pill:hover{opacity:.78}button:active{opacity:.72}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c8c0b0;border-radius:4px}@media(max-width:600px){html{font-size:14px}.admin-grid{grid-template-columns:1fr!important}.admin-pillrow{gap:5px!important}.admin-toolbar{flex-direction:column!important}}`}</style>
       <SaveBadge/>
-      {/* onRefresh: 🔄 버튼으로 DB 최신 데이터 즉시 재로드 */}
-      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}} onRefresh={handleRefresh}/>
+      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} adminNotifLog={adminNotifLog} adminNotifUnread={adminNotifUnread} onMarkNotifRead={()=>setAdminNotifUnread(0)} onClearNotifLog={()=>setAdminNotifLog([])} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
       {process.env.NODE_ENV === "development" && <Agentation />}
     </div>
     </ClosuresContext.Provider>
