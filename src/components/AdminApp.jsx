@@ -247,7 +247,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
                 <div style={{padding:"24px 0",textAlign:"center",fontSize:12,color:"#b0a090",fontFamily:FONT}}>오늘 알림이 없습니다</div>
               ):adminNotifLog.map(n=>(
                 <div key={n.id} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid #f8f6f2"}}>
-                  <span style={{fontSize:16,flexShrink:0}}>{n.type==="cancel"?"❌":n.type==="waiting"?"⏳":"✅"}</span>
+                  <span style={{fontSize:13,flexShrink:0}}>{n.type==="cancel"?"❌":n.type==="waiting"?"⏳":"✅"}</span>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:12,color:"#2a3a2a",fontFamily:FONT,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.text}</div>
                   </div>
