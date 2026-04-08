@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { Agentation } from "agentation";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, DOW_KO, KR_HOLIDAYS } from "../constants.js";
+import { broadcastAdminNotif } from "../db.js"; // 관리자 알림 브로드캐스트
 import { parseLocal, fmt, fmtWithDow, addDays, toDateStr } from "../utils.js";
 import { calcDL, getClosureExtDays, usedAsOf, getSlotCapacity, holdingElapsed } from "../memberCalc.js";
 import { useClosures } from "../context.js";
@@ -243,6 +244,16 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       const nid = Math.max(...p.map(b=>b.id),0)+1;
       return [...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}];
     });
+    // 관리자 알림 브로드캐스트 — postgres_changes 미작동으로 대체
+    const _slotObj = TIME_SLOTS.find(s=>s.key===slotKey);
+    broadcastAdminNotif({
+      event: isWaiting ? "waiting" : "reserve",
+      memberName: member.name,
+      slotKey,
+      slotIcon:  _slotObj?.icon  || "📍",
+      slotLabel: _slotObj?.label || slotKey,
+      date: selDate,
+    });
     setPendingSlot(null); setRenewPopup(null);
   }
 
@@ -264,6 +275,16 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     setBookings(p=>{
       const next = p.map(b=>b.id===bId?{...b,status:"cancelled",cancelledBy:"member"}:b);
       return firstWaiter?next.map(b=>b.id===firstWaiter.id?{...b,status:"reserved"}:b):next;
+    });
+    // 관리자 알림 브로드캐스트 — postgres_changes 미작동으로 대체
+    const _slotObj2 = TIME_SLOTS.find(s=>s.key===cancelled.timeSlot);
+    broadcastAdminNotif({
+      event: "cancel",
+      memberName: member.name,
+      slotKey: cancelled.timeSlot,
+      slotIcon:  _slotObj2?.icon  || "📍",
+      slotLabel: _slotObj2?.label || cancelled.timeSlot,
+      date: cancelled.date,
     });
     if(firstWaiter){
       // 공지: 상단 이모지 제거 / 날짜 + 슬롯명 + 시간 명시

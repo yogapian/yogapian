@@ -6,6 +6,18 @@ export const _supabase = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJncmdtcnhsYWh0cnBncm5pZ2lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NjUzOTQsImV4cCI6MjA4OTU0MTM5NH0.-HRgZaFoWuXWizdHe4ANaRfuo3QCQlP7aYUasofNj4s"
 );
 
+// ─── 관리자 알림 브로드캐스트 ────────────────────────────────────────────────
+// 회원이 예약/취소 시 이 채널로 메시지를 전송 → 관리자 앱이 수신하여 🔔 알림 표시
+// postgres_changes 대신 Broadcast 사용 (postgres_changes는 WAL 설정 의존)
+const _adminNotifCh = _supabase.channel("yogapian-admin-notif");
+_adminNotifCh.subscribe(); // 전송 전 채널 조인 필요
+export function broadcastAdminNotif(data) {
+  // event: "reserve" | "waiting" | "cancel"
+  // memberName, slotKey, slotIcon, slotLabel, date
+  _adminNotifCh.send({ type: "broadcast", event: "booking_change", payload: data })
+    .catch(e => console.warn("broadcastAdminNotif 실패:", e));
+}
+
 // camelCase ↔ snake_case 변환 헬퍼
 export function toSnake(m) {
   return {
