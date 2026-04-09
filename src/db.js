@@ -194,8 +194,9 @@ export async function dbLoadAll() {
   // ⚠️ Supabase JS의 기본 row limit = 1000. 초과 시 최신 데이터가 잘림 → limit 명시 필수
   const [mRes, bRes, nRes, sRes, cRes, slRes] = await Promise.all([
     _supabase.from("members").select("*").order("id").limit(2000),
-    // 전체 booking 로드 — 회원 과거 출석 기록 표시를 위해 날짜 제한 없음 (현재 ~1000건 수준으로 문제없음)
-    _supabase.from("bookings").select("*").order("id").limit(10000),
+    // 최신순 로드 — Supabase 서버 max_rows=1000 제한 우회: 최신 데이터 우선 확보
+    // 전체 1057건이므로 최신순으로 받으면 오늘 출석 포함 최근 데이터가 잘리지 않음
+    _supabase.from("bookings").select("*").order("date", { ascending: false }).order("id", { ascending: false }).limit(10000),
     _supabase.from("notices").select("*").order("id", { ascending: false }).limit(500),
     _supabase.from("special_schedules").select("*").order("date").limit(2000),
     _supabase.from("closures").select("*").order("date").limit(2000),
