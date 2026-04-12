@@ -17,8 +17,10 @@ export const fmtWithDow=d=>`${fmt(d)} (${DOW_KO[parseLocal(d).getDay()]})`;
 export function useClock(){
   const [now,setNow]=useState(new Date());
   useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
-  const h=String(now.getHours()).padStart(2,"0"),mi=String(now.getMinutes()).padStart(2,"0"),s=String(now.getSeconds()).padStart(2,"0");
-  const dateStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  // 기기 타임존 무관하게 항상 KST(UTC+9) 기준으로 날짜·시간 계산
+  const kst=new Date(now.getTime()+9*3600*1000);
+  const h=String(kst.getUTCHours()).padStart(2,"0"),mi=String(kst.getUTCMinutes()).padStart(2,"0"),s=String(kst.getUTCSeconds()).padStart(2,"0");
+  const dateStr=`${kst.getUTCFullYear()}-${String(kst.getUTCMonth()+1).padStart(2,"0")}-${String(kst.getUTCDate()).padStart(2,"0")}`;
   return{timeStr:`${h}:${mi}:${s}`,dateTimeStr:`${fmtWithDow(dateStr)} ${h}:${mi}:${s}`};
 }
 
