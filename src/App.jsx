@@ -33,6 +33,7 @@ export default function App(){
   const membersRef = useRef([]); // stale closure 방지용 — realtime 리스너에서 회원명 조회에 사용
   const adminNotifChRef = useRef(null); // 관리자 알림 브로드캐스트 채널 (앱 전체 단일 인스턴스)
   const screenRef = useRef("memberLogin"); // 현재 screen — 브로드캐스트 수신 시 admin 여부 판별용
+  const handleRefreshRef = useRef(null); // 브로드캐스트 수신 시 관리자 자동 새로고침용
 
   // 관리자 알림 로그 — localStorage에 오늘 날짜 키로 저장, 자정 지나면 자동 초기화
   const [adminNotifLog, setAdminNotifLog] = useState(() => {
@@ -102,6 +103,7 @@ export default function App(){
   // ref를 항상 최신 상태로 유지 (realtime 리스너의 stale closure 방지)
   membersRef.current = members;
   screenRef.current = screen;
+  // handleRefresh는 선언 후 아래에서 할당 (ref는 여기서 초기화만)
 
   // 알림 로그를 localStorage에 저장 (오늘 날짜 키, 구일 자동 삭제)
   useEffect(() => {
@@ -141,6 +143,8 @@ export default function App(){
         const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
         setAdminNotifLog(prev => [entry, ...prev]);
         setAdminNotifUnread(prev => prev + 1);
+        // 다른 기기에서 예약/취소 시 관리자 화면 자동 새로고침
+        handleRefreshRef.current?.().catch(()=>{});
       })
       .subscribe();
     adminNotifChRef.current = ch;
@@ -334,6 +338,7 @@ export default function App(){
   }, [screen, loggedMember?.id]); // eslint-disable-line
 
   // 수동 새로고침 — 관리자가 🔄 버튼 클릭 시 DB에서 최신 데이터 즉시 재로드
+  // handleRefreshRef에 할당하여 브로드캐스트 수신 시 자동 호출에도 사용
   const handleRefresh = useCallback(async () => {
     try {
       const all = await dbLoadAll();
@@ -352,6 +357,7 @@ export default function App(){
       if(all.notices.length)          setNoticesState(all.notices);
     } catch(e){ console.warn("수동 새로고침 실패:", e); }
   }, []); // eslint-disable-line
+  handleRefreshRef.current = handleRefresh; // 항상 최신 함수 참조 유지
 
   const setScheduleTemplate = useCallback((updater) => {
     setScheduleTemplateState(prev => {
