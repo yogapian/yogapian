@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 
@@ -18,8 +18,9 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   // 홀딩 중이면 endDate 초과해도 expired 아님 — effEnd가 동적 연장되지만 이중 안전장치
   const expired=dl<0&&!m.holding;
   const usedCnt=usedAsOf(m.id,TODAY_STR,bookings,[m]); // 오늘까지 출석(attended) 횟수
-  const rem=expired?0:Math.max(0,m.total-usedCnt);     // 잔여 횟수 (만료면 0)
-  const pct=expired?100:Math.round(usedCnt/m.total*100); // 프로그레스바 % (0~100)
+  const periodTotal=activePeriodTotal(m,TODAY_STR);    // 현재 활성 기수의 총 횟수
+  const rem=expired?0:Math.max(0,periodTotal-usedCnt); // 잔여 횟수 (현재 기수 기준)
+  const pct=expired?100:Math.round(usedCnt/Math.max(periodTotal,1)*100); // 프로그레스바 %
   const status=getDisplayStatus(m,closures,bookings),sc=SC[status]||SC["on"]; // 상태 스타일
   const end=effEnd(m,closures);          // 실제 표시 종료일 (홀딩·휴강 연장 포함)
   const closureExt=getClosureExtDays(m,closures); // 별도휴강으로 늘어난 일수 (뱃지 표시용)

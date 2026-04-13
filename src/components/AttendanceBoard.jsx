@@ -11,7 +11,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FONT, TODAY_STR, getTodayStr, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
-import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, calc3MonthEnd, getSlotCapacity } from "../memberCalc.js";
+import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, calc3MonthEnd, getSlotCapacity } from "../memberCalc.js";
 import S from "../styles.js";
 import CalendarPicker from "./CalendarPicker.jsx";
 import AttendCheckModal from "./AttendCheckModal.jsx";
@@ -427,7 +427,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     const isWaiting=rec.status==="waiting";
                     const waitRank=isWaiting?waiters.findIndex(w=>w.id===rec.id)+1:0;
                     const waitEmoji=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣"][waitRank-1]||`${waitRank}`;
-                    const remCount=mem?Math.max(0,mem.total-usedAsOf(mem.id,date,bookings,members)):null;
+                    const remCount=mem?Math.max(0,activePeriodTotal(mem,date)-usedAsOf(mem.id,date,bookings,members)):null;
                     const isDragging=dragId===rec.id;
                     // remCount<=2이면 잔여 경고 텍스트 표시 (1이하=빨강, 2=주황)
                     // 종료일이 지난 회원(갱신필요)은 잔여 경고 대신 갱신 뱃지가 표시되어야 함
@@ -522,7 +522,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
               <div style={S.fg}><label style={S.lbl}>회원 선택</label>
                 <select style={{...S.inp}} value={addForm.memberId} onChange={e=>setAddForm(f=>({...f,memberId:e.target.value}))}>
                   <option value="">-- 회원을 선택하세요 --</option>
-                  {avail(addModal).map(m=><option key={m.id} value={m.id}>{m.gender==="F"?"🧘🏻‍♀️":"🧘🏻‍♂️"} {m.name}{m.adminNickname?` (${m.adminNickname})`:""} (잔여 {m.total-usedAsOf(m.id,TODAY_STR,bookings,[m])}회)</option>)}
+                  {avail(addModal).map(m=><option key={m.id} value={m.id}>{m.gender==="F"?"🧘🏻‍♀️":"🧘🏻‍♂️"} {m.name}{m.adminNickname?` (${m.adminNickname})`:""} (잔여 {activePeriodTotal(m,TODAY_STR)-usedAsOf(m.id,TODAY_STR,bookings,[m])}회)</option>)}
                 </select>
               </div>
             </>)}
@@ -651,11 +651,12 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         // 홀딩 중이면 endDate 초과해도 expired 아님
         const qexpired=qdl<0&&!qm.holding;
         const qusedCnt=usedAsOf(qm.id,TODAY_STR,bookings,[qm]);
-        const qrem = qexpired ? 0 : Math.max(0, Number(qm.total) - qusedCnt);
+        const qperiodTotal=activePeriodTotal(qm,TODAY_STR); // 현재 활성 기수 총 횟수
+        const qrem = qexpired ? 0 : Math.max(0, qperiodTotal - qusedCnt);
         const qstatus=getDisplayStatus(qm,closures,bookings);
         const qsc=SC[qstatus];
         const qtc=TYPE_CFG[qm.memberType]||TYPE_CFG["1month"];
-        const qpct=Math.min(100,Math.round(qusedCnt/Math.max(qm.total,1)*100));
+        const qpct=Math.min(100,Math.round(qusedCnt/Math.max(qperiodTotal,1)*100));
         const qbarColor=qexpired?"#c97474":qstatus==="hold"?"#6a7fc8":"#5a9e6a";
         const qclosureExt=getClosureExtDays(qm,closures);
         return(

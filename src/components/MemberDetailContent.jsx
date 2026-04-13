@@ -12,7 +12,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, fmtWithDow, addDays } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, holdingElapsed, periodRecs, currentRecs } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, holdingElapsed, periodRecs, currentRecs } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 
 export default function MemberDetailContent({ member, bookings, onClose, showNickname=false, adjSection=null, extraInfoRows=null }) {
@@ -25,7 +25,8 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
   const dl = calcDL(member, closures);
   const expired = dl < 0;
   const dispUsed = usedAsOf(member.id, TODAY_STR, bookings, [member]);
-  const dispRem = expired ? 0 : Math.max(0, member.total - dispUsed);
+  const dispPeriodTotal = activePeriodTotal(member, TODAY_STR); // 현재 활성 기수 총 횟수
+  const dispRem = expired ? 0 : Math.max(0, dispPeriodTotal - dispUsed);
   const tc = TYPE_CFG[member.memberType] || TYPE_CFG["1month"];
   const curRecs = currentRecs(member, bookings);
   const isActiveStatus = status === "on" || status === "hold";
@@ -60,7 +61,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
       {/* ─── 상단 통계 3칸 ─── */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:12}}>
         {[
-          {l:"이번기수출석", v:`${curRecs.length}/${member.total}`, c:"#5a6070"},
+          {l:"이번기수출석", v:`${curRecs.length}/${dispPeriodTotal}`, c:"#5a6070"},
           {l:"잔여 회차",    v:`${dispRem}회`, c:expired?"#9a7878":dispRem===0?"#8a7050":"#5a7060"},
           {l:"D-day",       v:dl<0?`${Math.abs(dl)}일초과`:dl===0?"오늘":`D-${dl}`, c:dl<0?"#9a7878":dl<=7?"#8a7050":"#4a4a4a"}
         ].map(item => (

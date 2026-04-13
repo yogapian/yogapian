@@ -15,7 +15,7 @@ import { Agentation } from "agentation";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, DOW_KO, KR_HOLIDAYS } from "../constants.js";
 // broadcastAdminNotif는 App.jsx에서 onBookingNotif prop으로 전달받음 (채널 단일 인스턴스 유지)
 import { parseLocal, fmt, fmtWithDow, addDays, toDateStr } from "../utils.js";
-import { calcDL, getClosureExtDays, usedAsOf, getSlotCapacity, holdingElapsed } from "../memberCalc.js";
+import { calcDL, getClosureExtDays, usedAsOf, activePeriodTotal, getSlotCapacity, holdingElapsed } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 
@@ -181,16 +181,24 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const memberDl      = calcDL(member, closuresCxt);
   const memberExpired = memberDl < 0;
   const usedCnt       = usedAsOf(member.id, TODAY_STR, bookings, [member]);
-  const rem           = memberExpired ? 0 : Math.max(0, member.total - usedCnt);
+  const rem           = memberExpired ? 0 : Math.max(0, activePeriodTotal(member, TODAY_STR) - usedCnt);
 
-  // 다가오는 예약 — 취소되지 않은, 오늘 이후(오늘 출석완료 제외)의 가장 빠른 예약
+  // 현재 KST 시각 (분 단위) — 오늘 지난 슬롯 필터에 사용
+  const _kstNow = new Date(new Date().getTime()+9*3600*1000);
+  const _nowMin = _kstNow.getUTCHours()*60+_kstNow.getUTCMinutes();
+
+  // 다가오는 예약 — 취소되지 않은, 오늘 이후(오늘 출석완료·지난 슬롯 제외)의 가장 빠른 예약
   const upcomingBooking = [...bookings]
-    .filter(b =>
-      b.memberId===member.id &&
-      b.status!=="cancelled" &&
-      b.date>=TODAY_STR &&
-      !(b.status==="attended" && b.date===TODAY_STR) // 오늘 이미 출석한 건 제외
-    )
+    .filter(b => {
+      if(b.memberId!==member.id||b.status==="cancelled"||b.date<TODAY_STR) return false;
+      if(b.status==="attended"&&b.date===TODAY_STR) return false; // 오늘 출석 완료 제외
+      // 오늘 수업이면 슬롯 시간이 지났는지 확인 — 지난 슬롯은 제외
+      if(b.date===TODAY_STR){
+        const slotTime=TIME_SLOTS.find(t=>t.key===b.timeSlot)?.time;
+        if(slotTime){const[sh,sm]=slotTime.split(":").map(Number);if(sh*60+sm<=_nowMin)return false;}
+      }
+      return true;
+    })
     .sort((a,b) => a.date.localeCompare(b.date)||(a.id-b.id))[0];
   const upcomingSlot = upcomingBooking ? TIME_SLOTS.find(t=>t.key===upcomingBooking.timeSlot) : null;
   const upcomingText = upcomingBooking ? `${fmtWithDow(upcomingBooking.date)} ${upcomingSlot?.label||''} ${upcomingSlot?.time||''}`.trim() : null;

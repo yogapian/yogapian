@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, useClock } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 import NoticeBoard from "./NoticeBoard.jsx";
@@ -19,8 +19,9 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   // 홀딩 중이면 endDate 초과해도 expired 아님 — effEnd가 동적 연장되지만 이중 안전장치
   const expired = dl < 0 && !m.holding;
   const usedCnt = usedAsOf(m.id, TODAY_STR, bookings, [m]);
-  const rem = expired ? 0 : Math.max(0, m.total - usedCnt);
-  const pct = expired ? 100 : Math.round(usedCnt / Math.max(m.total, 1) * 100);
+  const periodTotal = activePeriodTotal(m, TODAY_STR); // 현재 활성 기수 총 횟수
+  const rem = expired ? 0 : Math.max(0, periodTotal - usedCnt);
+  const pct = expired ? 100 : Math.round(usedCnt / Math.max(periodTotal, 1) * 100);
   const barColor = expired ? "#c97474" : status === "hold" ? "#6a7fc8" : "#5a9e6a";
   const isOff = status === "off";
   const closureExt = getClosureExtDays(m, closuresCxt);

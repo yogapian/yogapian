@@ -52,6 +52,19 @@ export function get3MonthsInfo(s){
   });
 }
 
+// activePeriodTotal: targetDate 기준 현재 활성 기수의 total 반환
+// — member.total은 최신 갱신 total이지만, 갱신 시작일이 아직 안된 경우
+//   이전 기수 total을 사용해야 잔여 횟수가 정확히 표시됨
+export function activePeriodTotal(member, targetDate) {
+  const rh = member.renewalHistory || [];
+  for(let ri = rh.length-1; ri >= 0; ri--) {
+    const r = rh[ri];
+    if(targetDate >= r.startDate && targetDate <= r.endDate) return r.total;
+  }
+  if(rh.length > 0) return rh[rh.length-1].total;
+  return member.total;
+}
+
 export function usedAsOf(memberId, targetDate, bookings, members){
   const member = members ? members.find(m=>m.id===memberId) : null;
   if(!member) return 0;
@@ -96,7 +109,7 @@ export function getDisplayStatus(m, closures=[], bookings=[]) {
     for(let i=rh.length-1;i>=0;i--){const r=rh[i];if(TODAY_STR>=r.startDate&&TODAY_STR<=r.endDate){periodStart=r.startDate;break;}}
     if(bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.date>=periodStart)) return "renew";
     const used = usedAsOf(m.id, TODAY_STR, bookings, [m]);
-    if(Math.max(0, m.total - used) === 0) return "renew"; // 종료일 남았는데 잔여 0
+    if(Math.max(0, activePeriodTotal(m, TODAY_STR) - used) === 0) return "renew"; // 현재 기수 잔여 0이면 갱신 필요
     return "on";
   }
   if(dl >= -30) return "renew"; // 만료 후 30일 이내
