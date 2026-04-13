@@ -427,7 +427,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     const isWaiting=rec.status==="waiting";
                     const waitRank=isWaiting?waiters.findIndex(w=>w.id===rec.id)+1:0;
                     const waitEmoji=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣"][waitRank-1]||`${waitRank}`;
-                    const remCount=mem?Math.max(0,activePeriodTotal(mem,date)-usedAsOf(mem.id,date,bookings,members)):null;
+                    const remCount=mem?Math.max(0,activePeriodTotal(mem,date,bookings,members)-usedAsOf(mem.id,date,bookings,members)):null;
                     const isDragging=dragId===rec.id;
                     // remCount<=2이면 잔여 경고 텍스트 표시 (1이하=빨강, 2=주황)
                     // 종료일이 지난 회원(갱신필요)은 잔여 경고 대신 갱신 뱃지가 표시되어야 함
@@ -522,7 +522,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
               <div style={S.fg}><label style={S.lbl}>회원 선택</label>
                 <select style={{...S.inp}} value={addForm.memberId} onChange={e=>setAddForm(f=>({...f,memberId:e.target.value}))}>
                   <option value="">-- 회원을 선택하세요 --</option>
-                  {avail(addModal).map(m=><option key={m.id} value={m.id}>{m.gender==="F"?"🧘🏻‍♀️":"🧘🏻‍♂️"} {m.name}{m.adminNickname?` (${m.adminNickname})`:""} (잔여 {activePeriodTotal(m,TODAY_STR)-usedAsOf(m.id,TODAY_STR,bookings,[m])}회)</option>)}
+                  {avail(addModal).map(m=><option key={m.id} value={m.id}>{m.gender==="F"?"🧘🏻‍♀️":"🧘🏻‍♂️"} {m.name}{m.adminNickname?` (${m.adminNickname})`:""} (잔여 {activePeriodTotal(m,TODAY_STR,bookings,[m])-usedAsOf(m.id,TODAY_STR,bookings,[m])}회)</option>)}
                 </select>
               </div>
             </>)}
@@ -651,7 +651,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         // 홀딩 중이면 endDate 초과해도 expired 아님
         const qexpired=qdl<0&&!qm.holding;
         const qusedCnt=usedAsOf(qm.id,TODAY_STR,bookings,[qm]);
-        const qperiodTotal=activePeriodTotal(qm,TODAY_STR); // 현재 활성 기수 총 횟수
+        const qperiodTotal=activePeriodTotal(qm,TODAY_STR,bookings,[qm]); // 유효 기수 총 횟수 (이월 배분 포함)
         const qrem = qexpired ? 0 : Math.max(0, qperiodTotal - qusedCnt);
         const qstatus=getDisplayStatus(qm,closures,bookings);
         const qsc=SC[qstatus];

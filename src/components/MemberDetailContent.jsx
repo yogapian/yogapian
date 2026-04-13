@@ -25,7 +25,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
   const dl = calcDL(member, closures);
   const expired = dl < 0;
   const dispUsed = usedAsOf(member.id, TODAY_STR, bookings, [member]);
-  const dispPeriodTotal = activePeriodTotal(member, TODAY_STR); // 현재 활성 기수 총 횟수
+  const dispPeriodTotal = activePeriodTotal(member, TODAY_STR, bookings, [member]); // 유효 기수 총 횟수 (이월 배분 포함)
   const dispRem = expired ? 0 : Math.max(0, dispPeriodTotal - dispUsed);
   const tc = TYPE_CFG[member.memberType] || TYPE_CFG["1month"];
   const curRecs = currentRecs(member, bookings);

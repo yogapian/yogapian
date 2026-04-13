@@ -181,12 +181,9 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const memberDl      = calcDL(member, closuresCxt);
   const memberExpired = memberDl < 0;
   const usedCnt       = usedAsOf(member.id, TODAY_STR, bookings, [member]);
-  const todayPeriodTotal = activePeriodTotal(member, TODAY_STR);
-  const todayRem      = memberExpired ? 0 : Math.max(0, todayPeriodTotal - usedCnt);
-  // 오늘 기수 소진 후 사전 갱신이 있으면 다음 기수 기준 잔여 표시 (헤더용)
-  const rh = member.renewalHistory || [];
-  const nextPeriod = todayRem===0 && !memberExpired ? rh.find(r=>r.startDate>TODAY_STR) : null;
-  const rem = nextPeriod ? nextPeriod.total : todayRem;
+  // activePeriodTotal: 이월 배분 포함 유효 기수 총 횟수 (사전 갱신 시 다음 기수 자동 반영)
+  const periodTotal   = activePeriodTotal(member, TODAY_STR, bookings, [member]);
+  const rem           = memberExpired ? 0 : Math.max(0, periodTotal - usedCnt);
 
   // 현재 KST 시각 (분 단위) — 오늘 지난 슬롯 필터에 사용
   const _kstNow = new Date(new Date().getTime()+9*3600*1000);
@@ -244,8 +241,10 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     if(mySlot(slotKey)||getSlotClosure(slotKey)||dayClosure) return;
     if(!isWaiting && slotActiveCount(slotKey)>=getSlotCapacity(selDate,slotKey,specialSchedules,scheduleTemplate)) return;
     if(isWaiting){ doReserve(slotKey,true,false); return; }
-    // 예약 날짜(selDate) 기준 잔여 계산 — 오늘 기수 소진 후 사전 갱신된 경우 미래 기수 반영
-    const selDateRem = memberExpired ? 0 : Math.max(0, activePeriodTotal(member, selDate) - usedAsOf(member.id, selDate, bookings, [member]));
+    // 예약 날짜(selDate) 기준 잔여 계산 — 이월 배분으로 미래 기수 자동 반영
+    const selDateUsed = usedAsOf(member.id, selDate, bookings, [member]);
+    const selDateTotal = activePeriodTotal(member, selDate, bookings, [member]);
+    const selDateRem = memberExpired ? 0 : Math.max(0, selDateTotal - selDateUsed);
     if(selDateRem===0||memberExpired){ setPendingSlot(slotKey); setRenewPopup("needRenewal"); return; }
     if(selDateRem===1){ setPendingSlot(slotKey); setRenewPopup("last1"); return; }
     doReserve(slotKey,false,false);

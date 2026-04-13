@@ -19,7 +19,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   // 홀딩 중이면 endDate 초과해도 expired 아님 — effEnd가 동적 연장되지만 이중 안전장치
   const expired = dl < 0 && !m.holding;
   const usedCnt = usedAsOf(m.id, TODAY_STR, bookings, [m]);
-  const periodTotal = activePeriodTotal(m, TODAY_STR); // 현재 활성 기수 총 횟수
+  const periodTotal = activePeriodTotal(m, TODAY_STR, bookings, [m]); // 유효 기수 총 횟수 (이월 배분 포함)
   const rem = expired ? 0 : Math.max(0, periodTotal - usedCnt);
   const pct = expired ? 100 : Math.round(usedCnt / Math.max(periodTotal, 1) * 100);
   const barColor = expired ? "#c97474" : status === "hold" ? "#6a7fc8" : "#5a9e6a";
