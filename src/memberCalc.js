@@ -53,40 +53,51 @@ export function get3MonthsInfo(s){
 }
 
 // activePeriodTotal: targetDate 기준 현재 활성 기수의 total 반환
-// — member.total은 최신 갱신 total이지만, 갱신 시작일이 아직 안된 경우
-//   이전 기수 total을 사용해야 잔여 횟수가 정확히 표시됨
+// — 날짜 범위 기반으로 해당 날짜가 속한 기수의 총 횟수를 반환
+// — 기수 중복(갱신 겹침) 시 최신 기수 우선
 export function activePeriodTotal(member, targetDate) {
-  const rh = member.renewalHistory || [];
-  for(let ri = rh.length-1; ri >= 0; ri--) {
-    const r = rh[ri];
-    if(targetDate >= r.startDate && targetDate <= r.endDate) return r.total;
+  const rh = [...(member.renewalHistory || [])].sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  for(let i = rh.length-1; i >= 0; i--) {
+    if(targetDate >= rh[i].startDate && targetDate <= rh[i].endDate) return rh[i].total;
   }
   if(rh.length > 0) return rh[rh.length-1].total;
   return member.total;
 }
 
+// usedAsOf: targetDate 기준 현재 활성 기수에서 사용한 횟수 반환
+// ── 핵심 알고리즘: 기수별 정원(total) 기반 이월 배분 ──────────────────────────
+// 세션을 날짜·ID 순으로 정렬 후 각 기수 정원을 순서대로 채움.
+// 기수 정원이 소진되면 초과 세션은 다음 기수로 이월 (날짜 무관).
+// → 같은 날 오전에 기수 소진 후 갱신 등록 시 오후 수업은 다음 기수에서 차감됨.
 export function usedAsOf(memberId, targetDate, bookings, members){
   const member = members ? members.find(m=>m.id===memberId) : null;
   if(!member) return 0;
-  const rh=member.renewalHistory||[];
-  let startDate=member.startDate;
-  // 역순 순회: 기수 중복 시 최신 기수(startDate 큰 것) 우선 적용
-  let found=false;
-  for(let ri=rh.length-1;ri>=0;ri--){const r=rh[ri];if(targetDate>=r.startDate&&targetDate<=r.endDate){startDate=r.startDate;found=true;break;}}
-  // 해당 날짜가 모든 기수 범위 밖(홀딩 중 기간 만료 등): 가장 최신 기수 startDate 사용
-  // — 폴백이 member.startDate이면 전체 이력을 다 카운트해 잔여횟수가 0이 되는 버그 방지
-  if(!found && rh.length>0) startDate=rh[rh.length-1].startDate;
+  // 기수 이력을 시작일순 정렬 (일반적으로 이미 정렬되어 있음)
+  const rh=[...(member.renewalHistory||[])].sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  if(!rh.length) return 0;
 
-  let cnt=0;
-  for(let i=0;i<bookings.length;i++){
-    const b=bookings[i];
-    if(b.memberId===memberId &&
-       b.status==="attended" &&
-       b.date>=startDate && b.date<=targetDate) {
-      cnt++;
-    }
+  // targetDate 기준 활성 기수 인덱스 (역순 탐색 → 중복 범위 시 최신 기수 우선)
+  let activePeriodIdx = rh.length-1;
+  for(let i=rh.length-1;i>=0;i--){
+    if(targetDate>=rh[i].startDate&&targetDate<=rh[i].endDate){activePeriodIdx=i;break;}
   }
-  return cnt;
+
+  // attended 세션을 날짜·ID 순 정렬 (같은 날 오전→오후 순서 보장)
+  const sessions=bookings
+    .filter(b=>b.memberId===memberId&&b.status==="attended"&&b.date<=targetDate)
+    .sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
+
+  const periodUsed=new Array(rh.length).fill(0);
+  for(const s of sessions){
+    // 이 세션의 기준 기수: session.date 이전에 시작한 가장 최신 기수
+    let pi=-1;
+    for(let i=rh.length-1;i>=0;i--){if(s.date>=rh[i].startDate){pi=i;break;}}
+    if(pi===-1) continue; // 모든 기수보다 이전 날짜 → 제외
+    // 기수 정원 초과 시 다음 기수로 이월 (사전 갱신으로 등록된 기수 포함)
+    while(pi<rh.length-1&&periodUsed[pi]>=rh[pi].total) pi++;
+    periodUsed[pi]++;
+  }
+  return periodUsed[activePeriodIdx];
 }
 
 export const getStatus=(m, closures=[])=>{
