@@ -385,8 +385,10 @@ export default function App(){
     function msUntilKSTMidnight(){
       const now=new Date();
       const kst=new Date(now.getTime()+9*3600*1000);
-      const next=new Date(Date.UTC(kst.getUTCFullYear(),kst.getUTCMonth(),kst.getUTCDate()+1));
-      return next.getTime()-now.getTime();
+      // KST 자정(00:00) = UTC 기준으로는 전날 15:00 (KST = UTC+9)
+      // → Date.UTC(KST 다음날) - 9시간 = KST 다음날 자정의 UTC 타임스탬프
+      const next=Date.UTC(kst.getUTCFullYear(),kst.getUTCMonth(),kst.getUTCDate()+1)-9*3600*1000;
+      return next-now.getTime();
     }
     const t=setTimeout(()=>window.location.reload(),msUntilKSTMidnight());
     return()=>clearTimeout(t);

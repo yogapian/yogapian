@@ -22,6 +22,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   // ── State ──────────────────────────────────────────────────────────────────
   // getTodayStr() 호출로 항상 현재 KST 날짜 사용 — TODAY_STR은 모듈 로드 시 고정이라 stale 가능
   const [date,setDate]=useState(()=>getTodayStr()); // 현재 선택된 날짜 (YYYY-MM-DD)
+  const todayStr=getTodayStr(); // 렌더 시마다 현재 KST 날짜 — 비교용 (TODAY_STR stale 방지)
   const [showCal,setShowCal]=useState(false);        // 달력 피커 열림 여부
   const [addModal,setAddModal]=useState(null);        // 출석 추가 모달: null 또는 slotKey
   const [addForm,setAddForm]=useState({type:"member",memberId:"",onedayName:"",walkIn:false});
@@ -223,7 +224,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
             <div onClick={()=>setShowCal(s=>!s)} style={{background:showCal?"#eef5ee":"#fff",border:`1.5px solid ${showCal?"#4a6a4a":"#ddd"}`,borderRadius:10,padding:"10px 12px",fontSize:14,fontWeight:700,color:"#1e2e1e",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               {fmtWithDow(date)}
               {/* 오늘 뱃지: bg #4a6a4a(진초록) */}
-              {date===TODAY_STR&&<span style={{fontSize:10,background:"#4a6a4a",color:"#fff",borderRadius:5,padding:"2px 6px",fontWeight:700}}>오늘</span>}
+              {date===todayStr&&<span style={{fontSize:10,background:"#4a6a4a",color:"#fff",borderRadius:5,padding:"2px 6px",fontWeight:700}}>오늘</span>}
               {/* 휴강 뱃지: bg #fde8e8(연분홍) / text #a83030(빨강) */}
               {dayClosure&&<span style={{fontSize:10,background:"#fde8e8",color:"#a83030",borderRadius:4,padding:"1px 6px",fontWeight:700}}>휴강</span>}
               {/* 오픈클래스 뱃지: bg #d8f5ec(민트) / text #1a6e4a(진초록) */}
@@ -243,8 +244,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
           {slots.length>0&&<div style={{background:"#2e8a4a",color:"#fff",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:700}}>출석 {attendedDay}</div>}
           {/* 시간표 버튼: text #3d5494(파랑) */}
           <button style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:"#3d5494",background:"#fff"}} onClick={()=>setShowTemplateMgr(true)}>📅 시간표</button>
-          <button disabled={date<TODAY_STR} style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:date<TODAY_STR?"#c0b8b0":"#8a5510",background:"#fff",cursor:date<TODAY_STR?"default":"pointer",opacity:date<TODAY_STR?0.5:1}} onClick={()=>{
-            if(date<TODAY_STR)return;
+          <button disabled={date<todayStr} style={{...S.navBtn,fontSize:11,padding:"6px 10px",color:date<todayStr?"#c0b8b0":"#8a5510",background:"#fff",cursor:date<todayStr?"default":"pointer",opacity:date<todayStr?0.5:1}} onClick={()=>{
+            if(date<todayStr)return;
             const _d1=new Date(date+"T00:00:00").getDay();const dowSlots=getDowSlots(_d1,date);
             const regularTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"};
             const spOnDate=specialSchedules.find(s=>s.date===date);
