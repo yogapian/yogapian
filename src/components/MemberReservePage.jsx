@@ -320,7 +320,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     while(cur < end){ const dow=cur.getDay(); if(dow!==0&&dow!==6) count++; cur.setDate(cur.getDate()+1); }
     setMembers(p=>p.map(m=>{
       if(m.id!==member.id) return m;
-      const hist={startDate:m.holding.startDate,endDate:TODAY_STR,workdays:count};
+      // endDate = 오늘 전날 (복귀 당일은 수업 가능 → 홀딩 기간에서 제외)
+      const hist={startDate:m.holding.startDate,endDate:addDays(TODAY_STR,-1),workdays:count};
       return{...m,holding:null,holdingDays:0,extensionDays:(m.extensionDays||0)+count,holdingHistory:[...(m.holdingHistory||[]),hist]};
     }));
   }

@@ -20,12 +20,15 @@ export default function HoldingModal({member,onClose,onSave,closures=[]}){
   const elapsed=start?Math.max(0,Math.ceil((TODAY-parseLocal(start))/86400000)):0;
   const rawDays=resumeDate&&start?Math.max(0,Math.ceil((parseLocal(resumeDate)-parseLocal(start))/86400000)):elapsed;
   // 홀딩 기간 내 전체 휴강일 차감 — 수업 없는 날은 홀딩 일수에 포함하지 않음
-  const closuresInHolding=countClosuresInRange(closures, start, resumeDate||TODAY_STR);
+  // 홀딩 endDate = 복귀일 전날 (복귀일 당일은 수업 가능 → 홀딩에 포함 안 됨)
+  const holdingEndDate = resumeDate ? addDays(resumeDate, -1) : (start ? addDays(TODAY_STR, -1) : TODAY_STR);
+  const closuresInHolding=countClosuresInRange(closures, start, holdingEndDate);
   const resumeDays=Math.max(0, rawDays - closuresInHolding);
   const newEnd=addDays(member.endDate,(member.extensionDays||0)+resumeDays);
 
   function handleResume(){
-    onSave({startDate:start,endDate:resumeDate||TODAY_STR,workdays:resumeDays,resumed:true});
+    // endDate = 복귀일 전날 (복귀 당일은 수업 가능 → 홀딩 기간에서 제외)
+    onSave({startDate:start,endDate:holdingEndDate,workdays:resumeDays,resumed:true});
   }
   function handleStart(){
     onSave({startDate:start,endDate:null,workdays:0,resumed:false});
