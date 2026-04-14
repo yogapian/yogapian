@@ -310,18 +310,20 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   }
 
   // ── resumeHolding: 홀딩 복귀 버튼 클릭 시 (3개월권만 가능) ──────────────
-  // 홀딩 시작일~오늘까지 평일 수를 extensionDays에 누적, holding 필드 초기화
+  // 홀딩 종료일 = 첫 수업일(selDate) 전날 — 버튼 누른 날 기준이 아님
+  // ex) 4/14에 버튼 눌러 4/15 예약 → endDate=4/14 / 4/15 당일 예약 → endDate=4/14
   function resumeHolding(){
     if(!member.holding||!setMembers) return;
     const startStr = member.holding.startDate;
+    // 홀딩 일수: 시작일 ~ (selDate 전날)까지 평일수
+    const holdEnd = selDate ? addDays(selDate, -1) : addDays(TODAY_STR, -1);
     let count = 0;
     let cur = parseLocal(startStr);
-    const end = parseLocal(TODAY_STR);
-    while(cur < end){ const dow=cur.getDay(); if(dow!==0&&dow!==6) count++; cur.setDate(cur.getDate()+1); }
+    const end = parseLocal(holdEnd);
+    while(cur <= end){ const dow=cur.getDay(); if(dow!==0&&dow!==6) count++; cur.setDate(cur.getDate()+1); }
     setMembers(p=>p.map(m=>{
       if(m.id!==member.id) return m;
-      // endDate = 오늘 전날 (복귀 당일은 수업 가능 → 홀딩 기간에서 제외)
-      const hist={startDate:m.holding.startDate,endDate:addDays(TODAY_STR,-1),workdays:count};
+      const hist={startDate:m.holding.startDate,endDate:holdEnd,workdays:count};
       return{...m,holding:null,holdingDays:0,extensionDays:(m.extensionDays||0)+count,holdingHistory:[...(m.holdingHistory||[]),hist]};
     }));
   }
