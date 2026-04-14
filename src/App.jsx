@@ -379,6 +379,13 @@ export default function App(){
     });
   }, []);
 
+  // 관리자 화면에서 30초마다 자동 새로고침 — Broadcast 미수신 시 데이터 최신화 보장
+  useEffect(()=>{
+    if(screen!=="admin") return;
+    const t=setInterval(()=>{ handleRefreshRef.current?.().catch(()=>{}); }, 30000);
+    return()=>clearInterval(t);
+  },[screen]);
+
   // KST 자정에 페이지 자동 리로드 — TODAY_STR·TODAY 상수가 모듈 로드 시 한 번만 계산되므로
   // 앱을 열어둔 채 자정이 지나면 날짜가 틀려지는 버그 방지
   useEffect(()=>{
