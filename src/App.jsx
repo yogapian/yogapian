@@ -125,7 +125,8 @@ export default function App(){
     const ch = _supabase.channel("yogapian-admin-notif")
       .on("broadcast", { event: "booking_change" }, ({ payload }) => {
         // Supabase는 sender에게 echo 안 함 → 여기 오는 건 다른 기기에서 온 것
-        if (!payload || screenRef.current !== "admin") return;
+        // admin 화면 밖에서 도착해도 로그에는 저장 (화면 전환 시 뱃지 확인 가능)
+        if (!payload) return;
         const kst = new Date(new Date().getTime() + 9*3600*1000);
         const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
         // buildNotifText는 선언 전이므로 여기서 인라인 처리 (동일 포맷)
