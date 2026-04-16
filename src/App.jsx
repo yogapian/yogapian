@@ -57,9 +57,10 @@ export default function App(){
             return b;
           });
           setBookingsState(processed);
-          // 초기 로드 시 최대 ID 저장 — 이후 refresh에서 새 예약만 감지
+          // 초기 로드 시 최대 ID·상태 저장 — 이후 refresh에서 변경분만 감지
           const initMaxId = Math.max(...processed.map(b=>b.id), 0);
           if(initMaxId > 0) lastSeenBookingIdRef.current = initMaxId;
+          prevBookingStatusRef.current = Object.fromEntries(processed.map(b=>[b.id, b.status]));
         }
         if(all.notices.length)          setNoticesState(all.notices);
         if(all.specialSchedules.length) setSpecialSchedulesState(all.specialSchedules);
@@ -341,8 +342,10 @@ export default function App(){
     return () => _supabase.removeChannel(channel);
   }, [screen, loggedMember?.id]); // eslint-disable-line
 
-  // 마지막으로 본 booking ID 추적 — refresh 시 새 예약/취소 감지해 벨 알람 생성
+  // 마지막으로 본 booking ID 추적 — refresh 시 새 예약 감지
   const lastSeenBookingIdRef = useRef(0);
+  // 이전 booking 상태 맵 — refresh 시 취소 감지 (status 변경은 ID가 그대로)
+  const prevBookingStatusRef = useRef({}); // { [id]: status }
 
   // 수동 새로고침 — 관리자가 🔄 버튼 클릭 시 DB에서 최신 데이터 즉시 재로드
   // handleRefreshRef에 할당하여 브로드캐스트 수신/30초 폴링 시에도 사용
@@ -363,7 +366,6 @@ export default function App(){
           const todayStr = getTodayStr();
           const newEntries = [];
           for(const b of processed){
-            if(b.id <= lastSeenBookingIdRef.current) continue;
             if(b.date < todayStr) continue; // 오늘 이전 과거 예약 무시
             const member = membersRef.current.find(m=>m.id===b.memberId);
             const name = member?.name || b.onedayName || "?";
@@ -373,9 +375,15 @@ export default function App(){
             const [py,pm,pd] = (b.date||"").split("-");
             const date = (py&&pm&&pd) ? ` ${pm}.${pd}(${DOW_KO[new Date(Number(py),Number(pm)-1,Number(pd)).getDay()]})` : "";
             let text, type;
-            if(b.status==="reserved"||b.status==="attended"){ text=`예약 [${name}]${date} ${label}${time}`; type="reserve"; }
-            else if(b.status==="waiting"){ text=`대기 [${name}]${date} ${label}${time}`; type="waiting"; }
-            else if(b.status==="cancelled"&&b.cancelledBy!=="admin"){ text=`취소 [${name}]${date} ${label}${time}`; type="cancel"; }
+            const prevStatus = prevBookingStatusRef.current[b.id];
+            if(b.id > lastSeenBookingIdRef.current){
+              // 새로 생긴 booking
+              if(b.status==="reserved"){ text=`예약 [${name}]${date} ${label}${time}`; type="reserve"; }
+              else if(b.status==="waiting"){ text=`대기 [${name}]${date} ${label}${time}`; type="waiting"; }
+            } else if(prevStatus && prevStatus!=="cancelled" && b.status==="cancelled" && b.cancelledBy!=="admin"){
+              // 기존 booking이 회원에 의해 취소됨
+              text=`취소 [${name}]${date} ${label}${time}`; type="cancel";
+            }
             if(text) newEntries.push({id:`${Date.now()}-${b.id}`,time:t,text,type});
           }
           if(newEntries.length){
@@ -383,9 +391,10 @@ export default function App(){
             setAdminNotifUnread(prev=>prev+newEntries.length);
           }
         }
-        // 최대 booking ID 갱신
+        // 상태 스냅샷 및 최대 ID 갱신
         const maxId = Math.max(...processed.map(b=>b.id), 0);
         if(maxId > 0) lastSeenBookingIdRef.current = Math.max(lastSeenBookingIdRef.current, maxId);
+        prevBookingStatusRef.current = Object.fromEntries(processed.map(b=>[b.id, b.status]));
 
         setBookingsState(processed);
       }
