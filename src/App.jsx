@@ -430,7 +430,7 @@ export default function App(){
   // 관리자 화면에서 30초마다 자동 새로고침 — Broadcast 미수신 시 데이터 최신화 보장
   useEffect(()=>{
     if(screen!=="admin") return;
-    const t=setInterval(()=>{ handleRefreshRef.current?.().catch(()=>{}); }, 30000);
+    const t=setInterval(()=>{ handleRefreshRef.current?.().catch(()=>{}); }, 10000); // 10초마다 폴링
     return()=>clearInterval(t);
   },[screen]);
 
