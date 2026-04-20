@@ -899,7 +899,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                 </button>
               );
             })()}
-            <div style={S.modalBtns}><button style={S.cancelBtn} onClick={()=>closeSpecialMgr()}>취소</button><button style={{...S.saveBtn,opacity:(newSp.type==="regular"||newSp.label)?1:0.5}} onClick={addSpecial} disabled={newSp.type!=="regular"&&!newSp.label}>저장</button></div>
+            <div style={S.modalBtns}><button style={S.cancelBtn} onClick={()=>closeSpecialMgr()}>취소</button><button style={S.saveBtn} onClick={addSpecial}>저장</button></div>
           </div>
         </div>
       )}
