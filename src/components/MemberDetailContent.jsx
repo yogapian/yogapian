@@ -107,17 +107,19 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
           </div>
           <div style={{maxHeight:280,overflowY:"auto"}}>
             {reversedHistory.map((r, i) => {
-              const precs = periodRecs(member, bookings, r);
               const isCurrent = isActiveStatus && i === 0;
               const isOpenH = expandedRH === r.id;
-              const closureExt = isCurrent ? getClosureExtDays(member, closures) : 0;
-              const holdExt = (isCurrent && member.extensionDays) || 0;
-              const displayEnd = (closureExt > 0 || holdExt > 0) ? addDays(r.endDate, closureExt+holdExt) : r.endDate;
-
-              // 이 갱신 기수 기간의 홀딩 이력 필터링
+              // holdInPeriod를 먼저 계산 — 과거 기수의 holdExt·displayEnd·precs 필터에 모두 필요
               const holdInPeriod = (member.holdingHistory || []).filter(h =>
                 h.startDate >= r.startDate && (!r.endDate || h.startDate <= r.endDate)
               );
+              const holdExtDays = holdInPeriod.reduce((sum, h) => sum + (h.workdays || 0), 0);
+              const closureExt = isCurrent ? getClosureExtDays(member, closures) : 0;
+              // 현재 기수: extensionDays(진행 중 홀딩 포함), 과거 기수: holdingHistory 합산
+              const holdExt = isCurrent ? (member.extensionDays || 0) : holdExtDays;
+              const displayEnd = (closureExt > 0 || holdExt > 0) ? addDays(r.endDate, closureExt+holdExt) : r.endDate;
+              // 출석 필터를 displayEnd 기준으로 — 홀딩 연장 기간 출석도 포함
+              const precs = periodRecs(member, bookings, {...r, endDate: displayEnd});
               // 출석 행 + 홀딩 행을 날짜 내림차순으로 합산
               const rows = [
                 ...precs.map(rec => ({_type:"att", date:rec.date, rec})),
