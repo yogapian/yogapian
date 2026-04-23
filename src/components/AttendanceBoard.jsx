@@ -269,30 +269,25 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
       {/* 수업 없는 날 안내: padding "50px 0" / 이모지 fontSize:36 / 텍스트 #b0a090 */}
       {isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>🌿</div><div style={{fontSize:14,fontWeight:700}}>이 날은 수업이 없습니다.</div></div>}
 
-      {/* ── 오늘의 공지 배너 (시간변경 또는 dailyNote 있는 날만 표시) ──────── */}
-      {/* 배경/테두리: 오픈=민트#d8f5ec / 집중=연보라#f0edff / 정규=연노랑#fdf3e3 */}
+      {/* ── 오늘의 공지 배너 (회원뷰와 동일 스타일: 📢 노랑) ── */}
       {isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
-        <div style={{background:special.type==="open"?"#d8f5ec":special.type==="special"?"#f0edff":"#fdf3e3",border:`1.5px solid ${special.type==="open"?"#1a6e4a":special.type==="special"?"#a090d0":"#e8a44a"}`,borderRadius:10,padding:"10px 14px",marginBottom:12}}>
-          <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
-            <span style={{fontSize:16,flexShrink:0}}>🔔</span>
-            <div style={{flex:1}}>
-              {/* 공지 타이틀 fontSize:12 / 오픈=#1a6e4a / 집중=#5a3a9a / 정규=#9a5a10 */}
-              <div style={{fontSize:12,fontWeight:700,color:special.type==="open"?"#1a6e4a":special.type==="special"?"#5a3a9a":"#9a5a10",marginBottom:4}}>오늘의 공지</div>
-              {/* 공지 본문 fontSize:12 / whiteSpace:pre-wrap = 줄바꿈 보존 */}
-              {special.dailyNote?.trim()&&<div style={{fontSize:12,color:special.type==="open"?"#1a5a3a":special.type==="special"?"#4a2e8a":"#7a4a10",whiteSpace:"pre-wrap"}}>{special.dailyNote}</div>}
-            </div>
+        <div style={{background:"#fffbec",border:"1.5px solid #e8c44a",borderRadius:12,padding:"8px 12px",marginBottom:12,display:"flex",gap:8,alignItems:"flex-start"}}>
+          <span style={{fontSize:15,flexShrink:0}}>📢</span>
+          <div style={{fontSize:12,color:"#7a5a10",lineHeight:1.5,whiteSpace:"pre-wrap"}}>
+            {hasTimeChange&&!special?.dailyNote?.trim()&&"오늘 수업 시간이 변경됐습니다."}
+            {special?.dailyNote?.trim()}
           </div>
         </div>
       )}
 
-      {/* ── 오픈클래스 배너: bg #d8f5ec(민트) / border #7acca0 / text #1a6e4a(진초록) ── */}
+      {/* ── 오픈클래스 배너: 회원뷰와 동일한 한 줄 인라인 스타일 ── */}
       {isOpen&&(
-        <div style={{background:"#d8f5ec",border:"1.5px solid #7acca0",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
-          <span style={{fontSize:20,flexShrink:0}}>🍀</span>
-          <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#1a6e4a"}}>오픈클래스</div>   {/* ← 타이틀 크기/색상 */}
-            <div style={{fontSize:11,color:"#1a5a3a",marginTop:3}}>{special.label}</div>  {/* ← 부제목 크기/색상 */}
-            {special.feeNote&&<div style={{fontSize:12,color:"#1a5a3a",marginTop:3}}>{special.feeNote}</div>}
+        <div style={{background:"#d8f5ec",border:"1.5px solid #7acca0",borderRadius:12,padding:"5px 10px",marginBottom:12,display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:15,flexShrink:0}}>🍀</span>
+          <div style={{lineHeight:0.1}}>
+            <span style={{fontSize:13,fontWeight:700,color:"#1a6e4a"}}>오픈클래스</span>
+            {special.label&&<span style={{fontSize:11,color:"#1a5a3a"}}>{` - ${special.label}`}</span>}
+            {special.feeNote&&<span style={{fontSize:11,color:"#1a5a3a"}}>{` · ${special.feeNote}`}</span>}
           </div>
         </div>
       )}
