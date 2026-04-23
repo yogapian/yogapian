@@ -118,8 +118,11 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
               // 현재 기수: extensionDays(진행 중 홀딩 포함), 과거 기수: holdingHistory 합산
               const holdExt = isCurrent ? (member.extensionDays || 0) : holdExtDays;
               const displayEnd = (closureExt > 0 || holdExt > 0) ? addDays(r.endDate, closureExt+holdExt) : r.endDate;
-              // 출석 필터를 displayEnd 기준으로 — 홀딩 연장 기간 출석도 포함
-              const precs = periodRecs(member, bookings, {...r, endDate: displayEnd});
+              // 다음 기수 시작일 전날로 캡핑 — 갱신이 기수 만료 전에 일어나면 출석이 두 기수에 중복 표시되는 버그 방지
+              // reversedHistory는 최신순이므로 i-1이 바로 다음(더 최신) 기수
+              const nextStart = i > 0 ? reversedHistory[i - 1].startDate : null;
+              const cappedEnd = nextStart && addDays(nextStart, -1) < displayEnd ? addDays(nextStart, -1) : displayEnd;
+              const precs = periodRecs(member, bookings, {...r, endDate: cappedEnd});
               // 출석 행 + 홀딩 행을 날짜 내림차순으로 합산
               const rows = [
                 ...precs.map(rec => ({_type:"att", date:rec.date, rec})),
