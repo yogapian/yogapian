@@ -41,28 +41,30 @@ export default function CalendarPicker({value,onChange,onClose,closures=[],speci
           const defaultTimes={dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"14:00",evening:"19:30"};
           const hasTimeChange=isRegular&&special?.activeSlots?.some(k=>special.customTimes?.[k]&&special.customTimes[k]!==defaultTimes[k]);
 
+          // 회원 InlineCalendar와 동일: 오늘=진초록, 선택(비오늘)=연파랑
           let bg="transparent";
-          if(sel2) bg="#4a6a4a";
-          else if(tod) bg="#eef5ee";
+          if(tod) bg="#2e6e44";
+          else if(sel2) bg="#dce8ff";
 
           let color="#2e2e2e";
-          if(sel2) color="#fff";
-          else if(fullClosure) color="#939393"; // 회원 달력과 동일하게 휴강일=회색
+          if(tod) color="#ffffff";
+          else if(sel2) color="#1a3a8a";
+          else if(fullClosure) color="#939393";
           else if(holiday||dow===0) color="#e05050";
           else if(dow===6) color="#4a70d0";
 
-          const textDecor="none"; // 회원 달력과 동일하게 취소선 제거
+          // 회원 달력과 동일: 휴강일 취소선
+          const textDecor=fullClosure?"line-through":"none";
 
+          // 배지: 선택 여부와 무관하게 항상 표시 (회원 달력 동일)
           let ind=null;
-          if(!sel2){
-            if(fullClosure) ind=<div style={{fontSize:8,color:"#a83030",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#fde8e8",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>휴강</div>;
-            else if(partialClosure){const slabel={dawn:"새벽",morning:"오전",lunch:"점심",afternoon:"오후",evening:"저녁"}[partialClosure.timeSlot]||partialClosure.timeSlot;ind=<div style={{fontSize:8,color:"#c97050",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#fdf0ec",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>{slabel}✕</div>;} // 회원 달력 부분휴강 색상 통일
-            else if(isOpen) ind=<div style={{fontSize:8,color:"#1a6e4a",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#d8f5ec",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>오픈</div>;
-            else if(isRegular&&hasTimeChange) ind=<div style={{fontSize:8,color:"#c97474",fontWeight:700,lineHeight:1.2,marginTop:1}}>변경❗</div>;
-            else if(isRegular&&special?.dailyNote) ind=<div style={{fontSize:8,color:"transparent",fontWeight:700,lineHeight:1.2,marginTop:1}}>📌</div>;
-            else if(isSpecialDay) ind=<div style={{fontSize:8,color:"#5a3a9a",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#ede8fa",borderRadius:3,padding:"1px 4px",display:"inline-block"}}>집중</div>;
-            else if(holiday&&!fullClosure) ind=<div style={{fontSize:7,color:"#e05050",lineHeight:1.2,marginTop:1,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{holidayName(ds).slice(0,3)}</div>;
-          }
+          if(fullClosure) ind=<div style={{fontSize:7,color:"#a83030",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#fde8e8",borderRadius:3,padding:"0 3px",display:"inline-block"}}>휴강</div>;
+          else if(partialClosure){const slabel={dawn:"새벽",morning:"오전",lunch:"점심",afternoon:"오후",evening:"저녁"}[partialClosure.timeSlot]||partialClosure.timeSlot;ind=<div style={{fontSize:7,color:"#c97050",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#fdf0ec",borderRadius:3,padding:"0 3px",display:"inline-block"}}>부분</div>;}
+          else if(isOpen) ind=<div style={{fontSize:7,color:"#1a6e4a",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#d8f5ec",borderRadius:3,padding:"0 3px",display:"inline-block"}}>오픈</div>;
+          else if(isSpecialDay) ind=<div style={{fontSize:7,color:"#5a3a9a",fontWeight:700,lineHeight:1.2,marginTop:1,background:"#ede8fa",borderRadius:3,padding:"0 3px",display:"inline-block"}}>집중</div>;
+          else if(isRegular&&hasTimeChange) ind=<div style={{fontSize:7,color:"#c97474",fontWeight:700,lineHeight:1.2,marginTop:1}}>변경❗</div>;
+          else if(isRegular&&special?.dailyNote) ind=<div style={{fontSize:9,lineHeight:1.2,marginTop:1}}>📢</div>;
+          else if(holiday&&!fullClosure) ind=<div style={{fontSize:7,color:tod?"rgba(255,255,255,0.8)":sel2?"#3a5aaa":"#e05050",lineHeight:1.2,marginTop:1,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{holidayName(ds).slice(0,3)}</div>;
 
           return(
             <div key={i} onClick={()=>pick(day)}
