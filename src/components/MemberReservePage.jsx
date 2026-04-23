@@ -137,17 +137,18 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
                 {/* 출석 완료: 숫자 위 오버레이로 이동 — 여기선 표시 안 함 */}
                 {isWait     && <span style={{fontSize:6,color:"#e8a020",marginTop:-1}}>▲</span>}
                 {isRes      && <span style={{fontSize:6,color:"#5a86e5",marginTop:-1}}>●</span>}
-                {hasDailyNote&&<span style={{fontSize:8,marginTop:-5}}>📢</span>}
-                {/* 오늘: 상태 배지 없을 때만 흰 글씨 (초록 배경이 이미 오늘임을 표시) */}
+                {/* 📢: 다른 상태 배지 없을 때만 표시 (배지와 중복 시 제거) */}
+                {hasDailyNote&&!isClosure&&!isPartial&&!isOpen&&!isSpecialDay&&<span style={{fontSize:8,marginTop:-5}}>📢</span>}
+                {/* 오늘: 다른 상태 배지 없을 때만 흰 글씨 */}
                 {isToday&&!isClosure&&!isPartial&&!isOpen&&!isSpecialDay&&!hasDailyNote&&(
                   <span style={{fontSize:7,color:"rgba(255,255,255,0.88)",fontWeight:700,height:10,marginTop:-2}}>오늘</span>
                 )}
 
-                {/* 상태 배지: height+alignItems로 텍스트 세로 센터 고정 */}
-                {isClosure  && <span style={{fontSize:8,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0 3px",fontWeight:700,height:10,marginTop:-2}}>휴강</span>}
-                {isPartial  && <span style={{fontSize:8,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"0 3px",fontWeight:700,height:10,marginTop:-2}}>부분</span>}
-                {isOpen     && <span style={{fontSize:8,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"0 3px",fontWeight:700,height:10,marginTop:-2}}>오픈</span>}
-                {isSpecialDay&&<span style={{fontSize:8,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"0 3px",fontWeight:700,height:10,marginTop:-2}}>집중</span>}
+                {/* 상태 배지: fontSize 오늘과 동일하게 7로 통일 */}
+                {isClosure  && <span style={{fontSize:7,color:"#a83030",background:"#fde8e8",borderRadius:3,padding:"0 3px",fontWeight:700,height:10,marginTop:-2}}>휴강</span>}
+                {isPartial  && <span style={{fontSize:7,color:"#c97050",background:"#fdf0ec",borderRadius:3,padding:"0 3px",fontWeight:700,height:10,marginTop:-2}}>부분</span>}
+                {isOpen     && <span style={{fontSize:7,color:"#1a6e4a",background:"#d8f5ec",borderRadius:3,padding:"0 3px",fontWeight:700,height:10,marginTop:-2}}>오픈</span>}
+                {isSpecialDay&&<span style={{fontSize:7,color:"#5a3a9a",background:"#ede8fa",borderRadius:3,padding:"0 3px",fontWeight:700,height:10,marginTop:-2}}>집중</span>}
               </div>
             </div>
           );
@@ -160,7 +161,7 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
 // ─── 회원 예약 페이지 ────────────────────────────────────────────────────────
 export default function MemberReservePage({member,bookings,setBookings,setMembers,setNotices,specialSchedules,closures,scheduleTemplate,onBookingNotif}){
   // ── State ──────────────────────────────────────────────────────────────────
-  const [selDate, setSelDate] = useState(null);       // 달력에서 선택한 날짜 (null=미선택)
+  const [selDate, setSelDate] = useState(TODAY_STR);  // 로그인 시 오늘 날짜 자동 선택 (달력 월 이동 시 null로 리셋)
   const [confirmCancel, setConfirmCancel] = useState(null); // 취소 확인 모달: null 또는 bookingId
   const [pendingSlot, setPendingSlot] = useState(null);     // 팝업 확인 후 예약할 slotKey 임시 저장
   const [renewPopup, setRenewPopup] = useState(null); // "last1"=마지막1회 / "needRenewal"=잔여0/만료
@@ -428,6 +429,14 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                 {special.label&&<span style={{fontSize:11,color:"#7a5aaa"}}>{` - ${special.label}`}</span>}
                 {special.feeNote&&<span style={{fontSize:11,color:"#6a4aaa"}}>{` · ${special.feeNote}`}</span>}
               </div>
+            </div>
+          )}
+
+          {/* 오늘의 공지 (dailyNote) — 📢 배지 클릭 시 표시 */}
+          {!dayClosure&&special?.dailyNote?.trim()&&(
+            <div style={{background:"#fffbec",border:"1.5px solid #e8c44a",borderRadius:12,padding:"8px 12px",marginBottom:10,display:"flex",gap:8,alignItems:"flex-start"}}>
+              <span style={{fontSize:15,flexShrink:0}}>📢</span>
+              <span style={{fontSize:12,color:"#7a5a10",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{special.dailyNote.trim()}</span>
             </div>
           )}
 

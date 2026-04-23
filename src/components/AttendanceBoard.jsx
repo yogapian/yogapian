@@ -297,14 +297,14 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         </div>
       )}
 
-      {/* ── 집중수련 배너: bg 그라데이션 #f0edff→#e8e2ff / border #a090d0(연보라) ── */}
+      {/* ── 집중수련 배너: 회원예약 페이지와 동일한 한 줄 인라인 스타일 ── */}
       {isSpecial&&!isOpen&&special?.type==="special"&&(
-        <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
-          <span style={{fontSize:20,flexShrink:0}}>⚡️</span>
-          <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>집중수련</div>   {/* ← 타이틀: #4a2e8a(진보라) */}
-            <div style={{fontSize:11,color:"#7a5aaa",marginTop:3}}>{special.label}</div>  {/* ← 부제목: #7a5aaa(중보라) */}
-            {special.feeNote&&<div style={{fontSize:12,color:"#6a4aaa",marginTop:3}}>{special.feeNote}</div>}
+        <div style={{background:"linear-gradient(135deg,#f0edff,#e8e2ff)",border:"1.5px solid #a090d0",borderRadius:12,padding:"5px 10px",marginBottom:12,display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:15,flexShrink:0}}>⚡️</span>
+          <div style={{lineHeight:0.1}}>
+            <span style={{fontSize:13,fontWeight:700,color:"#4a2e8a"}}>집중수련</span>
+            {special.label&&<span style={{fontSize:11,color:"#7a5aaa"}}>{` - ${special.label}`}</span>}
+            {special.feeNote&&<span style={{fontSize:11,color:"#6a4aaa"}}>{` · ${special.feeNote}`}</span>}
           </div>
         </div>
       )}
