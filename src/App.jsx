@@ -129,35 +129,60 @@ export default function App(){
   // ── 관리자 알림 브로드캐스트 채널 — 앱 전체에서 단일 인스턴스 유지 ─────────
   // 크로스 디바이스(회원 폰 → 관리자 PC) 전용 수신
   // 같은 탭 시나리오는 onBookingNotif에서 직접 state 업데이트로 처리
+  // 모바일 백그라운드 복귀 시 채널 재연결 + 즉시 폴링으로 누락 알림 보완
   useEffect(() => {
-    const ch = _supabase.channel("yogapian-admin-notif")
-      .on("broadcast", { event: "booking_change" }, ({ payload }) => {
-        // Supabase는 sender에게 echo 안 함 → 여기 오는 건 다른 기기에서 온 것
-        // admin 화면 밖에서 도착해도 로그에는 저장 (화면 전환 시 뱃지 확인 가능)
-        if (!payload) return;
-        const kst = new Date(new Date().getTime() + 9*3600*1000);
-        const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
-        // buildNotifText는 선언 전이므로 여기서 인라인 처리 (동일 포맷)
-        // 포맷: ✅예약 [이름] MM.DD (요일) 슬롯명 시간
-        const name  = payload.memberName || "?";
-        const label = payload.slotLabel || payload.slotKey || "?";
-        const time  = payload.slotTime  ? ` ${payload.slotTime}` : "";
-        const [py, pm, pd] = (payload.date||"").split("-");
-        const date  = (py && pm && pd) ? ` ${pm}.${pd} (${DOW_KO[new Date(Number(py),Number(pm)-1,Number(pd)).getDay()]})` : "";
-        let text, type;
-        if      (payload.event === "reserve") { text = `예약 [${name}]${date} ${label}${time}`; type = "reserve"; }
-        else if (payload.event === "waiting") { text = `대기 [${name}]${date} ${label}${time}`; type = "waiting"; }
-        else if (payload.event === "cancel")  { text = `취소 [${name}]${date} ${label}${time}`; type = "cancel"; }
-        if (!text) return;
-        const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
-        setAdminNotifLog(prev => [entry, ...prev]);
-        setAdminNotifUnread(prev => prev + 1);
-        // 다른 기기에서 예약/취소 시 관리자 화면 자동 새로고침
+    function buildBroadcastChannel() {
+      const ch = _supabase.channel("yogapian-admin-notif")
+        .on("broadcast", { event: "booking_change" }, ({ payload }) => {
+          // Supabase는 sender에게 echo 안 함 → 여기 오는 건 다른 기기에서 온 것
+          // admin 화면 밖에서 도착해도 로그에는 저장 (화면 전환 시 뱃지 확인 가능)
+          if (!payload) return;
+          const kst = new Date(new Date().getTime() + 9*3600*1000);
+          const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
+          // buildNotifText는 선언 전이므로 여기서 인라인 처리 (동일 포맷)
+          // 포맷: ✅예약 [이름] MM.DD (요일) 슬롯명 시간
+          const name  = payload.memberName || "?";
+          const label = payload.slotLabel || payload.slotKey || "?";
+          const time  = payload.slotTime  ? ` ${payload.slotTime}` : "";
+          const [py, pm, pd] = (payload.date||"").split("-");
+          const date  = (py && pm && pd) ? ` ${pm}.${pd} (${DOW_KO[new Date(Number(py),Number(pm)-1,Number(pd)).getDay()]})` : "";
+          let text, type;
+          if      (payload.event === "reserve") { text = `예약 [${name}]${date} ${label}${time}`; type = "reserve"; }
+          else if (payload.event === "waiting") { text = `대기 [${name}]${date} ${label}${time}`; type = "waiting"; }
+          else if (payload.event === "cancel")  { text = `취소 [${name}]${date} ${label}${time}`; type = "cancel"; }
+          if (!text) return;
+          const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
+          setAdminNotifLog(prev => [entry, ...prev]);
+          setAdminNotifUnread(prev => prev + 1);
+          // 다른 기기에서 예약/취소 시 관리자 화면 자동 새로고침
+          handleRefreshRef.current?.().catch(()=>{});
+        })
+        .subscribe();
+      adminNotifChRef.current = ch;
+      return ch;
+    }
+
+    let ch = buildBroadcastChannel();
+
+    // 모바일에서 백그라운드 → 포그라운드 복귀 시:
+    // WebSocket이 끊겼을 수 있으므로 채널 재연결 + 누락 예약 즉시 감지 (폴링)
+    function onVisibilityChange() {
+      if (document.visibilityState !== "visible") return;
+      // 채널 재연결
+      if (adminNotifChRef.current) _supabase.removeChannel(adminNotifChRef.current);
+      ch = buildBroadcastChannel();
+      // 폴링으로 백그라운드 중 누락된 예약/취소 즉시 감지
+      if (screenRef.current === "admin") {
         handleRefreshRef.current?.().catch(()=>{});
-      })
-      .subscribe();
-    adminNotifChRef.current = ch;
-    return () => { _supabase.removeChannel(ch); adminNotifChRef.current = null; };
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      _supabase.removeChannel(ch);
+      adminNotifChRef.current = null;
+    };
   }, []); // eslint-disable-line
 
   // notifDateLabel: "2026-04-10" → "04.10(금)" 형식으로 변환 (관리자 벨 알림용)
