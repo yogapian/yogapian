@@ -139,6 +139,19 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       :[{id:1,total:changes.total??m.total,startDate:changes.startDate||m.startDate,endDate:changes.endDate||m.endDate,memberType:m.memberType}];
     return{...m,...changes,renewalHistory:updRH};
   }));}
+  // 3개월권 종료일이 calc3MonthEnd와 다른 회원 자동 보정 — 앱 로드 후 1회 실행
+  // 60평일 방식 잔존 데이터 및 편집 버그로 틀어진 endDate 일괄 수정
+  useState(()=>{
+    const fixed=members.filter(m=>m.memberType==="3month").reduce((changed, m)=>{
+      const rh=m.renewalHistory||[];
+      const fixedRH=rh.map(r=>({...r,endDate:calc3MonthEnd(r.startDate)}));
+      const correctEnd=rh.length>0?fixedRH[fixedRH.length-1].endDate:calc3MonthEnd(m.startDate);
+      if(m.endDate===correctEnd&&JSON.stringify(rh)===JSON.stringify(fixedRH))return changed;
+      return[...changed,{...m,endDate:correctEnd,renewalHistory:fixedRH}];
+    },[]);
+    if(fixed.length>0)setMembers(prev=>prev.map(m=>{const f=fixed.find(x=>x.id===m.id);return f||m;}));
+  });
+
   const {dateTimeStr}=useClock();
 
   return(
