@@ -266,8 +266,11 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         </div>
       </div>
 
-      {/* 수업 없는 날 안내: padding "50px 0" / 이모지 fontSize:36 / 텍스트 #b0a090 */}
+      {/* 수업 없는 날 안내: 주말=🌿 / 평일 미등록=📋 */}
       {isWeekend&&(!isSpecial||(special&&special.type==="regular"))&&!dayClosure&&<div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>🌿</div><div style={{fontSize:14,fontWeight:700}}>이 날은 수업이 없습니다.</div></div>}
+      {!isWeekend&&!isSpecial&&!dayClosure&&slots.length===0&&date>="2026-05-01"&&!scheduleTemplate?.some(e=>e.endDate&&e.days.includes(dow)&&(!e.startDate||date>=e.startDate)&&date<=e.endDate)&&(
+        <div style={{textAlign:"center",padding:"50px 0",color:"#b0a090"}}><div style={{fontSize:36,marginBottom:10}}>📋</div><div style={{fontSize:14,fontWeight:700}}>수업이 아직 등록되지 않았습니다.</div></div>
+      )}
 
       {/* ── 오늘의 공지 배너 (회원뷰와 동일 스타일: 📢 노랑) ── */}
       {isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
