@@ -211,14 +211,20 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const upcomingWaitCnt = upcomingBooking ? bookings.filter(b=>b.date===upcomingBooking.date&&b.timeSlot===upcomingBooking.timeSlot&&b.status==="waiting").length : 0;
   const upcomingWaitRank = (upcomingBooking?.status==="waiting") ? (()=>{const ws=bookings.filter(b=>b.date===upcomingBooking.date&&b.timeSlot===upcomingBooking.timeSlot&&b.status==="waiting").sort((a,b)=>a.id-b.id);return ws.findIndex(b=>b.id===upcomingBooking.id)+1;})() : 0;
 
+  // 날짜에 매칭되는 템플릿 항목 (endDate null=무기한 제외, startDate/endDate 모두 명시된 항목만 "등록됨"으로 간주)
+  const activeTemplate = selDate && Array.isArray(scheduleTemplate) && scheduleTemplate.length>0
+    ? scheduleTemplate.filter(e=>e.days.includes(dow)&&(!e.startDate||selDate>=e.startDate)&&(!e.endDate||selDate<=e.endDate))
+    : [];
+  // 미래 날짜(>=LEGACY_END)에서 "스케줄 미등록" 여부: 명시적 endDate 없는 무기한 항목만 매칭되는 경우도 미등록으로 처리
+  const hasExplicitCoverage = activeTemplate.some(e=>e.endDate&&selDate<=e.endDate);
+  const isUnscheduled = selDate && selDate>="2026-05-01" && !isWeekend && !isSpecial && !dayClosure
+    && (!Array.isArray(scheduleTemplate)||scheduleTemplate.length===0||!hasExplicitCoverage);
+
   const getSlots = () => {
     if(!selDate) return [];
     if(isSpecial) return TIME_SLOTS.filter(s=>special.activeSlots.includes(s.key)).map(s=>({...s, time:special.customTimes?.[s.key]||s.time}));
     if(isWeekend) return [];
-    if(Array.isArray(scheduleTemplate)&&scheduleTemplate.length>0){
-      const active=scheduleTemplate.filter(e=>e.days.includes(dow)&&(!e.startDate||selDate>=e.startDate)&&(!e.endDate||selDate<=e.endDate));
-      if(active.length) return active.map(e=>{const base=TIME_SLOTS.find(t=>t.key===e.slotKey)||TIME_SLOTS[1];return{...base,time:e.time||base.time};});
-    }
+    if(activeTemplate.length) return activeTemplate.map(e=>{const base=TIME_SLOTS.find(t=>t.key===e.slotKey)||TIME_SLOTS[1];return{...base,time:e.time||base.time};});
     if(selDate<"2026-05-01") return TIME_SLOTS.filter(s=>SCHEDULE[dow]?.includes(s.key));
     return [];
   };
@@ -405,11 +411,18 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
             {!dayClosure&&closures.some(cl=>cl.date===selDate&&cl.timeSlot) && <span style={{fontSize:7,background:"#fdf0ec",color:"#c97050",borderRadius:3,padding:"6px 5px",fontWeight:700,display:"inline-flex",alignItems:"center",height:10}}>부분</span>}
           </div>
 
-          {/* 수업 없는 날 (주말=스케줄없음 / 평일템플릿미등록=수업미등록 안내) */}
-          {!dayClosure&&!isOpen&&!(isSpecial&&special?.type==="special")&&allSlots.length===0&&(
+          {/* 수업 없는 날 (주말=스케줄없음) */}
+          {!dayClosure&&!isOpen&&!(isSpecial&&special?.type==="special")&&!isUnscheduled&&allSlots.length===0&&(
             <div style={{textAlign:"center",padding:"32px 0",color:"#b0a090"}}>
-              <div style={{fontSize:28,marginBottom:8}}>{isWeekend?"🌿":"📋"}</div>
-              <div style={{fontSize:13}}>{isWeekend?"이 날은 수업이 없습니다.":"수업이 아직 등록되지 않았습니다."}</div>
+              <div style={{fontSize:28,marginBottom:8}}>🌿</div>
+              <div style={{fontSize:13}}>이 날은 수업이 없습니다.</div>
+            </div>
+          )}
+          {/* 미래 평일 스케줄 미등록 안내 */}
+          {isUnscheduled&&(
+            <div style={{textAlign:"center",padding:"32px 0",color:"#b0a090"}}>
+              <div style={{fontSize:28,marginBottom:8}}>📋</div>
+              <div style={{fontSize:13}}>수업이 아직 등록되지 않았습니다.</div>
             </div>
           )}
 
