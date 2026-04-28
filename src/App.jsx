@@ -166,17 +166,12 @@ export default function App(){
 
     let ch = buildBroadcastChannel();
 
-    // 모바일에서 백그라운드 → 포그라운드 복귀 시:
-    // WebSocket이 끊겼을 수 있으므로 채널 재연결 + 누락 예약 즉시 감지 (폴링)
+    // 모바일에서 백그라운드 → 포그라운드 복귀 시 WebSocket 재연결만 수행
+    // handleRefresh는 10초 폴링이 처리 — visibilitychange에서 즉시 호출 시 저장 중 state 덮어쓰는 버그 발생
     function onVisibilityChange() {
       if (document.visibilityState !== "visible") return;
-      // 채널 재연결
       if (adminNotifChRef.current) _supabase.removeChannel(adminNotifChRef.current);
       ch = buildBroadcastChannel();
-      // 폴링으로 백그라운드 중 누락된 예약/취소 감지 — 2초 딜레이로 진행 중 저장 보호
-      if (screenRef.current === "admin") {
-        setTimeout(() => handleRefreshRef.current?.().catch(()=>{}), 2000);
-      }
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
 
@@ -440,7 +435,8 @@ export default function App(){
         if(maxId > 0) lastSeenBookingIdRef.current = Math.max(lastSeenBookingIdRef.current, maxId);
         prevBookingStatusRef.current = Object.fromEntries(processed.map(b=>[b.id, b.status]));
 
-        setBookingsState(processed);
+        // DB 로드 완료 후 다시 한 번 확인 — 로드 중 저장이 시작됐으면 덮어쓰기 건너뜀
+        if(!savingRef.current) setBookingsState(processed);
       }
       if(all.members.length)          setMembersState(all.members);
       if(all.specialSchedules.length) setSpecialSchedulesState(all.specialSchedules);
