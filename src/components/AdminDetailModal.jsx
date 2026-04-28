@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { FONT, TODAY_STR } from "../constants.js";
-import { usedAsOf } from "../memberCalc.js";
+import { usedAsOf, calc3MonthEnd } from "../memberCalc.js";
 import S from "../styles.js";
 import MemberDetailContent from "./MemberDetailContent.jsx";
 
@@ -50,10 +50,13 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
           <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap"}}>
             <div style={{flex:1,minWidth:120}}>
               <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>시작일</div>
-              <input type="date" value={adjStart} onChange={e=>setAdjStart(e.target.value)} style={{...S.inp,fontSize:13,padding:"7px 9px"}}/>
+              <input type="date" value={adjStart} onChange={e=>{const s=e.target.value;setAdjStart(s);if(member.memberType==="3month")setAdjEnd(calc3MonthEnd(s));}} style={{...S.inp,fontSize:13,padding:"7px 9px"}}/>
             </div>
             <div style={{flex:1,minWidth:120}}>
-              <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>종료일</div>
+              <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>
+                종료일
+                {member.memberType==="3month"&&<button onClick={()=>setAdjEnd(calc3MonthEnd(adjStart))} style={{marginLeft:6,fontSize:10,background:"#eef5ee",color:"#2e6e44",border:"1px solid #7acca0",borderRadius:5,padding:"1px 6px",cursor:"pointer",fontFamily:FONT}}>3개월 재계산</button>}
+              </div>
               <input type="date" value={adjEnd} onChange={e=>setAdjEnd(e.target.value)} style={{...S.inp,fontSize:13,padding:"7px 9px"}}/>
             </div>
           </div>
