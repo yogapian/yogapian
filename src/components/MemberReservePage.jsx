@@ -405,11 +405,11 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
             {!dayClosure&&closures.some(cl=>cl.date===selDate&&cl.timeSlot) && <span style={{fontSize:7,background:"#fdf0ec",color:"#c97050",borderRadius:3,padding:"6px 5px",fontWeight:700,display:"inline-flex",alignItems:"center",height:10}}>부분</span>}
           </div>
 
-          {/* 수업 없는 날 (주말 또는 슬롯 0개인 날) */}
+          {/* 수업 없는 날 (주말=스케줄없음 / 평일템플릿미등록=수업미등록 안내) */}
           {!dayClosure&&!isOpen&&!(isSpecial&&special?.type==="special")&&allSlots.length===0&&(
             <div style={{textAlign:"center",padding:"32px 0",color:"#b0a090"}}>
-              <div style={{fontSize:28,marginBottom:8}}>🌿</div>
-              <div style={{fontSize:13}}>이 날은 수업이 없습니다.</div>
+              <div style={{fontSize:28,marginBottom:8}}>{isWeekend?"🌿":"📋"}</div>
+              <div style={{fontSize:13}}>{isWeekend?"이 날은 수업이 없습니다.":"수업이 아직 등록되지 않았습니다."}</div>
             </div>
           )}
 
