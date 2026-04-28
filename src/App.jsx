@@ -11,6 +11,7 @@ import {
   dbUpsertSale, dbDeleteSale,
   saveAutoLogin, loadAutoLogin, saveScheduleTemplate,
   fromSnakeNotice, fromSnakeBooking, fromSnakeMember, dbSavePushSubscription,
+  dbInsertNotifLog,
 } from "./db.js";
 import MemberLoginPage from "./components/MemberLoginPage.jsx";
 import AdminLoginPage from "./components/AdminLoginPage.jsx";
@@ -220,7 +221,9 @@ export default function App(){
       setAdminNotifLog(prev => [_entry, ...prev]);
       setAdminNotifUnread(prev => prev + 1);
     }
-    // ── 2. 브로드캐스트 (다른 기기/탭의 관리자에게 전송) ──────────────────────
+    // ── 2. DB 알림 로그 영구 저장 (기기 무관하게 누적 — 핸드폰 미수신 시에도 기록 보장)
+    dbInsertNotifLog(data).catch(() => {});
+    // ── 3. 브로드캐스트 (다른 기기/탭의 관리자에게 전송) ──────────────────────
     adminNotifChRef.current?.send({ type: "broadcast", event: "booking_change", payload: data })
       .catch(() => {});
   }, []); // eslint-disable-line

@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { FONT, TODAY_STR, SC, GE, TYPE_CFG, lookupPrice } from "../constants.js";
+import { FONT, TODAY_STR, SC, GE, TYPE_CFG, lookupPrice, DOW_KO } from "../constants.js";
 import { fmt, fmtWithDow, parseLocal, endOfNextMonth, endOfMonth, useClock } from "../utils.js";
 import { getDisplayStatus, calc3MonthEnd } from "../memberCalc.js";
 import { useClosures } from "../context.js";
+import { dbLoadNotifLog } from "../db.js";
 import S from "../styles.js";
 import AttendanceBoard from "./AttendanceBoard.jsx";
 import MemberCard from "./MemberCard.jsx";
@@ -29,6 +30,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   const [showNotices,setShowNotices]=useState(false);
   const [showPendingPopup,setShowPendingPopup]=useState(true);
   const [onedayConfirm,setOnedayConfirm]=useState(null); // 원데이→정규 연동 확인 팝업
+  const [notifHistory,setNotifHistory]=useState(null); // null=미로드, []=로드완료
+  const [notifHistoryLoading,setNotifHistoryLoading]=useState(false);
 
   const renewPendingMembers=useMemo(()=>members.filter(m=>bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.date===TODAY_STR)),[members,bookings]);
   const gds=(m)=>getDisplayStatus(m,closures,bookings);
@@ -218,13 +221,42 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20,flexWrap:"wrap"}}>
         {/* ─── 탭 전환 (출석/회원관리) ─── */}
         <div style={{display:"flex",gap:0,background:"#e8e4dc",borderRadius:11,padding:3}}>{/* ← 탭바 배경색/둥글기 */}
-          {[["attendance","📋 출석"],["members","🧘🏻 회원관리"],["sales","💰 매출"]].map(([k,l])=>(
-            <button key={k} onClick={()=>setTab(k)} style={{border:"none",borderRadius:9,padding:"9px 14px",fontSize:13,/* ← 탭 글씨 크기 */fontWeight:tab===k?700:400,background:tab===k?"#fff":"transparent",/* ← 선택탭 배경 */color:tab===k?"#1e2e1e":"#9a8e80",/* ← 선택/비선택 글씨색 */boxShadow:tab===k?"0 1px 5px rgba(60,50,40,.12)":"none",cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>{l}</button>
+          {[["attendance","📋 출석"],["members","🧘🏻 회원관리"],["sales","💰 매출"],["notiflog","🔔 알림이력"]].map(([k,l])=>(
+            <button key={k} onClick={()=>{setTab(k);if(k==="notiflog"&&notifHistory===null){setNotifHistoryLoading(true);dbLoadNotifLog(300).then(d=>{setNotifHistory(d);setNotifHistoryLoading(false);});}}} style={{border:"none",borderRadius:9,padding:"9px 14px",fontSize:13,fontWeight:tab===k?700:400,background:tab===k?"#fff":"transparent",color:tab===k?"#1e2e1e":"#9a8e80",boxShadow:tab===k?"0 1px 5px rgba(60,50,40,.12)":"none",cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"}}>{l}</button>
           ))}
         </div>
         {tab==="members"&&<button style={{...S.addBtn,marginLeft:"auto"}} onClick={openAdd}>+ 회원 추가</button>}
       </div>
 
+      {tab==="notiflog"&&(
+        <div style={{maxWidth:480,margin:"0 auto"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <span style={{fontSize:13,fontWeight:700,color:"#3a4a3a"}}>예약·취소 누적 이력 (최근 300건)</span>
+            <button onClick={()=>{setNotifHistoryLoading(true);dbLoadNotifLog(300).then(d=>{setNotifHistory(d);setNotifHistoryLoading(false);});}} style={{fontSize:11,background:"#f0ece4",border:"none",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontFamily:FONT,color:"#7a6e60"}}>🔄 새로고침</button>
+          </div>
+          {notifHistoryLoading&&<div style={{textAlign:"center",padding:"40px 0",color:"#b0a090",fontSize:13}}>불러오는 중…</div>}
+          {!notifHistoryLoading&&notifHistory!==null&&notifHistory.length===0&&(
+            <div style={{textAlign:"center",padding:"40px 0",color:"#b0a090",fontSize:13}}>이력이 없습니다</div>
+          )}
+          {!notifHistoryLoading&&notifHistory&&notifHistory.map(n=>{
+            const [y,m,d]=(n.booking_date||"").split("-");
+            const dateLabel=y&&m&&d?`${m}.${d}(${DOW_KO[new Date(Number(y),Number(m)-1,Number(d)).getDay()]})`:"";
+            const kst=new Date(new Date(n.created_at).getTime());
+            const timeLabel=`${String(kst.getHours()).padStart(2,"0")}:${String(kst.getMinutes()).padStart(2,"0")}`;
+            const dayLabel=`${kst.getMonth()+1}/${kst.getDate()}`;
+            return(
+              <div key={n.id} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderBottom:"1px solid #f0ece4",background:"#fff",borderRadius:8,marginBottom:4}}>
+                <span style={{fontSize:14,flexShrink:0}}>{n.event_type==="cancel"?"❌":n.event_type==="waiting"?"⏳":"✅"}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#2a3a2a"}}>{n.member_name||"원데이"} <span style={{fontWeight:400,color:"#9a8e80"}}>{dateLabel} {n.slot_label||n.time_slot||""}{n.slot_time?` ${n.slot_time}`:""}</span></div>
+                  <div style={{fontSize:10,color:"#b0a090",marginTop:2}}>{n.event_type==="cancel"?"취소":n.event_type==="waiting"?"대기":"예약"}</div>
+                </div>
+                <span style={{fontSize:10,color:"#b0a090",flexShrink:0,textAlign:"right"}}><div>{dayLabel}</div><div>{timeLabel}</div></span>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {tab==="attendance"&&<AttendanceBoard members={members} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} notices={notices} setNotices={setNotices} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} onMemberClick={(m)=>setDetailM(m)}/>}
       {tab==="sales"&&<SalesTab sales={sales} setSales={setSales}/>}
 

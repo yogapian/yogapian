@@ -273,6 +273,24 @@ export async function dbDeleteSale(id) {
   if (error) console.error("sale delete:", error);
 }
 
+// 알림 로그 — 회원 예약/취소 시 DB에 누적 기록 (기기 무관하게 영구 보관)
+export async function dbInsertNotifLog(data) {
+  await _supabase.from("notif_log").insert({
+    event_type:  data.event,
+    member_id:   data.memberId   || null,
+    member_name: data.memberName || null,
+    booking_date: data.date      || null,
+    time_slot:   data.slotKey    || null,
+    slot_label:  data.slotLabel  || null,
+    slot_time:   data.slotTime   || null,
+  });
+}
+export async function dbLoadNotifLog(limit = 200) {
+  const { data } = await _supabase.from("notif_log")
+    .select("*").order("created_at", { ascending: false }).limit(limit);
+  return data || [];
+}
+
 // 웹 푸시 구독 저장/삭제
 export async function dbSavePushSubscription(memberId, sub) {
   const j = sub.toJSON();
