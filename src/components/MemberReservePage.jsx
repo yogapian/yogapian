@@ -224,6 +224,11 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   };
   const slots    = getSlots();
   const dayActive = selDate ? bookings.filter(b=>b.date===selDate&&b.status!=="cancelled") : [];
+  // 내 예약이 있는데 시간표에 없는 슬롯 → 시간표 변경으로 사라지지 않도록 보정해서 표시
+  const myOrphanSlots = selDate ? dayActive
+    .filter(b=>b.memberId===member.id&&!slots.some(s=>s.key===b.timeSlot))
+    .map(b=>TIME_SLOTS.find(t=>t.key===b.timeSlot)).filter(Boolean) : [];
+  const allSlots = [...slots, ...myOrphanSlots];
 
   function slotActiveCount(k){ return dayActive.filter(b=>b.timeSlot===k&&(b.status==="attended"||b.status==="reserved")).length; }
   function slotWaitCount(k){ return dayActive.filter(b=>b.timeSlot===k&&b.status==="waiting").length; }
@@ -259,14 +264,14 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       const nid = Math.max(...p.map(b=>b.id),0)+1;
       return [...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}];
     });
-    // 관리자 알림 브로드캐스트 (App.jsx 단일 채널 인스턴스 사용)
-    const _slotObj = TIME_SLOTS.find(s=>s.key===slotKey);
+    // 관리자 알림 브로드캐스트 — slots(커스텀시간 포함) 우선, 없으면 TIME_SLOTS 기본값
+    const _slotObj = slots.find(s=>s.key===slotKey) || TIME_SLOTS.find(s=>s.key===slotKey);
     onBookingNotif?.({
       event: isWaiting ? "waiting" : "reserve",
       memberName: member.name,
       slotKey,
-      slotIcon:  _slotObj?.icon  || "📍",
-      slotLabel: _slotObj?.label || slotKey,
+      slotIcon:  TIME_SLOTS.find(s=>s.key===slotKey)?.icon || "📍",
+      slotLabel: TIME_SLOTS.find(s=>s.key===slotKey)?.label || slotKey,
       slotTime:  _slotObj?.time  || "",
       date: selDate,
     });
@@ -401,7 +406,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
           </div>
 
           {/* 수업 없는 날 (주말 또는 슬롯 0개인 날) */}
-          {!dayClosure&&!isOpen&&!(isSpecial&&special?.type==="special")&&slots.length===0&&(
+          {!dayClosure&&!isOpen&&!(isSpecial&&special?.type==="special")&&allSlots.length===0&&(
             <div style={{textAlign:"center",padding:"32px 0",color:"#b0a090"}}>
               <div style={{fontSize:28,marginBottom:8}}>🌿</div>
               <div style={{fontSize:13}}>이 날은 수업이 없습니다.</div>
@@ -434,8 +439,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
           {/* 오늘의 공지 (dailyNote) — 📢 배지 클릭 시 표시 */}
           {!dayClosure&&special?.dailyNote?.trim()&&(
-            <div style={{background:"#fffbec",border:"1.5px solid #e8c44a",borderRadius:12,padding:"8px 12px",marginBottom:10,display:"flex",gap:8,alignItems:"flex-start"}}>
-              <span style={{fontSize:15,flexShrink:0}}>📢</span>
+            <div style={{background:"#fffbec",border:"1.5px solid #e8c44a",borderRadius:12,padding:"8px 12px",marginBottom:10,display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontSize:15,flexShrink:0,lineHeight:1}}>📢</span>
               <span style={{fontSize:12,color:"#7a5a10",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{special.dailyNote.trim()}</span>
             </div>
           )}
@@ -454,7 +459,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
           {/* ─── 타임슬롯 가로 나열 ───────────────────────────── */}
           {!member.holding&&!dayClosure&&(
             <div style={{display:"flex",flexDirection:"row",gap:6,overflowX:"auto",paddingBottom:4}}>{/* ← 가로 나열, 스크롤 가능 */}
-            {slots.filter(slot=>{
+            {allSlots.filter(slot=>{
               if(selDate!==TODAY_STR) return true;
               const now=new Date();
               const H={dawn:6,morning:8,lunch:11,afternoon:14,evening:19}[slot.key]||0;

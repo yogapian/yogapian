@@ -271,8 +271,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
 
       {/* ── 오늘의 공지 배너 (회원뷰와 동일 스타일: 📢 노랑) ── */}
       {isSpecial&&(hasTimeChange||special?.dailyNote?.trim())&&(
-        <div style={{background:"#fffbec",border:"1.5px solid #e8c44a",borderRadius:12,padding:"8px 12px",marginBottom:12,display:"flex",gap:8,alignItems:"flex-start"}}>
-          <span style={{fontSize:15,flexShrink:0}}>📢</span>
+        <div style={{background:"#fffbec",border:"1.5px solid #e8c44a",borderRadius:12,padding:"8px 12px",marginBottom:12,display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:15,flexShrink:0,lineHeight:1}}>📢</span>
           <div style={{fontSize:12,color:"#7a5a10",lineHeight:1.5,whiteSpace:"pre-wrap"}}>
             {hasTimeChange&&!special?.dailyNote?.trim()&&"오늘 수업 시간이 변경됐습니다."}
             {special?.dailyNote?.trim()}

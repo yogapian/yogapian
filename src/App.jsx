@@ -31,6 +31,8 @@ export default function App(){
   const [loading,setLoading]=useState(true);
   const loadedRef = useRef(false);
   const membersRef = useRef([]); // stale closure 방지용 — realtime 리스너에서 회원명 조회에 사용
+  const specialSchedulesRef = useRef([]); // 폴링 알람에서 특수수업 커스텀 시간 조회용
+  const scheduleTemplateRef = useRef([]); // 폴링 알람에서 시간표 커스텀 시간 조회용
   const adminNotifChRef = useRef(null); // 관리자 알림 브로드캐스트 채널 (앱 전체 단일 인스턴스)
   const screenRef = useRef("memberLogin"); // 현재 screen — 브로드캐스트 수신 시 admin 여부 판별용
   const handleRefreshRef = useRef(null); // 브로드캐스트 수신 시 관리자 자동 새로고침용
@@ -107,6 +109,8 @@ export default function App(){
   // ref를 항상 최신 상태로 유지 (realtime 리스너의 stale closure 방지)
   membersRef.current = members;
   screenRef.current = screen;
+  specialSchedulesRef.current = specialSchedules;
+  scheduleTemplateRef.current = scheduleTemplate;
   // handleRefresh는 선언 후 아래에서 할당 (ref는 여기서 초기화만)
 
   // 알림 로그를 localStorage에 저장 (오늘 날짜 키, 구일 자동 삭제)
@@ -371,7 +375,16 @@ export default function App(){
             const name = member?.name || b.onedayName || "?";
             const slotObj = TIME_SLOTS.find(s=>s.key===b.timeSlot);
             const label = slotObj?.label || b.timeSlot || "?";
-            const time = slotObj?.time ? ` ${slotObj.time}` : "";
+            // 실제 수업 시간: 특수수업 customTimes → scheduleTemplate 커스텀 시간 → 기본값 순서로
+            const spSched = specialSchedulesRef.current.find(s=>s.date===b.date);
+            const spTime = spSched?.customTimes?.[b.timeSlot];
+            const tmpl = scheduleTemplateRef.current;
+            const bDow = b.date ? new Date(b.date+"T00:00:00").getDay() : -1;
+            const tmplEntry = Array.isArray(tmpl)
+              ? tmpl.find(e=>e.slotKey===b.timeSlot&&e.days.includes(bDow)&&(!e.startDate||b.date>=e.startDate)&&(!e.endDate||b.date<=e.endDate))
+              : null;
+            const actualTime = spTime || tmplEntry?.time || slotObj?.time || "";
+            const time = actualTime ? ` ${actualTime}` : "";
             const [py,pm,pd] = (b.date||"").split("-");
             const date = (py&&pm&&pd) ? ` ${pm}.${pd}(${DOW_KO[new Date(Number(py),Number(pm)-1,Number(pd)).getDay()]})` : "";
             let text, type;

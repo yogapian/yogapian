@@ -136,7 +136,17 @@ export function getSlotCapacity(date, slotKey, specialSchedules, scheduleTemplat
     return special.slotCapacity[slotKey];
   }
   const dow = new Date(date + "T00:00:00").getDay();
-  return scheduleTemplate?.[dow]?.[slotKey] ?? 10;
+  // 새 배열 형식: [{slotKey, days, capacity, startDate, endDate}]
+  if (Array.isArray(scheduleTemplate)) {
+    const entry = scheduleTemplate.find(e =>
+      e.slotKey === slotKey && e.days.includes(dow) &&
+      (!e.startDate || date >= e.startDate) &&
+      (!e.endDate || date <= e.endDate)
+    );
+    return entry?.capacity ?? 10;
+  }
+  // 구 객체 형식: {dow: {slotKey: {capacity}}}
+  return scheduleTemplate?.[dow]?.[slotKey]?.capacity ?? 10;
 }
 
 export function periodRecs(member,bookings,r){

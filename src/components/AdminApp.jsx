@@ -80,7 +80,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   function _addMemberSale(member, type){
     const price=lookupPrice(member.memberType, member.total);
     if(!price) return;
-    setSales(p=>[...p,{id:Date.now(),date:member.startDate,type,memberId:member.id,memberName:member.name,memberType:member.memberType,total:member.total,amount:price,payment:member.payment||"",memo:""}]);
+    // 매출 날짜: 최초등록일(firstDate) 기준 — startDate는 수업 시작일로 결제일과 다를 수 있음
+    setSales(p=>[...p,{id:Date.now(),date:member.firstDate||TODAY_STR,type,memberId:member.id,memberName:member.name,memberType:member.memberType,total:member.total,amount:price,payment:member.payment||"",memo:""}]);
   }
 
   // 원데이 방문 기록을 정규 회원 1회로 인정하고 연동
@@ -111,7 +112,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     }));
     // 갱신 매출 자동 등록
     const mem=members.find(m=>m.id===mid);
-    if(mem){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Date.now(),date:rf.startDate,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
+    // 갱신 매출: 갱신 처리 당일(TODAY_STR) 기준 — startDate가 미래이면 이번 달 매출에 안 잡히는 버그 방지
+    if(mem){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Date.now(),date:TODAY_STR,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
     setRenewT(null);setDetailM(null);
   }
   function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(!hd)return{...m,holding:null,holdingDays:0};
