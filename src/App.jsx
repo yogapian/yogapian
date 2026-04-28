@@ -37,6 +37,7 @@ export default function App(){
   const adminNotifChRef = useRef(null); // 관리자 알림 브로드캐스트 채널 (앱 전체 단일 인스턴스)
   const screenRef = useRef("memberLogin"); // 현재 screen — 브로드캐스트 수신 시 admin 여부 판별용
   const handleRefreshRef = useRef(null); // 브로드캐스트 수신 시 관리자 자동 새로고침용
+  const savingRef = useRef(false); // DB 저장 진행 중 여부 — refresh 시 덮어쓰기 방지용
 
   // 관리자 알림 로그 — localStorage에 오늘 날짜 키로 저장, 자정 지나면 자동 초기화
   const [adminNotifLog, setAdminNotifLog] = useState(() => {
@@ -172,9 +173,9 @@ export default function App(){
       // 채널 재연결
       if (adminNotifChRef.current) _supabase.removeChannel(adminNotifChRef.current);
       ch = buildBroadcastChannel();
-      // 폴링으로 백그라운드 중 누락된 예약/취소 즉시 감지
+      // 폴링으로 백그라운드 중 누락된 예약/취소 감지 — 2초 딜레이로 진행 중 저장 보호
       if (screenRef.current === "admin") {
-        handleRefreshRef.current?.().catch(()=>{});
+        setTimeout(() => handleRefreshRef.current?.().catch(()=>{}), 2000);
       }
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
@@ -233,6 +234,7 @@ export default function App(){
       const next = typeof updater==="function" ? updater(prev) : updater;
       if(!loadedRef.current) return next;
       setSaving(true);
+      savingRef.current = true; // refresh 시 덮어쓰기 방지
       const prevMap = new Map(prev.map(b=>[b.id, b]));
       const nextMap = new Map(next.map(b=>[b.id, b]));
       const toUpsert = next.filter(b => {
@@ -243,7 +245,7 @@ export default function App(){
       Promise.all([
         ...toUpsert.map(b => dbUpsertBooking(b)),
         ...toDelete.map(b => dbDeleteBooking(b.id)),
-      ]).finally(()=>setSaving(false));
+      ]).finally(()=>{ setSaving(false); savingRef.current = false; });
       return next;
     });
   }, []);
@@ -382,6 +384,7 @@ export default function App(){
   // 수동 새로고침 — 관리자가 🔄 버튼 클릭 시 DB에서 최신 데이터 즉시 재로드
   // handleRefreshRef에 할당하여 브로드캐스트 수신/30초 폴링 시에도 사용
   const handleRefresh = useCallback(async () => {
+    if (savingRef.current) return; // 저장 진행 중이면 덮어쓰기 건너뜀
     try {
       const all = await dbLoadAll();
       if(all.bookings.length){
