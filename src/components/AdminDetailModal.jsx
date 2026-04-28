@@ -14,6 +14,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
   const [adjTotal,setAdjTotal]=useState(member.total);
   const [adjStart,setAdjStart]=useState(member.startDate||"");
   const [adjEnd,setAdjEnd]=useState(member.endDate||"");
+  const [adjExtDays,setAdjExtDays]=useState(member.extensionDays||0); // 홀딩 연장일 직접 수정
 
   const dispUsed = usedAsOf(member.id, TODAY_STR, bookings, [member]);
   const phoneDigits = (member.phone||"").replace(/\D/g,"");
@@ -57,8 +58,19 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
             </div>
           </div>
           <div style={{display:"flex",gap:7}}>
-            <button onClick={()=>setAdjMode(false)} style={S.cancelBtn}>취소</button>
-            <button onClick={()=>{onAdjust&&onAdjust({total:adjTotal,startDate:adjStart,endDate:adjEnd});setAdjMode(false);}}
+              {/* 홀딩 연장일 — 수동 보정 필요 시 사용 */}
+          {(member.extensionDays||0)>0&&(
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>홀딩 연장일</div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <button onClick={()=>setAdjExtDays(d=>Math.max(0,d-1))} style={{...S.stepper}}>−</button>
+                <span style={{fontSize:16,fontWeight:700,minWidth:28,textAlign:"center"}}>{adjExtDays}</span>
+                <button onClick={()=>setAdjExtDays(d=>d+1)} style={{...S.stepper}}>+</button>
+              </div>
+            </div>
+          )}
+          <button onClick={()=>setAdjMode(false)} style={S.cancelBtn}>취소</button>
+            <button onClick={()=>{onAdjust&&onAdjust({total:adjTotal,startDate:adjStart,endDate:adjEnd,extensionDays:adjExtDays});setAdjMode(false);}}
               style={{...S.saveBtn,background:"#e8a44a",fontSize:12}}>저장</button>
           </div>
         </div>
