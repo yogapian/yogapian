@@ -267,7 +267,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   // nid는 updater 내부(p)에서 계산 → 동시 예약 시 stale closure로 인한 ID 충돌 방지
   function doReserve(slotKey, isWaiting, renewalPending){
     setBookings(p=>{
-      const nid = Math.max(...p.map(b=>b.id),0)+1;
+      const nid = Math.max(Date.now(), Math.max(...p.map(b=>b.id),0)+1); // Date.now()로 ID 충돌 방지
       return [...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}];
     });
     // 관리자 알림 브로드캐스트 — slots(커스텀시간 포함) 우선, 없으면 TIME_SLOTS 기본값
