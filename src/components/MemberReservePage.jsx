@@ -322,13 +322,19 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   }
 
   // ── resumeHolding: 홀딩 복귀 버튼 클릭 시 (3개월권만 가능) ──────────────
-  // 홀딩 종료일 = 첫 수업일(selDate) 전날 — 버튼 누른 날 기준이 아님
-  // ex) 4/14에 버튼 눌러 4/15 예약 → endDate=4/14 / 4/15 당일 예약 → endDate=4/14
+  // 홀딩 종료일: 미래 예약 있으면 가장 빠른 예약일 전날 / 없으면 selDate 전날 / 둘 다 없으면 오늘
   function resumeHolding(){
     if(!member.holding||!setMembers) return;
     const startStr = member.holding.startDate;
-    // 홀딩 일수: 시작일 ~ (selDate 전날)까지 평일수
-    const holdEnd = selDate ? addDays(selDate, -1) : addDays(TODAY_STR, -1);
+    // 이 회원의 미래 예약 중 가장 빠른 날짜 탐색
+    const futureBooking = bookings
+      .filter(b=>b.memberId===member.id&&b.status==="reserved"&&b.date>=TODAY_STR)
+      .sort((a,b)=>a.date.localeCompare(b.date))[0];
+    const holdEnd = futureBooking
+      ? addDays(futureBooking.date, -1)
+      : selDate && selDate > TODAY_STR
+        ? addDays(selDate, -1)
+        : TODAY_STR;
     let count = 0;
     let cur = parseLocal(startStr);
     const end = parseLocal(holdEnd);
