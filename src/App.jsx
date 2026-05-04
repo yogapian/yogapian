@@ -39,14 +39,7 @@ export default function App(){
   const handleRefreshRef = useRef(null); // 브로드캐스트 수신 시 관리자 자동 새로고침용
   const savingRef = useRef(false); // DB 저장 진행 중 여부 — refresh 시 덮어쓰기 방지용
 
-  // 관리자 알림 로그 — localStorage에 오늘 날짜 키로 저장, 자정 지나면 자동 초기화
-  const [adminNotifLog, setAdminNotifLog] = useState(() => {
-    try {
-      const k = `yogapian_admin_notif_${getTodayStr()}`;
-      const s = localStorage.getItem(k);
-      return s ? JSON.parse(s) : [];
-    } catch { return []; }
-  });
+  // 관리자 알림 미읽음 카운트 — 알림이력 탭 뱃지에 표시, 탭 열면 0으로 초기화
   const [adminNotifUnread, setAdminNotifUnread] = useState(0);
 
   useEffect(()=>{
@@ -115,19 +108,6 @@ export default function App(){
   scheduleTemplateRef.current = scheduleTemplate;
   // handleRefresh는 선언 후 아래에서 할당 (ref는 여기서 초기화만)
 
-  // 알림 로그를 localStorage에 저장 (오늘 날짜 키, 구일 자동 삭제)
-  useEffect(() => {
-    const todayKey = `yogapian_admin_notif_${getTodayStr()}`;
-    try {
-      localStorage.setItem(todayKey, JSON.stringify(adminNotifLog));
-      // 구일 로그 청소
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const k = localStorage.key(i);
-        if (k?.startsWith("yogapian_admin_notif_") && k !== todayKey) localStorage.removeItem(k);
-      }
-    } catch {}
-  }, [adminNotifLog]);
-
   // ── 관리자 알림 브로드캐스트 채널 — 앱 전체에서 단일 인스턴스 유지 ─────────
   // 크로스 디바이스(회원 폰 → 관리자 PC) 전용 수신
   // 같은 탭 시나리오는 onBookingNotif에서 직접 state 업데이트로 처리
@@ -153,8 +133,6 @@ export default function App(){
           else if (payload.event === "waiting") { text = `대기 [${name}]${date} ${label}${time}`; type = "waiting"; }
           else if (payload.event === "cancel")  { text = `취소 [${name}]${date} ${label}${time}`; type = "cancel"; }
           if (!text) return;
-          const entry = { id: `${Date.now()}-${Math.random()}`, time: t, text, type };
-          setAdminNotifLog(prev => [entry, ...prev]);
           setAdminNotifUnread(prev => prev + 1);
           // 다른 기기에서 예약/취소 시 관리자 화면 자동 새로고침
           handleRefreshRef.current?.().catch(()=>{});
@@ -209,12 +187,8 @@ export default function App(){
   // 동작 2) 브로드캐스트 전송 → 다른 기기/탭의 관리자 화면에서 수신
   const onBookingNotif = useCallback((data) => {
     // ── 1. 직접 state 업데이트 (같은 탭 시나리오) ─────────────────────────────
-    const _kst = new Date(new Date().getTime() + 9*3600*1000);
-    const _t = `${String(_kst.getUTCHours()).padStart(2,"0")}:${String(_kst.getUTCMinutes()).padStart(2,"0")}`;
     const built = buildNotifText(data);
     if (built) {
-      const _entry = { id: `${Date.now()}-${Math.random()}`, time: _t, text: built.text, type: built.type };
-      setAdminNotifLog(prev => [_entry, ...prev]);
       setAdminNotifUnread(prev => prev + 1);
     }
     // ── 2. DB 알림 로그 영구 저장 (기기 무관하게 누적 — 핸드폰 미수신 시에도 기록 보장)
@@ -426,7 +400,6 @@ export default function App(){
             if(text) newEntries.push({id:`${Date.now()}-${b.id}`,time:t,text,type});
           }
           if(newEntries.length){
-            setAdminNotifLog(prev=>[...newEntries,...prev]);
             setAdminNotifUnread(prev=>prev+newEntries.length);
           }
         }
@@ -537,7 +510,7 @@ export default function App(){
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input,select,textarea{font-family:${FONT};outline:none;-webkit-appearance:none}.card{transition:box-shadow .2s,transform .15s}@media(hover:hover){.card:hover{box-shadow:0 6px 24px rgba(60,50,30,.14);transform:translateY(-2px)}}.pill:hover{opacity:.78}button:active{opacity:.72}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c8c0b0;border-radius:4px}@media(max-width:600px){html{font-size:14px}.admin-grid{grid-template-columns:1fr!important}.admin-pillrow{gap:5px!important}.admin-toolbar{flex-direction:column!important}}`}</style>
       <SaveBadge/>
       {/* onRefresh: 🔄 버튼으로 DB 최신 데이터 즉시 재로드 */}
-      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} adminNotifLog={adminNotifLog} adminNotifUnread={adminNotifUnread} onMarkNotifRead={()=>setAdminNotifUnread(0)} onClearNotifLog={()=>setAdminNotifLog([])} onRefresh={handleRefresh} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
+      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} adminNotifUnread={adminNotifUnread} onMarkNotifRead={()=>setAdminNotifUnread(0)} onRefresh={handleRefresh} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
       {process.env.NODE_ENV === "development" && <Agentation />}
     </div>
     </ClosuresContext.Provider>
