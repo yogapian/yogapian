@@ -11,7 +11,7 @@ import {
   dbUpsertSale, dbDeleteSale,
   saveAutoLogin, loadAutoLogin, saveScheduleTemplate,
   fromSnakeNotice, fromSnakeBooking, fromSnakeMember, dbSavePushSubscription,
-  dbInsertNotifLog,
+  dbInsertNotifLog, dbCountNotifLogSince,
 } from "./db.js";
 import MemberLoginPage from "./components/MemberLoginPage.jsx";
 import AdminLoginPage from "./components/AdminLoginPage.jsx";
@@ -39,8 +39,12 @@ export default function App(){
   const handleRefreshRef = useRef(null); // 브로드캐스트 수신 시 관리자 자동 새로고침용
   const savingRef = useRef(false); // DB 저장 진행 중 여부 — refresh 시 덮어쓰기 방지용
 
-  // 관리자 알림 미읽음 카운트 — 알림이력 탭 뱃지에 표시, 탭 열면 0으로 초기화
+  // 관리자 알림 미읽음 카운트 — DB notif_log 기준으로 SET 방식 관리 (더블카운트 방지)
+  // lastReadAt을 localStorage에 저장해 페이지 새로고침 후에도 배지 유지
   const [adminNotifUnread, setAdminNotifUnread] = useState(0);
+  const adminNotifReadAtRef = useRef(
+    localStorage.getItem("yogapian_notif_read_at") || "2000-01-01T00:00:00.000Z"
+  );
 
   useEffect(()=>{
     (async()=>{
@@ -363,51 +367,6 @@ export default function App(){
           return b;
         });
 
-        // ── 새 예약/취소 감지 → 벨 알람 자동 생성 (WebSocket 없이도 동작) ──
-        if(lastSeenBookingIdRef.current > 0){
-          const kst = new Date(new Date().getTime()+9*3600*1000);
-          const t = `${String(kst.getUTCHours()).padStart(2,"0")}:${String(kst.getUTCMinutes()).padStart(2,"0")}`;
-          const todayStr = getTodayStr();
-          const newEntries = [];
-          for(const b of processed){
-            if(b.date < todayStr) continue; // 오늘 이전 과거 예약 무시
-            const member = membersRef.current.find(m=>m.id===b.memberId);
-            const name = member?.name || b.onedayName || "?";
-            const slotObj = TIME_SLOTS.find(s=>s.key===b.timeSlot);
-            const label = slotObj?.label || b.timeSlot || "?";
-            // 실제 수업 시간: 특수수업 customTimes → scheduleTemplate 커스텀 시간 → 기본값 순서로
-            const spSched = specialSchedulesRef.current.find(s=>s.date===b.date);
-            const spTime = spSched?.customTimes?.[b.timeSlot];
-            const tmpl = scheduleTemplateRef.current;
-            const bDow = b.date ? new Date(b.date+"T00:00:00").getDay() : -1;
-            const tmplEntry = Array.isArray(tmpl)
-              ? tmpl.find(e=>e.slotKey===b.timeSlot&&e.days.includes(bDow)&&(!e.startDate||b.date>=e.startDate)&&(!e.endDate||b.date<=e.endDate))
-              : null;
-            const actualTime = spTime || tmplEntry?.time || slotObj?.time || "";
-            const time = actualTime ? ` ${actualTime}` : "";
-            const [py,pm,pd] = (b.date||"").split("-");
-            const date = (py&&pm&&pd) ? ` ${pm}.${pd}(${DOW_KO[new Date(Number(py),Number(pm)-1,Number(pd)).getDay()]})` : "";
-            let text, type;
-            const prevStatus = prevBookingStatusRef.current[b.id];
-            if(b.id > lastSeenBookingIdRef.current){
-              // 새로 생긴 booking
-              if(b.status==="reserved"){ text=`예약 [${name}]${date} ${label}${time}`; type="reserve"; }
-              else if(b.status==="waiting"){ text=`대기 [${name}]${date} ${label}${time}`; type="waiting"; }
-            } else if(prevStatus && prevStatus!=="cancelled" && b.status==="cancelled" && b.cancelledBy!=="admin"){
-              // 기존 booking이 회원에 의해 취소됨
-              text=`취소 [${name}]${date} ${label}${time}`; type="cancel";
-            }
-            if(text) newEntries.push({id:`${Date.now()}-${b.id}`,time:t,text,type});
-          }
-          if(newEntries.length){
-            setAdminNotifUnread(prev=>prev+newEntries.length);
-          }
-        }
-        // 상태 스냅샷 및 최대 ID 갱신
-        const maxId = Math.max(...processed.map(b=>b.id), 0);
-        if(maxId > 0) lastSeenBookingIdRef.current = Math.max(lastSeenBookingIdRef.current, maxId);
-        prevBookingStatusRef.current = Object.fromEntries(processed.map(b=>[b.id, b.status]));
-
         // DB 로드 완료 후 다시 한 번 확인 — 로드 중 저장이 시작됐으면 덮어쓰기 건너뜀
         if(!savingRef.current) setBookingsState(processed);
       }
@@ -416,6 +375,9 @@ export default function App(){
       if(all.closures.length)         setClosuresState(all.closures);
       if(all.sales?.length)           setSalesState(all.sales);
       if(all.notices.length)          setNoticesState(all.notices);
+      // 미읽음 배지 — DB count로 SET (더블카운트 없이 항상 정확한 값 유지)
+      const unread = await dbCountNotifLogSince(adminNotifReadAtRef.current);
+      setAdminNotifUnread(unread);
     } catch(e){ console.warn("수동 새로고침 실패:", e); }
   }, []); // eslint-disable-line
   handleRefreshRef.current = handleRefresh; // 항상 최신 함수 참조 유지
@@ -510,7 +472,7 @@ export default function App(){
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input,select,textarea{font-family:${FONT};outline:none;-webkit-appearance:none}.card{transition:box-shadow .2s,transform .15s}@media(hover:hover){.card:hover{box-shadow:0 6px 24px rgba(60,50,30,.14);transform:translateY(-2px)}}.pill:hover{opacity:.78}button:active{opacity:.72}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c8c0b0;border-radius:4px}@media(max-width:600px){html{font-size:14px}.admin-grid{grid-template-columns:1fr!important}.admin-pillrow{gap:5px!important}.admin-toolbar{flex-direction:column!important}}`}</style>
       <SaveBadge/>
       {/* onRefresh: 🔄 버튼으로 DB 최신 데이터 즉시 재로드 */}
-      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} adminNotifUnread={adminNotifUnread} onMarkNotifRead={()=>setAdminNotifUnread(0)} onRefresh={handleRefresh} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
+      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} adminNotifUnread={adminNotifUnread} onMarkNotifRead={()=>{const now=new Date().toISOString();localStorage.setItem("yogapian_notif_read_at",now);adminNotifReadAtRef.current=now;setAdminNotifUnread(0);}} onRefresh={handleRefresh} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
       {process.env.NODE_ENV === "development" && <Agentation />}
     </div>
     </ClosuresContext.Provider>

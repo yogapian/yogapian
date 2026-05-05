@@ -290,6 +290,13 @@ export async function dbLoadNotifLog(limit = 200) {
     .select("*").order("created_at", { ascending: false }).limit(limit);
   return data || [];
 }
+// 특정 시각 이후 notif_log 건수 — 미읽음 배지용 (더블카운트 없는 단일 source of truth)
+export async function dbCountNotifLogSince(isoTimestamp) {
+  const { count } = await _supabase.from("notif_log")
+    .select("id", { count: "exact", head: true })
+    .gt("created_at", isoTimestamp);
+  return count || 0;
+}
 
 // 웹 푸시 구독 저장/삭제
 export async function dbSavePushSubscription(memberId, sub) {
