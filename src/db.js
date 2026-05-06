@@ -231,6 +231,14 @@ export async function dbUpsertBooking(b) {
   const { error } = await _supabase.from("bookings").upsert(bookingToSnake(b));
   if (error) console.error("booking upsert:", error);
 }
+// 신규 booking INSERT — id를 DB sequence가 자동 생성, 생성된 row 반환
+export async function dbInsertBooking(b) {
+  const snake = bookingToSnake(b);
+  delete snake.id; // DB sequence가 할당
+  const { data, error } = await _supabase.from("bookings").insert(snake).select().single();
+  if (error) { console.error("booking insert:", error); return null; }
+  return fromSnakeBooking(data);
+}
 export async function dbUpsertNotice(n) {
   const { error } = await _supabase.from("notices").upsert(noticeToSnake(n));
   if (error) console.error("notice upsert:", error);

@@ -264,10 +264,9 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
   // ── doReserve: booking을 실제로 생성 ─────────────────────────────────────
   // renewalPending=true면 갱신 필요 임시예약 (관리자가 갱신 처리할 때까지 표시됨)
-  // nid는 updater 내부(p)에서 계산 → 동시 예약 시 stale closure로 인한 ID 충돌 방지
   function doReserve(slotKey, isWaiting, renewalPending){
     setBookings(p=>{
-      const nid = Math.max(...p.map(b=>b.id), 9999) + 1; // 최솟값 10000 — 기존 ID(최대 1796)와 충돌 방지
+      const nid = -Date.now(); // 음수 임시 ID — DB INSERT 후 실제 ID로 교체 (클라이언트 ID 충돌 원천 차단)
       return [...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}];
     });
     // 관리자 알림 브로드캐스트 — slots(커스텀시간 포함) 우선, 없으면 TIME_SLOTS 기본값

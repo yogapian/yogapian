@@ -11,7 +11,7 @@ import {
   dbUpsertSale, dbDeleteSale,
   saveAutoLogin, loadAutoLogin, saveScheduleTemplate,
   fromSnakeNotice, fromSnakeBooking, fromSnakeMember, dbSavePushSubscription,
-  dbInsertNotifLog, dbCountNotifLogSince,
+  dbInsertNotifLog, dbCountNotifLogSince, dbInsertBooking,
 } from "./db.js";
 import MemberLoginPage from "./components/MemberLoginPage.jsx";
 import AdminLoginPage from "./components/AdminLoginPage.jsx";
@@ -210,14 +210,22 @@ export default function App(){
       savingRef.current = true; // refresh 시 덮어쓰기 방지
       const prevMap = new Map(prev.map(b=>[b.id, b]));
       const nextMap = new Map(next.map(b=>[b.id, b]));
+      // 음수 임시 ID = 신규 booking (DB INSERT 후 실제 ID로 교체)
+      const newBookings = next.filter(b => b.id < 0);
       const toUpsert = next.filter(b => {
+        if(b.id < 0) return false;
         const old = prevMap.get(b.id);
         return !old || JSON.stringify(old) !== JSON.stringify(b);
       });
-      const toDelete = prev.filter(b => !nextMap.has(b.id));
+      const toDelete = prev.filter(b => !nextMap.has(b.id) && b.id > 0);
       Promise.all([
         ...toUpsert.map(b => dbUpsertBooking(b)),
         ...toDelete.map(b => dbDeleteBooking(b.id)),
+        // 신규: INSERT → DB 실제 ID로 state 교체 (renewalPending 등 프론트 전용 필드 보존)
+        ...newBookings.map(b => dbInsertBooking(b).then(real => {
+          if(!real) return;
+          setBookingsState(prev2 => prev2.map(b2 => b2.id===b.id ? {...real, renewalPending:b.renewalPending} : b2));
+        })),
       ]).finally(()=>{ setSaving(false); savingRef.current = false; });
       return next;
     });

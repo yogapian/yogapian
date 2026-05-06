@@ -128,7 +128,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   // ── addRecord: 출석 추가 모달에서 "출석 추가" 버튼 클릭 시 ────────────────
   // 회원: memberId + walkIn(워크인 여부) / 원데이: memberId=null + onedayName
   function addRecord(){
-    const nid=Math.max(...bookings.map(b=>b.id), 9999) + 1; // 최솟값 10000 — 기존 ID와 충돌 방지
+    const nid=-Date.now(); // 음수 임시 ID — DB INSERT 후 실제 ID로 교체 (클라이언트 ID 충돌 원천 차단)
     if(addForm.type==="oneday"){
       if(!addForm.onedayName.trim())return;
       setBookings(p=>[...p,{id:nid,date,memberId:null,onedayName:addForm.onedayName.trim(),timeSlot:addModal,walkIn:true,status:"reserved",cancelNote:"",cancelledBy:""}]);
