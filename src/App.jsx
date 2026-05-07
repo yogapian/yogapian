@@ -139,7 +139,8 @@ export default function App(){
           if (!text) return;
           setAdminNotifUnread(prev => prev + 1);
           // 다른 기기에서 예약/취소 시 관리자 화면 자동 새로고침
-          handleRefreshRef.current?.().catch(()=>{});
+          // 2초 딜레이: 발신 기기의 DB 쓰기가 완료된 후 count 조회 (즉시 호출 시 0 반환으로 뱃지 사라짐 버그)
+          setTimeout(() => { handleRefreshRef.current?.().catch(()=>{}); }, 2000);
         })
         .subscribe();
       adminNotifChRef.current = ch;
