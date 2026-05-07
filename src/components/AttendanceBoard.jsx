@@ -134,7 +134,14 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
       setBookings(p=>[...p,{id:nid,date,memberId:null,onedayName:addForm.onedayName.trim(),timeSlot:addModal,walkIn:true,status:"reserved",cancelNote:"",cancelledBy:""}]);
     } else {
       if(!addForm.memberId)return;
-      setBookings(p=>[...p,{id:nid,date,memberId:+addForm.memberId,timeSlot:addModal,walkIn:addForm.walkIn,status:"reserved",cancelNote:"",cancelledBy:""}]);
+      // 같은 회원·날짜·슬롯의 활성 예약이 이미 있으면 중복 생성 차단
+      setBookings(p=>{
+        const alreadyExists=p.some(b=>b.memberId===+addForm.memberId&&b.date===date&&b.timeSlot===addModal&&(b.status==="reserved"||b.status==="waiting"||b.status==="attended"));
+        if(alreadyExists)return p;
+        return[...p,{id:nid,date,memberId:+addForm.memberId,timeSlot:addModal,walkIn:addForm.walkIn,status:"reserved",cancelNote:"",cancelledBy:""}];
+      });
+      setAddModal(null);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});
+      return;
     }
     setAddModal(null);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});
   }

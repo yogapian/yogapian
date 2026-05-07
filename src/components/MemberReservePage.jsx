@@ -266,6 +266,9 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   // renewalPending=true면 갱신 필요 임시예약 (관리자가 갱신 처리할 때까지 표시됨)
   function doReserve(slotKey, isWaiting, renewalPending){
     setBookings(p=>{
+      // 같은 회원·날짜·슬롯의 활성 예약이 이미 있으면 중복 생성 차단
+      const alreadyExists = p.some(b=>b.memberId===member.id&&b.date===selDate&&b.timeSlot===slotKey&&(b.status==="reserved"||b.status==="waiting"||b.status==="attended"));
+      if(alreadyExists) return p;
       const nid = -Date.now(); // 음수 임시 ID — DB INSERT 후 실제 ID로 교체 (클라이언트 ID 충돌 원천 차단)
       return [...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}];
     });
