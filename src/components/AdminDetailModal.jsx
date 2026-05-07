@@ -9,7 +9,7 @@ import { usedAsOf, calc3MonthEnd } from "../memberCalc.js";
 import S from "../styles.js";
 import MemberDetailContent from "./MemberDetailContent.jsx";
 
-export default function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdjust,onEdit,onDel}){
+export default function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdjust,onUndoRenewal,onEdit,onDel}){
   const [adjMode,setAdjMode]=useState(false);
   const [adjTotal,setAdjTotal]=useState(member.total);
   const [adjStart,setAdjStart]=useState(member.startDate||"");
@@ -81,6 +81,12 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
       {/* 갱신 / 홀딩 버튼 */}
       <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
         <button onClick={onRenew} style={{...S.saveBtn,fontSize:12,padding:"7px 12px"}}>🔄 갱신</button>
+        {(member.renewalHistory?.length||0)>1&&(
+          <button onClick={()=>{if(window.confirm("마지막 갱신 기록을 삭제하고 이전 기수로 되돌릴까요?"))onUndoRenewal?.();}}
+            style={{background:"#fdf0f0",color:"#8e3030",border:"1px solid #e0a0a0",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
+            ↩ 갱신 취소
+          </button>
+        )}
         {member.memberType==="3month" && (
           <button onClick={onHolding}
             style={{background:"#edf0f8",color:"#3d5494",border:"none",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
