@@ -69,7 +69,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       // 원데이→정규 연동: 7일 이내 같은 이름의 방문 완료된 원데이 기록 탐색
       const refDate=parseLocal(TODAY_STR); refDate.setDate(refDate.getDate()-7);
       const sevenDaysAgo=`${refDate.getFullYear()}-${String(refDate.getMonth()+1).padStart(2,"0")}-${String(refDate.getDate()).padStart(2,"0")}`;
-      const matchedOneday=bookings.find(b=>b.onedayName===form.name&&b.date>=sevenDaysAgo&&b.status==="attended");
+      // attended: 출석완료 / reserved+오늘이하: 당일 원데이(아직 출석 전)도 연동 대상 포함
+      const matchedOneday=bookings.find(b=>b.onedayName===form.name&&b.date>=sevenDaysAgo&&b.date<=TODAY_STR&&(b.status==="attended"||b.status==="reserved"));
       if(matchedOneday){setOnedayConfirm({newMember,matchedBooking:matchedOneday});setShowForm(false);return;}
       setMembers(p=>[...p,newMember]);
       // 신규 회원 매출 자동 등록
