@@ -72,6 +72,7 @@ export function bookingToSnake(b) {
     confirmed_attend: b.confirmedAttend ?? null,
     cancel_note:      b.cancelNote ?? "",
     cancelled_by:     b.cancelledBy ?? "",
+    renewal_pending:  b.renewalPending ?? false,
     updated_at:       new Date().toISOString(),
   };
 }
@@ -87,6 +88,7 @@ export function fromSnakeBooking(r) {
     confirmedAttend: r.confirmed_attend ?? null,
     cancelNote:      r.cancel_note ?? "",
     cancelledBy:     r.cancelled_by ?? "",
+    renewalPending:  r.renewal_pending ?? false,
   };
 }
 export function noticeToSnake(n) {
