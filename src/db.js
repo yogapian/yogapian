@@ -317,6 +317,8 @@ export async function dbCountNotifLogSince(isoTimestamp) {
 // 웹 푸시 구독 저장/삭제
 export async function dbSavePushSubscription(memberId, sub) {
   const j = sub.toJSON();
+  // 같은 endpoint의 다른 회원 구독 먼저 삭제 — 테스트 시 기기 공유로 중복 쌓이는 버그 방지
+  await _supabase.from("push_subscriptions").delete().eq("endpoint", j.endpoint).neq("member_id", memberId);
   const { error } = await _supabase.from("push_subscriptions").upsert({
     id: memberId,
     member_id: memberId,
