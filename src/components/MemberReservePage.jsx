@@ -310,13 +310,16 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     });
     // 관리자 알림 브로드캐스트 (App.jsx 단일 채널 인스턴스 사용)
     const _slotObj2 = TIME_SLOTS.find(s=>s.key===cancelled.timeSlot);
+    // 취소 알림 시간도 특수수업 customTimes 우선 적용
+    const _cancelSpecial = specialSchedules?.find(s=>s.date===cancelled.date);
+    const _cancelTime = _cancelSpecial?.customTimes?.[cancelled.timeSlot] || _slotObj2?.time || "";
     onBookingNotif?.({
       event: "cancel",
       memberName: member.name,
       slotKey: cancelled.timeSlot,
       slotIcon:  _slotObj2?.icon  || "📍",
       slotLabel: _slotObj2?.label || cancelled.timeSlot,
-      slotTime:  _slotObj2?.time  || "",
+      slotTime:  _cancelTime,
       date: cancelled.date,
     });
     if(firstWaiter){
