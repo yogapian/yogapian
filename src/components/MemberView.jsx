@@ -30,7 +30,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   const [showHoldDetail, setShowHoldDetail] = useState(false); // 홀딩 상세 펼침 여부
   const [refreshing, setRefreshing] = useState(false); // 새로고침 버튼 로딩 상태
 
-  // 개인 공지 팝업
+  // 개인 공지 팝업 (targetMemberId — 확인 시 DB에서 삭제)
   const [popupNotice, setPopupNotice] = useState(null);
   useEffect(() => {
     const pending = (notices||[]).filter(n => n.targetMemberId === m.id);
@@ -42,10 +42,50 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
     setPopupNotice(null);
   }
 
+  // 브로드캐스트 팝업 (isPopup=true — localStorage로 읽음 처리, 공지는 DB에 유지)
+  const [broadcastPopup, setBroadcastPopup] = useState(null);
+  useEffect(() => {
+    if(popupNotice) return; // 개인 공지 우선
+    const myStatus = getDisplayStatus(m, closures, bookings);
+    const unread = (notices||[]).filter(n => {
+      if(!n.isPopup) return false;
+      if(localStorage.getItem(`popup_read_${n.id}_${m.id}`)) return false;
+      if(n.popupTargetType === "all") return myStatus === "on" || myStatus === "renew";
+      if(n.popupTargetType === "date") {
+        return bookings.some(b => b.memberId === m.id && b.date === n.popupTargetDate && b.status !== "cancelled");
+      }
+      return false;
+    });
+    if(unread.length > 0 && !broadcastPopup) setBroadcastPopup(unread[0]);
+  }, [notices, popupNotice]); // eslint-disable-line
+
+  function markBroadcastRead(n){
+    localStorage.setItem(`popup_read_${n.id}_${m.id}`, "1");
+    setBroadcastPopup(null);
+  }
+
   const {dateTimeStr} = useClock();
 
   return (
     <div style={{minHeight:"100vh", background:"#f5f3ef", fontFamily:FONT}}>
+
+      {/* 브로드캐스트 팝업 (isPopup=true 공지 — localStorage 읽음 처리) */}
+      {broadcastPopup && !popupNotice && (
+        <div style={{...S.overlay,zIndex:300}}>
+          <div style={{...S.modal,maxWidth:360,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:22,marginBottom:8}}>📢</div>
+            <div style={{fontSize:15,fontWeight:700,color:"#1e2e1e",marginBottom:12}}>{broadcastPopup.title}</div>
+            {broadcastPopup.content&&(
+              <div style={{background:"#f7f4ef",borderRadius:10,padding:"14px",marginBottom:16,textAlign:"left"}}>
+                {broadcastPopup.content.split("\n").map((line,i)=>(
+                  <div key={i} style={{fontSize:13,color:"#3a4a3a",lineHeight:1.9}}>{line}</div>
+                ))}
+              </div>
+            )}
+            <button onClick={()=>markBroadcastRead(broadcastPopup)} style={{width:"100%",background:"#3d5494",color:"#fff",border:"none",borderRadius:12,padding:"13px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>확인</button>
+          </div>
+        </div>
+      )}
 
       {/* 개인 공지 팝업 */}
       {popupNotice && (

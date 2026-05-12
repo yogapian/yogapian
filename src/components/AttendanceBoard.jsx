@@ -208,9 +208,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
 
   function addSpecial(){
     if(!newSp.date)return;
-    if(newSp.type!=="regular"&&!newSp.label)return;
     const nid=Math.max(...specialSchedules.map(s=>s.id),0)+1;
-    const label=newSp.label||(newSp.type==="regular"?"정규수업":"");
+    // label 미입력 시 타입별 기본값 — label 없다고 저장 차단하면 에러 없이 조용히 실패하는 버그
+    const label=newSp.label||(newSp.type==="regular"?"정규수업":newSp.type==="special"?"집중수련":"오픈클래스");
     setSpecialSchedules(p=>[...p.filter(s=>s.date!==newSp.date),{...newSp,label,id:nid}]);
     closeSpecialMgr();
   }

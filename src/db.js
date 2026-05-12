@@ -93,23 +93,29 @@ export function fromSnakeBooking(r) {
 }
 export function noticeToSnake(n) {
   return {
-    id:               n.id,
-    title:            n.title,
-    content:          n.content ?? "",
-    pinned:           n.pinned ?? false,
-    created_at:       n.createdAt ?? TODAY_STR,
-    target_member_id: n.targetMemberId ?? null,
-    updated_at:       new Date().toISOString(),
+    id:                  n.id,
+    title:               n.title,
+    content:             n.content ?? "",
+    pinned:              n.pinned ?? false,
+    created_at:          n.createdAt ?? TODAY_STR,
+    target_member_id:    n.targetMemberId ?? null,
+    is_popup:            n.isPopup ?? false,
+    popup_target_type:   n.popupTargetType ?? null,
+    popup_target_date:   n.popupTargetDate ?? null,
+    updated_at:          new Date().toISOString(),
   };
 }
 export function fromSnakeNotice(r) {
   return {
-    id:             r.id,
-    title:          r.title,
-    content:        r.content ?? "",
-    pinned:         r.pinned ?? false,
-    createdAt:      r.created_at ?? TODAY_STR,
-    targetMemberId: r.target_member_id ?? null,
+    id:               r.id,
+    title:            r.title,
+    content:          r.content ?? "",
+    pinned:           r.pinned ?? false,
+    createdAt:        r.created_at ?? TODAY_STR,
+    targetMemberId:   r.target_member_id ?? null,
+    isPopup:          r.is_popup ?? false,
+    popupTargetType:  r.popup_target_type ?? null,
+    popupTargetDate:  r.popup_target_date ?? null,
   };
 }
 export function specialToSnake(s) {
