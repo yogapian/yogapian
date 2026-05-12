@@ -204,7 +204,10 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     })
     .sort((a,b) => a.date.localeCompare(b.date)||(a.id-b.id))[0];
   const upcomingSlot = upcomingBooking ? TIME_SLOTS.find(t=>t.key===upcomingBooking.timeSlot) : null;
-  const upcomingText = upcomingBooking ? `${fmtWithDow(upcomingBooking.date)} ${upcomingSlot?.label||''} ${upcomingSlot?.time||''}`.trim() : null;
+  // 특수수업 customTimes 우선 적용 — 시간 변경된 날 기본 시간(11:50 등) 그대로 뜨는 버그 방지
+  const upcomingSpecial = upcomingBooking ? specialSchedules.find(s=>s.date===upcomingBooking.date) : null;
+  const upcomingTime = upcomingSpecial?.customTimes?.[upcomingBooking?.timeSlot] || upcomingSlot?.time || '';
+  const upcomingText = upcomingBooking ? `${fmtWithDow(upcomingBooking.date)} ${upcomingSlot?.label||''} ${upcomingTime}`.trim() : null;
   const upcomingCap = upcomingBooking ? getSlotCapacity(upcomingBooking.date,upcomingBooking.timeSlot,specialSchedules,scheduleTemplate) : 0;
   const upcomingCnt = upcomingBooking ? bookings.filter(b=>b.date===upcomingBooking.date&&b.timeSlot===upcomingBooking.timeSlot&&(b.status==="attended"||b.status==="reserved")).length : 0;
   // 대기 포함 총 인원 (정원 초과 시 11/10석 표시용)
