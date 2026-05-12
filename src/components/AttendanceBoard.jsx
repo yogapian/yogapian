@@ -30,7 +30,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   const [convertModal,setConvertModal]=useState(null); // 원데이→정회원 전환 안내 모달
   const [showSpecialMgr,setShowSpecialMgr]=useState(false); // 수업설정 모달 열림 여부
   // INIT_SP: 수업설정 모달 초기값 (새로 열 때마다 리셋)
-  const INIT_SP={date:TODAY_STR,label:"",type:"regular",feeNote:"",dailyNote:"",activeSlots:[],customTimes:{dawn:"06:30",morning:"08:30",lunch:"11:50",afternoon:"",evening:"19:30"},slotCapacity:{}};
+  const INIT_SP={date:TODAY_STR,label:"",type:"regular",feeNote:"",dailyNote:"",activeSlots:[],customTimes:{dawn:"06:30",morning:"08:30",morning2:"10:00",lunch:"11:50",afternoon:"14:00",evening:"19:30"},slotCapacity:{}};
   const [newSp,setNewSp]=useState(INIT_SP);          // 수업설정 폼 데이터
   const [originalType,setOriginalType]=useState(null); // 수업설정 열기 전 기존 유형 (편집 시 유형 잠금용)
   const closeSpecialMgr=()=>{setShowSpecialMgr(false);setOriginalType(null);setNewSp(INIT_SP);};
