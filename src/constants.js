@@ -11,7 +11,6 @@ export const SCHEDULE = {0:[],1:["dawn","morning","lunch","evening"],2:["lunch",
 export const TIME_SLOTS = [
   {key:"dawn",      label:"새벽",time:"06:30",color:"#3d5494",bg:"#edf0f8",icon:"🌙"},
   {key:"morning",   label:"오전",time:"08:30",color:"#3d6e45",bg:"#eaf4ea",icon:"🌤️"},
-  {key:"morning2",  label:"오전②",time:"10:00",color:"#2e6e45",bg:"#dff0e0",icon:"🌤️"}, // 특별수업 전용 추가 오전 타임
   {key:"lunch",     label:"점심",time:"11:50",color:"#8a5510",bg:"#fdf3e3",icon:"☀️"},
   {key:"afternoon", label:"오후",time:"14:00",color:"#6a5494",bg:"#f0edf8",icon:"🌞"},
   {key:"evening",   label:"저녁",time:"19:30",color:"#5c3070",bg:"#f2edf8",icon:"🌛"},
