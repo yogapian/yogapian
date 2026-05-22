@@ -543,7 +543,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
                     {/* 줄 3: 액션 버튼 */}
                     {slCl?(
-                      <span style={{fontSize:10,color:"#9a8e80",fontWeight:700,display:"block",textAlign:"center"}}>휴강</span>
+                      <span style={{fontSize:10,color:"#9a8e80",fontWeight:400,display:"block",textAlign:"center"}}>{slCl.reason||""}</span>
                     ):isMyRes?(
                       /* 취소 버튼(내예약): border #a8d8b8 / color #2e6e44 */
                       <button onClick={()=>setConfirmCancel(myB.id)} style={{width:"100%",background:"none",border:"1px solid #a8d8b8",borderRadius:7,padding:"4px 0",fontSize:11,fontWeight:700,color:"#2e6e44",cursor:"pointer",fontFamily:FONT}}>취소</button>

@@ -140,6 +140,8 @@ export default function ScheduleTemplateManager({ scheduleTemplate, setScheduleT
                 </div>
                 <div style={{display:"flex",gap:6,flexShrink:0}}>
                   <button onClick={()=>openEdit(s)} style={{background:"#f0ece4",border:"none",borderRadius:7,padding:"5px 11px",fontSize:12,color:"#7a6e60",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>수정</button>
+                  {/* 복사: 같은 슬롯을 다른 기간으로 추가할 때 사용 */}
+                  <button onClick={()=>{setEditId(null);setForm({slotKey:s.slotKey,days:[...s.days],time:s.time,capacity:s.capacity,startDate:s.endDate||"",endDate:""});setShowForm(true);}} style={{background:"#edf0f8",border:"none",borderRadius:7,padding:"5px 11px",fontSize:12,color:"#3d5494",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>복사</button>
                   <button onClick={()=>deleteSlot(s.id)} style={{background:"#fff0f0",border:"none",borderRadius:7,padding:"5px 11px",fontSize:12,color:"#c97474",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>삭제</button>
                 </div>
               </div>
