@@ -25,8 +25,8 @@ export default function SalesTab({sales, setSales}){
   const [editId,    setEditId]    = useState(null);
   const [editForm,  setEditForm]  = useState(null);
   const [addForm,   setAddForm]   = useState({
-    date: TODAY_STR, type: "meditation",
-    memberName: "", amount: "", payment: "현금", memo: ""
+    date: TODAY_STR, type: "oneday",
+    memberName: "", amount: "", payment: "네이버", memo: ""
   });
 
   const ym = `${year}-${String(month).padStart(2,"0")}`;
@@ -54,7 +54,7 @@ export default function SalesTab({sales, setSales}){
     const [y, m] = addForm.date.split("-").map(Number);
     setYear(y); setMonth(m);
     setShowAdd(false);
-    setAddForm({date:TODAY_STR, type:"meditation", memberName:"", amount:"", payment:"현금", memo:""});
+    setAddForm({date:TODAY_STR, type:"oneday", memberName:"", amount:"", payment:"네이버", memo:""});
   }
 
   function doDelete(id){ setSales(p => p.filter(s => s.id !== id)); setDeleteId(null); }
