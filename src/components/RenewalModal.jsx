@@ -11,7 +11,7 @@ export default function RenewalModal({member,onClose,onSave}){
   // 열릴 때 memberType에 맞게 종료일 미리 계산 — endDate:""이면 갱신 버튼 비활성화되는 문제 방지
   const [form,setForm]=useState(()=>{
     const initEnd=member.memberType==="3month"?calc3MonthEnd(TODAY_STR,closures):endOfMonth(TODAY_STR);
-    return{startDate:TODAY_STR,endDate:initEnd,total:member.memberType==="3month"?24:10,memberType:member.memberType,payment:"",includePending:true};
+    return{startDate:TODAY_STR,endDate:initEnd,total:member.memberType==="3month"?24:10,memberType:member.memberType,payment:"카드",includePending:true};
   });
   return(
     <div style={S.overlay} onClick={onClose}>
@@ -19,7 +19,7 @@ export default function RenewalModal({member,onClose,onSave}){
         <div style={S.modalHead}><span>🔄</span><div><div style={S.modalTitle}>회원권 갱신</div><div style={{fontSize:12,color:"#9a8e80"}}>{member.name}</div></div></div>
         <div style={S.fg}><label style={S.lbl}>갱신 타입</label>
           <div style={{display:"flex",gap:8,marginBottom:8}}>
-            {[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>{const autoEnd=v==="3month"?calc3MonthEnd(form.startDate,closures):endOfMonth(form.startDate);setForm(f=>({...f,memberType:v,total:v==="3month"?24:10,endDate:autoEnd,payment:""}));}} style={{flex:1,padding:"9px 0",borderRadius:10,border:"1.5px solid",cursor:"pointer",fontSize:14,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}
+            {[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>{const autoEnd=v==="3month"?calc3MonthEnd(form.startDate,closures):endOfMonth(form.startDate);setForm(f=>({...f,memberType:v,total:v==="3month"?24:10,endDate:autoEnd,payment:"카드"}));}} style={{flex:1,padding:"9px 0",borderRadius:10,border:"1.5px solid",cursor:"pointer",fontSize:14,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}
           </div>
           {/* 결제 방법: 1개월=카드/현금/네이버, 3개월=카드/현금 */}
           <div style={{display:"flex",gap:8}}>
