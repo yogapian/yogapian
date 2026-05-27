@@ -64,7 +64,10 @@ function _effectivePeriod(memberId, targetDate, bookings, members){
 
   // 날짜 기준 활성 기수 인덱스 (역순 → 중복 범위 시 최신 기수 우선)
   let ai=rh.length-1;
-  for(let i=rh.length-1;i>=0;i--){if(targetDate>=rh[i].startDate&&targetDate<=rh[i].endDate){ai=i;break;}}
+  let found=false;
+  for(let i=rh.length-1;i>=0;i--){if(targetDate>=rh[i].startDate&&targetDate<=rh[i].endDate){ai=i;found=true;break;}}
+  // 갭 기간(기수 사이)이면 오늘 이전에 끝난 마지막 기수 사용 — 사전 갱신 시 신기수가 기본값으로 잡히는 버그 방지
+  if(!found){for(let i=rh.length-1;i>=0;i--){if(targetDate>rh[i].endDate){ai=i;break;}}}
 
   // attended 세션 날짜·ID 순 정렬 (같은 날 오전→오후 순서 보장)
   const sessions=bookings
