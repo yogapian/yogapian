@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
-import { fmt } from "../utils.js";
+import { fmt, parseLocal } from "../utils.js";
 import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
@@ -23,6 +23,14 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const pct=expired?100:Math.round(usedCnt/Math.max(periodTotal,1)*100); // 프로그레스바 %
   const status=getDisplayStatus(m,closures,bookings),sc=SC[status]||SC["on"]; // 상태 스타일
   const end=effEnd(m,closures);          // 실제 표시 종료일 (홀딩·휴강 연장 포함)
+  // 카드 등록일·종료일 표시용 활성 기수 — 사전 갱신 시 신기수 날짜가 표시되는 버그 방지
+  const _rh=[...(m.renewalHistory||[])].sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  let _dp=_rh.length?_rh[_rh.length-1]:{startDate:m.startDate,endDate:m.endDate};
+  if(_rh.length){let _f=false;for(let i=_rh.length-1;i>=0;i--){if(TODAY_STR>=_rh[i].startDate&&TODAY_STR<=_rh[i].endDate){_dp=_rh[i];_f=true;break;}}if(!_f){for(let i=_rh.length-1;i>=0;i--){if(TODAY_STR>_rh[i].endDate){_dp=_rh[i];break;}}}}
+  const displayStart=_dp.startDate||m.startDate;
+  const displayEnd=_dp.endDate||m.endDate;
+  const TODAY=parseLocal(TODAY_STR);
+  const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);
   const closureExt=getClosureExtDays(m,closures); // 별도휴강으로 늘어난 일수 (뱃지 표시용)
   const tc=TYPE_CFG[m.memberType]||TYPE_CFG["1month"]; // 회원권 종류 스타일 (1개월/3개월)
 
@@ -90,13 +98,13 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
 
           {/* ── 날짜 행: 등록일 → 종료일 + 연장 뱃지 + D-day 칩 ──────────── */}
           <div style={S.dateRow}>
-            <div style={{display:"flex",flexDirection:"column",gap:1}}><span style={S.dateLabel}>등록일</span><span style={S.dateVal}>{fmt(m.startDate)}</span></div>
+            <div style={{display:"flex",flexDirection:"column",gap:1}}><span style={S.dateLabel}>등록일</span><span style={S.dateVal}>{fmt(displayStart)}</span></div>
             <span style={{color:"#c8c0b0",fontSize:13,marginTop:9}}>→</span>
             <div style={{display:"flex",flexDirection:"column",gap:2}}>
               <span style={S.dateLabel}>종료일</span>
               <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
                 {/* 7일 이내면 주황색 강조 */}
-                <span style={{...S.dateVal,color:dl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(end)}</span>
+                <span style={{...S.dateVal,color:displayDl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(displayEnd)}</span>
                 {/* 별도휴강 연장일 뱃지 */}
                 {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
                 {/* 홀딩 연장일 뱃지 — 클릭 시 기간 상세 펼침 (회원 화면과 동일) */}
@@ -108,7 +116,7 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
               </div>
             </div>
             {/* D-day 칩: 음수=D+n (초과), 0=D-Day, 양수=D-n */}
-            <div style={{...S.dChip,background:dl<0?"#f5eeee":dl<=7?"#fdf3e3":"#eef4ee",color:dl<0?"#c97474":dl<=7?"#9a5a10":"#2e6e44"}}>{dl<0?`D+${Math.abs(dl)}`:dl===0?"D-Day":`D-${dl}`}</div>
+            <div style={{...S.dChip,background:displayDl<0?"#f5eeee":displayDl<=7?"#fdf3e3":"#eef4ee",color:displayDl<0?"#c97474":displayDl<=7?"#9a5a10":"#2e6e44"}}>{displayDl<0?`D+${Math.abs(displayDl)}`:displayDl===0?"D-Day":`D-${displayDl}`}</div>
           </div>
           {/* 홀딩 상세 펼침: 홀딩 기간 + 연장 후 종료일 (주황) */}
           {showHoldDetail&&(m.extensionDays||0)>0&&(()=>{
