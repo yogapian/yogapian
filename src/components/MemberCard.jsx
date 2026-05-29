@@ -27,6 +27,9 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const _rh=[...(m.renewalHistory||[])].sort((a,b)=>a.startDate.localeCompare(b.startDate));
   let _dp=_rh.length?_rh[_rh.length-1]:{startDate:m.startDate,endDate:m.endDate};
   if(_rh.length){let _f=false;for(let i=_rh.length-1;i>=0;i--){if(TODAY_STR>=_rh[i].startDate&&TODAY_STR<=_rh[i].endDate){_dp=_rh[i];_f=true;break;}}if(!_f){for(let i=_rh.length-1;i>=0;i--){if(TODAY_STR>_rh[i].endDate){_dp=_rh[i];break;}}}}
+  // 현재 기수 횟수 소진됐고 다음 기수 있으면 다음 기수로 전환
+  const _dpIdx=_rh.indexOf(_dp);
+  if(!expired&&rem===0&&_dpIdx<_rh.length-1) _dp=_rh[_dpIdx+1];
   const displayStart=_dp.startDate||m.startDate;
   const displayEnd=_dp.endDate||m.endDate;
   const TODAY=parseLocal(TODAY_STR);
