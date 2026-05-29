@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, parseLocal } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, getActivePeriod } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 
@@ -23,15 +23,10 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const pct=expired?100:Math.round(usedCnt/Math.max(periodTotal,1)*100); // 프로그레스바 %
   const status=getDisplayStatus(m,closures,bookings),sc=SC[status]||SC["on"]; // 상태 스타일
   const end=effEnd(m,closures);          // 실제 표시 종료일 (홀딩·휴강 연장 포함)
-  // 카드 등록일·종료일 표시용 활성 기수 — 사전 갱신 시 신기수 날짜가 표시되는 버그 방지
-  const _rh=[...(m.renewalHistory||[])].sort((a,b)=>a.startDate.localeCompare(b.startDate));
-  let _dp=_rh.length?_rh[_rh.length-1]:{startDate:m.startDate,endDate:m.endDate};
-  if(_rh.length){let _f=false;for(let i=_rh.length-1;i>=0;i--){if(TODAY_STR>=_rh[i].startDate&&TODAY_STR<=_rh[i].endDate){_dp=_rh[i];_f=true;break;}}if(!_f){for(let i=_rh.length-1;i>=0;i--){if(TODAY_STR>_rh[i].endDate){_dp=_rh[i];break;}}}}
-  // 현재 기수 횟수 소진됐고 다음 기수 있으면 다음 기수로 전환
-  const _dpIdx=_rh.indexOf(_dp);
-  if(!expired&&rem===0&&_dpIdx<_rh.length-1) _dp=_rh[_dpIdx+1];
-  const displayStart=_dp.startDate||m.startDate;
-  const displayEnd=_dp.endDate||m.endDate;
+  // 카드 등록일·종료일 표시용 활성 기수 — 스필오버·갭 모두 반영
+  const _ap=getActivePeriod(m,TODAY_STR,bookings);
+  const displayStart=_ap?.startDate||m.startDate;
+  const displayEnd=_ap?.endDate||m.endDate;
   const TODAY=parseLocal(TODAY_STR);
   const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);
   const closureExt=getClosureExtDays(m,closures); // 별도휴강으로 늘어난 일수 (뱃지 표시용)

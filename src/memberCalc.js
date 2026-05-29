@@ -85,7 +85,13 @@ function _effectivePeriod(memberId, targetDate, bookings, members){
   }
   // 날짜 기준 기수가 소진됐고 다음 기수가 등록된 경우 → 다음 기수로 전환하여 표시
   if(ai<rh.length-1&&pu[ai]>=rh[ai].total) ai++;
-  return {used:pu[ai], total:rh[ai].total};
+  return {used:pu[ai], total:rh[ai].total, periodIndex:ai, rh};
+}
+
+// getActivePeriod: 카드 표시용 활성 기수 객체 반환 (스필오버 반영)
+export function getActivePeriod(member, targetDate, bookings){
+  const result=_effectivePeriod(member.id, targetDate, bookings, [member]);
+  return result.rh?.[result.periodIndex]||null;
 }
 
 // usedAsOf: targetDate 기준 유효 기수에서 사용한 횟수
