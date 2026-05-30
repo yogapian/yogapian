@@ -88,10 +88,24 @@ function _effectivePeriod(memberId, targetDate, bookings, members){
   return {used:pu[ai], total:rh[ai].total, periodIndex:ai, rh};
 }
 
-// getActivePeriod: 카드 표시용 활성 기수 객체 반환 (스필오버 반영)
+// getActivePeriod: 카드 표시용 활성 기수 객체 반환
+// 오늘 포함 기수 → 기수 소진(스필오버) → 갭이면 다음 기수 → 없으면 최근 과거 기수
 export function getActivePeriod(member, targetDate, bookings){
-  const result=_effectivePeriod(member.id, targetDate, bookings, [member]);
-  return result.rh?.[result.periodIndex]||null;
+  const rh=[...(member.renewalHistory||[])].sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  if(!rh.length) return null;
+  // 1) 오늘을 포함하는 기수 검색
+  for(let i=rh.length-1;i>=0;i--){
+    if(targetDate>=rh[i].startDate&&targetDate<=rh[i].endDate){
+      // 해당 기수 소진됐으면 다음 기수로
+      const result=_effectivePeriod(member.id,targetDate,bookings,[member]);
+      return result.rh?.[result.periodIndex]||rh[i];
+    }
+  }
+  // 2) 갭 기간: 가장 가까운 미래 기수 표시 (기수 종료 후 다음 기수 시작 전)
+  for(let i=0;i<rh.length;i++){if(rh[i].startDate>targetDate)return rh[i];}
+  // 3) 미래 기수 없으면 가장 최근 과거 기수
+  for(let i=rh.length-1;i>=0;i--){if(targetDate>rh[i].endDate)return rh[i];}
+  return rh[rh.length-1];
 }
 
 // usedAsOf: targetDate 기준 유효 기수에서 사용한 횟수
