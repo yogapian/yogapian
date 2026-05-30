@@ -29,6 +29,12 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const displayEnd=_ap?.endDate||m.endDate;
   const TODAY=parseLocal(TODAY_STR);
   const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);
+  // 표시 기수가 미래 기수(갭 기간)이면 해당 기수의 total/used를 직접 사용
+  const isFuturePeriod=_ap&&_ap.startDate>TODAY_STR;
+  const displayTotal=isFuturePeriod?(_ap.total||periodTotal):periodTotal;
+  const displayUsed=isFuturePeriod?0:usedCnt;
+  const displayRem=expired?0:Math.max(0,displayTotal-displayUsed);
+  const displayPct=expired?100:Math.round(displayUsed/Math.max(displayTotal,1)*100);
   const closureExt=getClosureExtDays(m,closures); // 별도휴강으로 늘어난 일수 (뱃지 표시용)
   const tc=TYPE_CFG[m.memberType]||TYPE_CFG["1month"]; // 회원권 종류 스타일 (1개월/3개월)
 
@@ -79,17 +85,17 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
             {/* 등록·사용 왼쪽 한 줄 / 잔여 횟수 우측 강조 — MemberView와 동일 형식 */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
               <span style={{fontSize:11,color:"#9a8e80"}}>
-                등록 <b style={{color:"#3a4a3a"}}>{m.total}회</b>
+                등록 <b style={{color:"#3a4a3a"}}>{displayTotal}회</b>
                 <span style={{color:"#c8c0b0",margin:"0 5px"}}>·</span>
-                사용 <b style={{color:"#3a4a3a"}}>{usedCnt}회</b>
+                사용 <b style={{color:"#3a4a3a"}}>{displayUsed}회</b>
               </span>
               {/* 잔여 0이면 주황색, 아니면 초록색 */}
-              <span style={{fontSize:13,fontWeight:700,color:rem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:20}}>{rem}</span>회</span>
+              <span style={{fontSize:13,fontWeight:700,color:displayRem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:20}}>{displayRem}</span>회</span>
             </div>
             {/* 바 너비 = 사용% / 바 안에 15% 초과 시 숫자 표시 */}
             <div style={{background:"#e8e4dc",borderRadius:8,height:20,overflow:"hidden"}}>
-              <div style={{height:"100%",width:`${pct}%`,background:barColor,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transition:"width .4s"}}>
-                {pct>15&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{usedCnt}</span>}
+              <div style={{height:"100%",width:`${displayPct}%`,background:barColor,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transition:"width .4s"}}>
+                {displayPct>15&&<span style={{fontSize:10,fontWeight:700,color:"#fff"}}>{displayUsed}</span>}
               </div>
             </div>
           </div>
