@@ -37,6 +37,8 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const displayRem=expired?0:Math.max(0,displayTotal-displayUsed);
   const displayPct=expired?100:Math.round(displayUsed/Math.max(displayTotal,1)*100);
   const closureExt=getClosureExtDays(m,closures); // 별도휴강으로 늘어난 일수 (뱃지 표시용)
+  // 현재 기수 진행 중에 다음 기수가 이미 등록된 경우 (사전 갱신) — 갭 표시 중엔 숨김
+  const hasNextPeriod=!isFuturePeriod&&(m.renewalHistory||[]).some(r=>r.startDate>TODAY_STR);
   const tc=TYPE_CFG[m.memberType]||TYPE_CFG["1month"]; // 회원권 종류 스타일 (1개월/3개월)
 
   // ── 바 색상: 만료=빨강 / 홀딩=파랑 / 정상=초록 ──────────────────────────
@@ -61,6 +63,8 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
           {m.isNew&&<span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
           {/* 홀딩 중 이모지 */}
           {m.holding&&<span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
+          {/* 사전 갱신: 현재 기수 진행 중에 다음 기수가 이미 등록된 회원 */}
+          {hasNextPeriod&&<span style={{fontSize:9,background:"#e8edf8",color:"#3d5494",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>다음기수↗</span>}
         </div>
         {/* 오른쪽: 개월수 뱃지 + 상태 뱃지 (MemberView.jsx와 동일 구조) */}
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
