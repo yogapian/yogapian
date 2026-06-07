@@ -26,11 +26,12 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   // 카드 등록일·종료일 표시용 활성 기수 — 스필오버·갭 모두 반영
   const _ap=getActivePeriod(m,TODAY_STR,bookings);
   const displayStart=_ap?.startDate||m.startDate;
-  const displayEnd=_ap?.endDate||m.endDate;
-  const TODAY=parseLocal(TODAY_STR);
-  const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);
   // 표시 기수가 미래 기수(갭 기간)이면 해당 기수의 total/used를 직접 사용
   const isFuturePeriod=_ap&&_ap.startDate>TODAY_STR;
+  // 미래 기수(갭)일 때만 기수 endDate 사용, 그 외엔 홀딩·휴강 연장 포함된 effEnd 사용
+  const displayEnd=isFuturePeriod?(_ap?.endDate||m.endDate):end;
+  const TODAY=parseLocal(TODAY_STR);
+  const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);
   const displayTotal=isFuturePeriod?(_ap.total||periodTotal):periodTotal;
   const displayUsed=isFuturePeriod?0:usedCnt;
   const displayRem=expired?0:Math.max(0,displayTotal-displayUsed);
