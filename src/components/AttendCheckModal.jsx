@@ -7,6 +7,8 @@ import S from "../styles.js";
 export default function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,notices,setNotices,onClose}){
   const [note,setNote]=useState("");
   const [confirmDelete,setConfirmDelete]=useState(false);
+  const [linkMode,setLinkMode]=useState(false); // 회원 연결 모드
+  const [linkSearch,setLinkSearch]=useState("");
   const mem=rec.memberId?members.find(m=>m.id===rec.memberId):null;
   const slotLabel=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.label||"";
   const slotTime =TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.time||"";
@@ -93,6 +95,16 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
     onClose();
   }
 
+  // 미연결 워크인을 회원에게 연결 — memberId 업데이트 (출석 집계 반영)
+  function doLink(targetMem){
+    setBookings(p=>p.map(b=>b.id===rec.id?{...b,memberId:targetMem.id,onedayName:null}:b));
+    onClose();
+  }
+
+  const filteredMembers=linkSearch
+    ?members.filter(m=>m.name.includes(linkSearch)||( m.phone&&m.phone.includes(linkSearch)))
+    :members.slice(0,20);
+
   return(
     <div style={S.overlay} onClick={onClose}>
       <div style={{...S.modal,maxWidth:300}} onClick={e=>e.stopPropagation()}>
@@ -139,6 +151,34 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
           <div style={{display:"flex",gap:8,marginBottom:12}}>
             <button onClick={doAttend} style={{flex:1,background:"#eef5ee",color:"#2e6e44",border:"1.5px solid #7aaa7a",borderRadius:10,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>✅ 출석</button>
             <button onClick={doAbsent} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>❌ 불참</button>{/* 원데이도 doAbsent: doDelete 호출 시 status=cancelled→dayActive 필터에서 제거되어 다음날 목록에서 사라지는 버그 수정 */}
+          </div>
+        )}
+        {/* 미연결 워크인: 회원 연결 버튼 */}
+        {!mem && !linkMode && (
+          <button onClick={()=>setLinkMode(true)} style={{width:"100%",marginBottom:8,background:"#edf3ff",color:"#3d5494",border:"1px solid #b0c4e8",borderRadius:10,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
+            🔗 회원으로 연결
+          </button>
+        )}
+        {linkMode && (
+          <div style={{marginBottom:8}}>
+            <input
+              style={{...S.inp,fontSize:12,marginBottom:6}}
+              value={linkSearch}
+              onChange={e=>setLinkSearch(e.target.value)}
+              placeholder="이름·전화번호 검색"
+              autoFocus
+            />
+            <div style={{maxHeight:160,overflowY:"auto",border:"1px solid #e0d8cc",borderRadius:8}}>
+              {filteredMembers.map(m=>(
+                <button key={m.id} onClick={()=>doLink(m)}
+                  style={{display:"block",width:"100%",textAlign:"left",padding:"8px 12px",fontSize:13,background:"none",border:"none",borderBottom:"1px solid #f0ece4",cursor:"pointer",fontFamily:FONT}}>
+                  {m.name}
+                  {m.phone&&<span style={{fontSize:11,color:"#9a8e80",marginLeft:8}}>{m.phone}</span>}
+                </button>
+              ))}
+              {filteredMembers.length===0&&<div style={{padding:"10px 12px",fontSize:12,color:"#9a8e80"}}>검색 결과 없음</div>}
+            </div>
+            <button onClick={()=>{setLinkMode(false);setLinkSearch("");}} style={{...S.cancelBtn,width:"100%",marginTop:6}}>취소</button>
           </div>
         )}
         <button onClick={onClose} style={{...S.cancelBtn,width:"100%"}}>닫기</button>
