@@ -105,11 +105,16 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   }
 
   function applyRenewal(mid,rf){
+    const isPending=rf.startDate===null; // 미정 갱신 여부
     // 갱신 시 이전 기수 종료일을 신기수 시작월의 전월 말일로 자동 보정
     // 예: 신기수 6/1 시작 → 이전 기수 5/31로 마감 (6/5 시작이어도 5/31)
     const prevMonthEnd=(startStr)=>{const d=parseLocal(startStr);return`${d.getFullYear()}-${String(d.getMonth()).padStart(2,"0")}-${String(new Date(d.getFullYear(),d.getMonth(),0).getDate()).padStart(2,"0")}`;};
     setMembers(p=>p.map(m=>{if(m.id!==mid)return m;
       const rh=m.renewalHistory||[];
+      if(isPending){
+        // 미정 갱신: member 날짜·횟수 필드 유지, renewalHistory에만 추가
+        return{...m,renewalHistory:[...rh,{id:(rh.length||0)+1,...rf}]};
+      }
       // 이전 기수 endDate를 신기수 시작월 전월 말일로 보정
       const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,endDate:prevMonthEnd(rf.startDate)}:r):rh;
       return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,holding:null,manualStatus:null,isNew:false,renewalHistory:[...updRH,{id:(rh.length||0)+1,...rf}]};}));

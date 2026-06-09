@@ -37,8 +37,10 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const displayRem=expired?0:Math.max(0,displayTotal-displayUsed);
   const displayPct=expired?100:Math.round(displayUsed/Math.max(displayTotal,1)*100);
   const closureExt=getClosureExtDays(m,closures); // 별도휴강으로 늘어난 일수 (뱃지 표시용)
-  // 현재 기수 진행 중에 다음 기수가 이미 등록된 경우 (사전 갱신) — 갭 표시 중엔 숨김
-  const hasNextPeriod=!isFuturePeriod&&(m.renewalHistory||[]).some(r=>r.startDate>TODAY_STR);
+  // 미정 기수(startDate null)가 활성 기수로 올라온 경우
+  const isPendingPeriod=_ap?.startDate===null;
+  // 현재 기수 진행 중에 다음 기수가 이미 등록된 경우 (사전 갱신) — 갭·미정 표시 중엔 숨김
+  const hasNextPeriod=!isFuturePeriod&&!isPendingPeriod&&(m.renewalHistory||[]).some(r=>r.startDate>TODAY_STR||r.startDate===null);
   const tc=TYPE_CFG[m.memberType]||TYPE_CFG["1month"]; // 회원권 종류 스타일 (1개월/3개월)
 
   // ── 바 색상: 만료=빨강 / 홀딩=파랑 / 정상=초록 ──────────────────────────
@@ -112,20 +114,29 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
             <div style={{display:"flex",flexDirection:"column",gap:2}}>
               <span style={S.dateLabel}>종료일</span>
               <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
-                {/* 7일 이내면 주황색 강조 */}
-                <span style={{...S.dateVal,color:displayDl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(displayEnd)}</span>
-                {/* 별도휴강 연장일 뱃지 */}
-                {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
-                {/* 홀딩 연장일 뱃지 — 클릭 시 기간 상세 펼침 (회원 화면과 동일) */}
-                {(m.extensionDays||0)>0&&(
-                  <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
-                    홀딩+{m.extensionDays}일 {showHoldDetail?"▲":"▼"}
-                  </button>
-                )}
+                {isPendingPeriod
+                  /* 미정 기수: 시작일 대기 중 */
+                  ?<span style={{...S.dateVal,color:"#3d5494",fontWeight:700}}>미정</span>
+                  :<>
+                    {/* 7일 이내면 주황색 강조 */}
+                    <span style={{...S.dateVal,color:displayDl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(displayEnd)}</span>
+                    {/* 별도휴강 연장일 뱃지 */}
+                    {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
+                    {/* 홀딩 연장일 뱃지 */}
+                    {(m.extensionDays||0)>0&&(
+                      <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
+                        홀딩+{m.extensionDays}일 {showHoldDetail?"▲":"▼"}
+                      </button>
+                    )}
+                  </>
+                }
               </div>
             </div>
-            {/* D-day 칩: 음수=D+n (초과), 0=D-Day, 양수=D-n */}
-            <div style={{...S.dChip,background:displayDl<0?"#f5eeee":displayDl<=7?"#fdf3e3":"#eef4ee",color:displayDl<0?"#c97474":displayDl<=7?"#9a5a10":"#2e6e44"}}>{displayDl<0?`D+${Math.abs(displayDl)}`:displayDl===0?"D-Day":`D-${displayDl}`}</div>
+            {/* D-day 칩: 미정이면 "대기" / 음수=D+n / 0=D-Day / 양수=D-n */}
+            {isPendingPeriod
+              ?<div style={{...S.dChip,background:"#edf3ff",color:"#3d5494"}}>대기</div>
+              :<div style={{...S.dChip,background:displayDl<0?"#f5eeee":displayDl<=7?"#fdf3e3":"#eef4ee",color:displayDl<0?"#c97474":displayDl<=7?"#9a5a10":"#2e6e44"}}>{displayDl<0?`D+${Math.abs(displayDl)}`:displayDl===0?"D-Day":`D-${displayDl}`}</div>
+            }
           </div>
           {/* 홀딩 상세 펼침: 홀딩 기간 + 연장 후 종료일 (주황) */}
           {showHoldDetail&&(m.extensionDays||0)>0&&(()=>{

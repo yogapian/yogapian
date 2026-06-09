@@ -56,18 +56,22 @@ export function get3MonthsInfo(s){
 // 세션을 날짜·ID 순 정렬 후 기수별 정원을 채우는 이월 배분 알고리즘.
 // 현재 기수 소진 시 다음 기수로 이월 (날짜 무관 — 사전 갱신 포함).
 // 반환: { used, total } — targetDate 기준 유효 기수의 사용횟수와 총횟수
+// null startDate(미정 기수)는 항상 배열 끝으로 정렬
+const _rhSort=(a,b)=>{if(!a.startDate)return 1;if(!b.startDate)return -1;return a.startDate.localeCompare(b.startDate);};
+
 function _effectivePeriod(memberId, targetDate, bookings, members){
   const member = members ? members.find(m=>m.id===memberId) : null;
   if(!member) return {used:0, total:0};
-  const rh=[...(member.renewalHistory||[])].sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  // 미정 기수(startDate null)는 끝에 정렬 — 날짜 비교 시 충돌 방지
+  const rh=[...(member.renewalHistory||[])].sort(_rhSort);
   if(!rh.length) return {used:0, total:member.total};
 
-  // 날짜 기준 활성 기수 인덱스 (역순 → 중복 범위 시 최신 기수 우선)
+  // 날짜 기준 활성 기수 인덱스 — null startDate/endDate 기수는 날짜 범위 검색에서 제외
   let ai=rh.length-1;
   let found=false;
-  for(let i=rh.length-1;i>=0;i--){if(targetDate>=rh[i].startDate&&targetDate<=rh[i].endDate){ai=i;found=true;break;}}
-  // 갭 기간(기수 사이)이면 오늘 이전에 끝난 마지막 기수 사용 — 사전 갱신 시 신기수가 기본값으로 잡히는 버그 방지
-  if(!found){for(let i=rh.length-1;i>=0;i--){if(targetDate>rh[i].endDate){ai=i;break;}}}
+  for(let i=rh.length-1;i>=0;i--){if(rh[i].startDate&&rh[i].endDate&&targetDate>=rh[i].startDate&&targetDate<=rh[i].endDate){ai=i;found=true;break;}}
+  // 갭 기간이면 오늘 이전에 끝난 마지막 기수 사용
+  if(!found){for(let i=rh.length-1;i>=0;i--){if(rh[i].endDate&&targetDate>rh[i].endDate){ai=i;break;}}}
 
   // attended 세션 날짜·ID 순 정렬 (같은 날 오전→오후 순서 보장)
   const sessions=bookings
@@ -77,9 +81,10 @@ function _effectivePeriod(memberId, targetDate, bookings, members){
   const pu=new Array(rh.length).fill(0);
   for(const s of sessions){
     let pi=-1;
-    for(let i=rh.length-1;i>=0;i--){if(s.date>=rh[i].startDate){pi=i;break;}}
+    // null startDate 기수는 날짜 직접 배정 불가 — 스필오버로만 채워짐
+    for(let i=rh.length-1;i>=0;i--){if(rh[i].startDate&&s.date>=rh[i].startDate){pi=i;break;}}
     if(pi===-1) continue;
-    // 기수 정원 초과 시 다음 기수로 이월
+    // 기수 정원 초과 시 다음 기수로 이월 (미정 기수 포함)
     while(pi<rh.length-1&&pu[pi]>=rh[pi].total) pi++;
     pu[pi]++;
   }
@@ -89,23 +94,24 @@ function _effectivePeriod(memberId, targetDate, bookings, members){
 }
 
 // getActivePeriod: 카드 표시용 활성 기수 객체 반환
-// 오늘 포함 기수 → 기수 소진(스필오버) → 갭이면 다음 기수 → 없으면 최근 과거 기수
+// 스필오버 결과를 우선 사용 — 미정 기수(startDate null)가 활성이면 그대로 반환
 export function getActivePeriod(member, targetDate, bookings){
-  const rh=[...(member.renewalHistory||[])].sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  const rh=[...(member.renewalHistory||[])].sort(_rhSort);
   if(!rh.length) return null;
-  // 1) 오늘을 포함하는 기수 검색
+  // 스필오버 포함 활성 기수 확보
+  const result=_effectivePeriod(member.id,targetDate,bookings,[member]);
+  const spillover=result.rh?.[result.periodIndex];
+  // 1) 오늘을 포함하는 기수 — 소진 시 스필오버 결과 우선
   for(let i=rh.length-1;i>=0;i--){
-    if(targetDate>=rh[i].startDate&&targetDate<=rh[i].endDate){
-      // 해당 기수 소진됐으면 다음 기수로
-      const result=_effectivePeriod(member.id,targetDate,bookings,[member]);
-      return result.rh?.[result.periodIndex]||rh[i];
+    if(rh[i].startDate&&rh[i].endDate&&targetDate>=rh[i].startDate&&targetDate<=rh[i].endDate){
+      return spillover||rh[i];
     }
   }
-  // 2) 갭 기간: 가장 가까운 미래 기수 표시 (기수 종료 후 다음 기수 시작 전)
-  for(let i=0;i<rh.length;i++){if(rh[i].startDate>targetDate)return rh[i];}
-  // 3) 미래 기수 없으면 가장 최근 과거 기수
-  for(let i=rh.length-1;i>=0;i--){if(targetDate>rh[i].endDate)return rh[i];}
-  return rh[rh.length-1];
+  // 2) 갭 기간: 가장 가까운 미래 기수 (null startDate 제외 — 미정은 날짜 없음)
+  for(let i=0;i<rh.length;i++){if(rh[i].startDate&&rh[i].startDate>targetDate)return rh[i];}
+  // 3) 과거 기수만 있을 때 — 스필오버 결과 우선 (미정 기수로 이월됐을 수 있음)
+  for(let i=rh.length-1;i>=0;i--){if(rh[i].endDate&&targetDate>rh[i].endDate)return spillover||rh[i];}
+  return spillover||rh[rh.length-1];
 }
 
 // usedAsOf: targetDate 기준 유효 기수에서 사용한 횟수
@@ -121,8 +127,8 @@ export function activePeriodTotal(member, targetDate, bookings=[], members=null)
     return _effectivePeriod(member.id, targetDate, bookings, members||[member]).total;
   }
   // 폴백: 날짜 범위 기반 (bookings 없는 경우)
-  const rh=[...(member.renewalHistory||[])].sort((a,b)=>a.startDate.localeCompare(b.startDate));
-  for(let i=rh.length-1;i>=0;i--){if(targetDate>=rh[i].startDate&&targetDate<=rh[i].endDate)return rh[i].total;}
+  const rh=[...(member.renewalHistory||[])].sort(_rhSort);
+  for(let i=rh.length-1;i>=0;i--){if(rh[i].startDate&&rh[i].endDate&&targetDate>=rh[i].startDate&&targetDate<=rh[i].endDate)return rh[i].total;}
   return rh.length?rh[rh.length-1].total:member.total;
 }
 
@@ -137,13 +143,15 @@ export const getStatus=(m, closures=[])=>{
 export function getDisplayStatus(m, closures=[], bookings=[]) {
   if(m.manualStatus) return m.manualStatus;
   if(m.holding) return "hold";
+  // 미정 다음 기수가 있으면 현재 기수 만료 여부 무관하게 정상으로 표시
+  if((m.renewalHistory||[]).some(r=>r.startDate===null)) return "on";
   const dl = calcDL(m, closures);
   if(dl >= 0) {
     // 현재 기수 시작일 계산 — 갱신 전 renewalPending은 무시하기 위해 기수 내 날짜만 체크
     const rh = m.renewalHistory || [];
     let periodStart = m.startDate || "";
     // 역순 순회: 기수 중복 시 최신 기수(startDate 큰 것) 우선 적용
-    for(let i=rh.length-1;i>=0;i--){const r=rh[i];if(TODAY_STR>=r.startDate&&TODAY_STR<=r.endDate){periodStart=r.startDate;break;}}
+    for(let i=rh.length-1;i>=0;i--){const r=rh[i];if(r.startDate&&r.endDate&&TODAY_STR>=r.startDate&&TODAY_STR<=r.endDate){periodStart=r.startDate;break;}}
     if(bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.date>=periodStart)) return "renew";
     const {used, total} = _effectivePeriod(m.id, TODAY_STR, bookings, [m]);
     if(Math.max(0, total - used) === 0) return "renew"; // 유효 기수 잔여 0이면 갱신 필요

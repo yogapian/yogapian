@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS } from "../constants.js";
-import { fmt, fmtWithDow } from "../utils.js";
+import { fmt, fmtWithDow, endOfMonth } from "../utils.js";
+import { getActivePeriod, calc3MonthEnd } from "../memberCalc.js";
 import S from "../styles.js";
 
 export default function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,notices,setNotices,onClose}){
@@ -38,7 +39,24 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
   };
 
   function doAttend(){
-    setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"attended",confirmedAttend:true}:b));
+    // 출석 반영된 새 bookings 계산 (미정 기수 자동 시작 트리거용)
+    const newBookings=bookings.map(b=>b.id===rec.id?{...b,status:"attended",confirmedAttend:true}:b);
+    setBookings(()=>newBookings);
+    // 미정 기수(startDate null)가 있는 회원: 이번 출석으로 스필오버 → 자동 시작
+    if(mem&&(mem.renewalHistory||[]).some(r=>r.startDate===null)){
+      const ap=getActivePeriod(mem,rec.date,newBookings);
+      if(ap&&ap.startDate===null){
+        const newStart=rec.date;
+        const pendingPeriod=(mem.renewalHistory||[]).find(r=>r.startDate===null);
+        const mType=pendingPeriod?.memberType||mem.memberType;
+        const newEnd=mType==="3month"?calc3MonthEnd(newStart):endOfMonth(newStart);
+        setMembers(p=>p.map(m=>{
+          if(m.id!==mem.id)return m;
+          const updRH=(m.renewalHistory||[]).map(r=>r.startDate===null?{...r,startDate:newStart,endDate:newEnd}:r);
+          return{...m,startDate:newStart,endDate:newEnd,total:pendingPeriod?.total??m.total,memberType:mType,extensionDays:0,holdingDays:0,holding:null,renewalHistory:updRH};
+        }));
+      }
+    }
     onClose();
   }
 
