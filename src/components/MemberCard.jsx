@@ -5,8 +5,8 @@
 
 import { useState } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
-import { fmt, parseLocal } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, getActivePeriod } from "../memberCalc.js";
+import { fmt, parseLocal, addDays } from "../utils.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, getActivePeriod, holdingElapsed } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 
@@ -28,8 +28,8 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const displayStart=_ap?.startDate||m.startDate;
   // 표시 기수가 미래 기수(갭 기간)이면 해당 기수의 total/used를 직접 사용
   const isFuturePeriod=_ap&&_ap.startDate>TODAY_STR;
-  // 미래 기수(갭)일 때만 기수 endDate 사용, 그 외엔 홀딩·휴강 연장 포함된 effEnd 사용
-  const displayEnd=isFuturePeriod?(_ap?.endDate||m.endDate):end;
+  // _ap.endDate 기준 연장 적용 — m.endDate와 기수 endDate 불일치 시 기수 값 우선
+  const displayEnd=isPendingPeriod?null:isFuturePeriod?(_ap?.endDate||m.endDate):(()=>{const base=_ap?.endDate||m.endDate;return totalExt>0?addDays(base,totalExt):base;})();
   const TODAY=parseLocal(TODAY_STR);
   const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);
   const displayTotal=isFuturePeriod?(_ap.total||periodTotal):periodTotal;
@@ -41,6 +41,9 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const isPendingPeriod=_ap?.startDate===null;
   // 현재 기수 진행 중에 다음 기수가 이미 등록된 경우 (사전 갱신) — 갭·미정 표시 중엔 숨김
   const hasNextPeriod=!isFuturePeriod&&!isPendingPeriod&&(m.renewalHistory||[]).some(r=>r.startDate>TODAY_STR||r.startDate===null);
+  // 활성 기수(_ap) endDate 기준으로 연장 계산 — m.endDate가 기수와 불일치할 때 보정
+  const activeHoldDays=m.holding?holdingElapsed(m.holding):0;
+  const totalExt=closureExt+(m.extensionDays||0)+(m.holdingDays||0)+activeHoldDays;
   const tc=TYPE_CFG[m.memberType]||TYPE_CFG["1month"]; // 회원권 종류 스타일 (1개월/3개월)
 
   // ── 바 색상: 만료=빨강 / 홀딩=파랑 / 정상=초록 ──────────────────────────
