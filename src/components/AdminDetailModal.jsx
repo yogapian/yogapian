@@ -9,7 +9,7 @@ import { usedAsOf, calc3MonthEnd } from "../memberCalc.js";
 import S from "../styles.js";
 import MemberDetailContent from "./MemberDetailContent.jsx";
 
-export default function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdjust,onEdit,onDel}){
+export default function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdjust,onSetPending,onEdit,onDel}){
   const [adjMode,setAdjMode]=useState(false);
   const [adjTotal,setAdjTotal]=useState(member.total);
   const [adjStart,setAdjStart]=useState(member.startDate||"");
@@ -85,6 +85,13 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
           <button onClick={onHolding}
             style={{background:"#edf0f8",color:"#3d5494",border:"none",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
             {member.holding ? "⏸️ 홀딩 관리" : "⏸️ 홀딩"}
+          </button>
+        )}
+        {/* 미래 기수가 있을 때만 표시 — 시작일을 미정으로 전환 */}
+        {(member.renewalHistory||[]).some(r=>r.startDate&&r.startDate>TODAY_STR)&&(
+          <button onClick={onSetPending}
+            style={{background:"#edf3ff",color:"#3d5494",border:"1px solid #b0c4e8",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
+            📅 미정 전환
           </button>
         )}
       </div>

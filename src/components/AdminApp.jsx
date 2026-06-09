@@ -130,6 +130,21 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     if(mem){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Date.now(),date:TODAY_STR,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
     setRenewT(null);setDetailM(null);
   }
+  // 미래 기수의 startDate/endDate를 null로 전환 (미정) — member 날짜·횟수는 이전 기수 기준으로 복원
+  function applySetPending(mid){
+    setMembers(p=>p.map(m=>{
+      if(m.id!==mid)return m;
+      const rh=[...(m.renewalHistory||[])];
+      const lastIdx=rh.findIndex(r=>r.startDate&&r.startDate>TODAY_STR);
+      if(lastIdx===-1)return m; // 미래 기수 없으면 변경 없음
+      const updRH=rh.map((r,i)=>i===lastIdx?{...r,startDate:null,endDate:null}:r);
+      // member 날짜·횟수를 미래 기수 직전 기수 기준으로 복원
+      const prev=lastIdx>0?rh[lastIdx-1]:null;
+      const rollback=prev?{startDate:prev.startDate,endDate:prev.endDate,total:prev.total,memberType:prev.memberType||m.memberType}:{};
+      return{...m,...rollback,renewalHistory:updRH};
+    }));
+    setDetailM(null);
+  }
 function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(!hd)return{...m,holding:null,holdingDays:0};
     if(hd.resumed){
       const histEntry={startDate:m.holding?.startDate||hd.startDate,endDate:hd.endDate||TODAY_STR,workdays:hd.workdays};
@@ -267,7 +282,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
         </div>
       </>)}
 
-      {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(changes)=>applyAdjust(detailM.id,changes)} onEdit={()=>{const m=members.find(x=>x.id===detailM.id)||detailM;setDetailM(null);openEdit(m);}} onDel={()=>{const id=detailM.id;setDetailM(null);setDelT(id);}}/>}
+      {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(changes)=>applyAdjust(detailM.id,changes)} onSetPending={()=>applySetPending(detailM.id)} onEdit={()=>{const m=members.find(x=>x.id===detailM.id)||detailM;setDetailM(null);openEdit(m);}} onDel={()=>{const id=detailM.id;setDetailM(null);setDelT(id);}}/>}
       {renewT&&<RenewalModal member={members.find(m=>m.id===renewT)} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)}/>}
       {holdT&&<HoldingModal member={members.find(m=>m.id===holdT)} onClose={()=>setHoldT(null)} onSave={hd=>applyHolding(holdT,hd)}/>}
       {showNotices&&<NoticeManager notices={notices} setNotices={setNotices} members={members} bookings={bookings} onClose={()=>setShowNotices(false)}/>}
