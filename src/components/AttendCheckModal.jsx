@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS } from "../constants.js";
-import { fmt, fmtWithDow, endOfMonth } from "../utils.js";
+import { fmt, fmtWithDow, endOfMonth, addDays } from "../utils.js";
 import { getActivePeriod, calc3MonthEnd } from "../memberCalc.js";
 import S from "../styles.js";
 
@@ -48,7 +48,7 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
     if(mem&&(mem.renewalHistory||[]).some(r=>r.startDate===null)){
       const ap=getActivePeriod(mem,rec.date,newBookings);
       if(ap&&ap.startDate===null){
-        const newStart=rec.date;
+        const newStart=addDays(rec.date,1); // 마지막 회차 당일이 아닌 다음날부터 새 기수 시작
         const pendingPeriod=(mem.renewalHistory||[]).find(r=>r.startDate===null);
         const mType=pendingPeriod?.memberType||mem.memberType;
         const newEnd=mType==="3month"?calc3MonthEnd(newStart):endOfMonth(newStart);
