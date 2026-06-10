@@ -12,14 +12,19 @@ import MemberDetailContent from "./MemberDetailContent.jsx";
 export default function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdjust,onSetPending,onEdit,onDel}){
   // 마지막 갱신 이력 기준으로 초기화 — member 상위 필드가 이력과 불일치할 때 이력이 정확한 값
   const _lastRH=(member.renewalHistory||[]).slice(-1)[0];
+  // null startDate(미정 기수)는 빈 문자열로 — member.* 폴백 금지 (기수 불일치 방지)
+  const _rhStart=_lastRH ? (_lastRH.startDate??"") : (member.startDate||"");
+  const _rhEnd  =_lastRH ? (_lastRH.endDate??  "") : (member.endDate  ||"");
   const [adjMode,setAdjMode]=useState(false);
   const [adjTotal,setAdjTotal]=useState(_lastRH?.total??member.total);
-  const [adjStart,setAdjStart]=useState(_lastRH?.startDate||member.startDate||"");
-  const [adjEnd,setAdjEnd]=useState(_lastRH?.endDate||member.endDate||"");
+  const [adjStart,setAdjStart]=useState(_rhStart);
+  const [adjEnd,setAdjEnd]=useState(_rhEnd);
   const [adjExtDays,setAdjExtDays]=useState(member.extensionDays||0); // 홀딩 연장일 직접 수정
   const _adjMemberType=_lastRH?.memberType||member.memberType; // 3개월 재계산 버튼 표시 기준
 
-  const dispUsed = usedAsOf(member.id, TODAY_STR, bookings, [member]);
+  // 마지막 기수 기준 잔여 — null startDate(미정) 기수는 used=0 으로 계산
+  const _lastRHUsed=_lastRH?.startDate ? usedAsOf(member.id, TODAY_STR, bookings, [member]) : 0;
+  const dispUsed = _lastRHUsed;
   const phoneDigits = (member.phone||"").replace(/\D/g,"");
   const phoneFormatted = phoneDigits.length===11
     ? `${phoneDigits.slice(0,3)}-${phoneDigits.slice(3,7)}-${phoneDigits.slice(7)}`
@@ -30,7 +35,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
     <>
       {!adjMode && (
         <div style={{marginBottom:10,textAlign:"right"}}>
-          <button onClick={()=>{setAdjTotal(_lastRH?.total??member.total);setAdjStart(_lastRH?.startDate||member.startDate||"");setAdjEnd(_lastRH?.endDate||member.endDate||"");setAdjMode(true);}}
+          <button onClick={()=>{setAdjTotal(_lastRH?.total??member.total);setAdjStart(_rhStart);setAdjEnd(_rhEnd);setAdjMode(true);}}
             style={{fontSize:11,background:"#fdf3e3",color:"#9a5a10",border:"1px solid #e8c44a",borderRadius:7,padding:"4px 10px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>
             ✏️ 횟수·기간 수정
           </button>
