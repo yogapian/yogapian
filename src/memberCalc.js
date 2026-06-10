@@ -144,8 +144,8 @@ export const getStatus=(m, closures=[])=>{
 export function getDisplayStatus(m, closures=[], bookings=[]) {
   if(m.manualStatus) return m.manualStatus;
   if(m.holding) return "hold";
-  // 미정 다음 기수가 있으면 현재 기수 만료 여부 무관하게 정상으로 표시
-  if((m.renewalHistory||[]).some(r=>r.startDate===null)) return "on";
+  // 미정 or 미래 기수가 있으면 현재 기수 만료·잔여 0 무관하게 정상으로 표시
+  if((m.renewalHistory||[]).some(r=>r.startDate===null||r.startDate>TODAY_STR)) return "on";
   const dl = calcDL(m, closures);
   if(dl >= 0) {
     // 현재 기수 시작일 계산 — 갱신 전 renewalPending은 무시하기 위해 기수 내 날짜만 체크
