@@ -30,7 +30,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
     <>
       {!adjMode && (
         <div style={{marginBottom:10,textAlign:"right"}}>
-          <button onClick={()=>{setAdjTotal(member.total);setAdjStart(member.startDate||"");setAdjEnd(member.endDate||"");setAdjMode(true);}}
+          <button onClick={()=>{setAdjTotal(_lastRH?.total??member.total);setAdjStart(_lastRH?.startDate||member.startDate||"");setAdjEnd(_lastRH?.endDate||member.endDate||"");setAdjMode(true);}}
             style={{fontSize:11,background:"#fdf3e3",color:"#9a5a10",border:"1px solid #e8c44a",borderRadius:7,padding:"4px 10px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>
             ✏️ 횟수·기간 수정
           </button>
