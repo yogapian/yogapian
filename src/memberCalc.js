@@ -88,8 +88,9 @@ function _effectivePeriod(memberId, targetDate, bookings, members){
     while(pi<rh.length-1&&pu[pi]>=rh[pi].total) pi++;
     pu[pi]++;
   }
-  // 날짜 기준 기수가 소진됐고 다음 기수가 등록된 경우 → 다음 기수로 전환하여 표시
-  if(ai<rh.length-1&&pu[ai]>=rh[ai].total) ai++;
+  // 기수 소진 시 다음 기수로 전환 — 단, 현재 기수 기간이 아직 남아있으면 전환 안 함
+  // (기간 내 마지막 회차 사용 → 잔여 0 표시, 다음기수로 이동은 종료일 이후에만)
+  if(ai<rh.length-1&&pu[ai]>=rh[ai].total&&(!rh[ai].endDate||targetDate>rh[ai].endDate)) ai++;
   return {used:pu[ai], total:rh[ai].total, periodIndex:ai, rh};
 }
 
