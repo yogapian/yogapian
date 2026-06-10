@@ -93,7 +93,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     // startDate를 원데이 방문일로 소급 → usedAsOf가 자동으로 1회 카운트
     const linked={...newMember,startDate:matchedBooking.date,renewalHistory:[{...newMember.renewalHistory[0],startDate:matchedBooking.date}]};
     setMembers(p=>[...p,linked]);
-    setBookings(p=>p.map(b=>b.id===matchedBooking.id?{...b,memberId:newMember.id,onedayName:null}:b));
+    // id가 음수 임시값에서 실제 DB id로 교체된 경우에도 매핑 성공하도록 onedayName+date+timeSlot으로 이중 매핑
+    setBookings(p=>p.map(b=>(b.id===matchedBooking.id||(b.onedayName&&b.onedayName===matchedBooking.onedayName&&b.date===matchedBooking.date&&b.timeSlot===matchedBooking.timeSlot))?{...b,memberId:newMember.id,onedayName:null}:b));
     _addMemberSale(linked, "new_member");
     setOnedayConfirm(null);
   }
