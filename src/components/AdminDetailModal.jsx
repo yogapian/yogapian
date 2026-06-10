@@ -10,11 +10,14 @@ import S from "../styles.js";
 import MemberDetailContent from "./MemberDetailContent.jsx";
 
 export default function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdjust,onSetPending,onEdit,onDel}){
+  // 마지막 갱신 이력 기준으로 초기화 — member 상위 필드가 이력과 불일치할 때 이력이 정확한 값
+  const _lastRH=(member.renewalHistory||[]).slice(-1)[0];
   const [adjMode,setAdjMode]=useState(false);
-  const [adjTotal,setAdjTotal]=useState(member.total);
-  const [adjStart,setAdjStart]=useState(member.startDate||"");
-  const [adjEnd,setAdjEnd]=useState(member.endDate||"");
+  const [adjTotal,setAdjTotal]=useState(_lastRH?.total??member.total);
+  const [adjStart,setAdjStart]=useState(_lastRH?.startDate||member.startDate||"");
+  const [adjEnd,setAdjEnd]=useState(_lastRH?.endDate||member.endDate||"");
   const [adjExtDays,setAdjExtDays]=useState(member.extensionDays||0); // 홀딩 연장일 직접 수정
+  const _adjMemberType=_lastRH?.memberType||member.memberType; // 3개월 재계산 버튼 표시 기준
 
   const dispUsed = usedAsOf(member.id, TODAY_STR, bookings, [member]);
   const phoneDigits = (member.phone||"").replace(/\D/g,"");
@@ -55,7 +58,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
             <div style={{flex:1,minWidth:120}}>
               <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>
                 종료일
-                {member.memberType==="3month"&&<button onClick={()=>setAdjEnd(calc3MonthEnd(adjStart))} style={{marginLeft:6,fontSize:10,background:"#eef5ee",color:"#2e6e44",border:"1px solid #7acca0",borderRadius:5,padding:"1px 6px",cursor:"pointer",fontFamily:FONT}}>3개월 재계산</button>}
+                {_adjMemberType==="3month"&&<button onClick={()=>setAdjEnd(calc3MonthEnd(adjStart))} style={{marginLeft:6,fontSize:10,background:"#eef5ee",color:"#2e6e44",border:"1px solid #7acca0",borderRadius:5,padding:"1px 6px",cursor:"pointer",fontFamily:FONT}}>3개월 재계산</button>}
               </div>
               <input type="date" value={adjEnd} onChange={e=>setAdjEnd(e.target.value)} style={{...S.inp,fontSize:13,padding:"7px 9px"}}/>
             </div>

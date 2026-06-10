@@ -167,7 +167,9 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
           return u;
         })
       :[{id:1,total:changes.total??m.total,startDate:changes.startDate||m.startDate,endDate:changes.endDate||m.endDate,memberType:m.memberType}];
-    return{...m,...changes,renewalHistory:updRH};
+    // memberType을 마지막 이력 항목 기준으로 동기화 (member 상위 필드 불일치 보정)
+    const lastRHType=updRH[updRH.length-1]?.memberType;
+    return{...m,...changes,memberType:lastRHType||m.memberType,renewalHistory:updRH};
   }));}
   const {dateTimeStr}=useClock();
 
