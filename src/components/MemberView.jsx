@@ -152,7 +152,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
                 {/* 등록·사용 왼쪽 한 줄 / 잔여 횟수 우측 강조 */}
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
                   <span style={{fontSize:11,color:"#9a8e80"}}>
-                    등록 <b style={{color:"#3a4a3a"}}>{m.total}회</b>
+                    등록 <b style={{color:"#3a4a3a"}}>{periodTotal}회</b>
                     <span style={{color:"#c8c0b0",margin:"0 5px"}}>·</span>
                     사용 <b style={{color:"#3a4a3a"}}>{usedCnt}회</b>
                   </span>
