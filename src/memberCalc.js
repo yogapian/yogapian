@@ -53,7 +53,8 @@ function holdingWorkdays(holding) {
   const yesterday = new Date(TODAY.getTime() - 86400000);
   if(parseLocal(holding.startDate) > yesterday) return 0;
   const ys=`${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,"0")}-${String(yesterday.getDate()).padStart(2,"0")}`;
-  return countWorkdays(holding.startDate, ys);
+  // 시작일 당일은 수업 가능 → 다음날(start+1)부터 집계
+  return countWorkdays(addDays(holding.startDate, 1), ys);
 }
 
 export function get3MonthsInfo(s){

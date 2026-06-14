@@ -344,7 +344,8 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
         ? addDays(selDate, -1)
         : TODAY_STR;
     let count = 0;
-    let cur = parseLocal(startStr);
+    // 시작일 당일은 수업 가능 → 다음날(start+1)부터 집계
+    let cur = parseLocal(addDays(startStr, 1));
     const end = parseLocal(holdEnd);
     while(cur <= end){ const dow=cur.getDay(); if(dow!==0&&dow!==6) count++; cur.setDate(cur.getDate()+1); }
     setMembers(p=>p.map(m=>{
