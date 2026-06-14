@@ -28,6 +28,8 @@ export const addDays=(s,n)=>{const d=parseLocal(s);d.setDate(d.getDate()+n);retu
 
 export function wdInMonth(y,mo){let c=0,days=new Date(y,mo+1,0).getDate();for(let d=1;d<=days;d++){const w=new Date(y,mo,d).getDay();if(w&&w!==6)c++;}return c;}
 export function countWorkdays(s,e){let c=0,cur=parseLocal(s),end=parseLocal(e);while(cur<=end){const d=cur.getDay();if(d&&d!==6)c++;cur.setDate(cur.getDate()+1);}return c;}
+// 날짜 d에서 n 평일 뒤 날짜 반환 (주말 건너뜀)
+export function addWeekdays(s,n){if(!n||n<=0)return s;let d=parseLocal(s),c=0;while(c<n){d.setDate(d.getDate()+1);const w=d.getDay();if(w&&w!==6)c++;}return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
 
 export function endOfNextMonth(fromStr){
   const d=parseLocal(fromStr);

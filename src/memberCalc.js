@@ -1,5 +1,5 @@
 import { TODAY, TODAY_STR } from "./constants.js";
-import { parseLocal, addDays, wdInMonth } from "./utils.js";
+import { parseLocal, addDays, addWeekdays, countWorkdays, wdInMonth } from "./utils.js";
 
 // 3개월권 휴강 연장일수: startDate~endDate 사이 전체휴강 평일수
 export function getClosureExtDays(m, closures=[]) {
@@ -16,11 +16,14 @@ export function getClosureExtDays(m, closures=[]) {
 }
 
 export const effEnd=(m, closures=[])=>{
-  const closureExt = getClosureExtDays(m, closures);
-  // 진행 중인 홀딩 경과일 동적 포함 — 홀딩 기간 제한 없으므로 endDate 초과해도 expired 처리 안 되게
+  const closureExt = getClosureExtDays(m, closures); // 별도휴강: 캘린더 일수 연장
+  // 홀딩 연장: 평일 기준 — addWeekdays로 주말 건너뜀
   const activeHoldDays = m.holding ? holdingElapsed(m.holding) : 0;
-  const total = closureExt + (m.extensionDays||0) + (m.holdingDays||0) + activeHoldDays;
-  return total > 0 ? addDays(m.endDate, total) : m.endDate;
+  const holdExt = (m.extensionDays||0) + (m.holdingDays||0) + activeHoldDays;
+  let result = m.endDate;
+  if(closureExt > 0) result = addDays(result, closureExt);
+  if(holdExt > 0) result = addWeekdays(result, holdExt);
+  return result;
 };
 
 export const calcDL=(m, closures=[])=>{
@@ -40,8 +43,11 @@ export function calc3MonthEnd(startStr, closures=[]) {
 }
 
 export function holdingElapsed(holding) {
+  // 진행 중인 홀딩 경과 평일수 — 주말 제외 (복귀일 당일 미포함)
   if(!holding || !holding.startDate) return 0;
-  return Math.max(0, Math.ceil((TODAY - parseLocal(holding.startDate)) / 86400000));
+  const yesterday = new Date(TODAY.getTime() - 86400000);
+  if(parseLocal(holding.startDate) > yesterday) return 0;
+  return countWorkdays(holding.startDate, `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,"0")}-${String(yesterday.getDate()).padStart(2,"0")}`);
 }
 
 export function get3MonthsInfo(s){

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, TODAY } from "../constants.js";
-import { parseLocal, fmt, addDays } from "../utils.js";
+import { parseLocal, fmt, addDays, addWeekdays, countWorkdays } from "../utils.js";
 import { holdingElapsed } from "../memberCalc.js";
 import S from "../styles.js";
 
@@ -17,14 +17,16 @@ export default function HoldingModal({member,onClose,onSave,closures=[]}){
   const [start,setStart]=useState(hasH?member.holding.startDate:TODAY_STR);
   const [resumeDate,setResumeDate]=useState(TODAY_STR);
 
-  const elapsed=start?Math.max(0,Math.ceil((TODAY-parseLocal(start))/86400000)):0;
-  const rawDays=resumeDate&&start?Math.max(0,Math.ceil((parseLocal(resumeDate)-parseLocal(start))/86400000)):elapsed;
-  // 홀딩 기간 내 전체 휴강일 차감 — 수업 없는 날은 홀딩 일수에 포함하지 않음
   // 홀딩 endDate = 복귀일 전날 (복귀일 당일은 수업 가능 → 홀딩에 포함 안 됨)
   const holdingEndDate = resumeDate ? addDays(resumeDate, -1) : (start ? addDays(TODAY_STR, -1) : TODAY_STR);
+  // 평일(월~금)만 카운트 — 주말은 어차피 수업 없으므로 홀딩 일수에서 제외
+  const elapsed=start?countWorkdays(start,addDays(TODAY_STR,-1)):0;
+  const rawDays=resumeDate&&start?countWorkdays(start,holdingEndDate):elapsed;
+  // 홀딩 기간 내 정기 휴강일(평일 휴강) 추가 차감
   const closuresInHolding=countClosuresInRange(closures, start, holdingEndDate);
   const resumeDays=Math.max(0, rawDays - closuresInHolding);
-  const newEnd=addDays(member.endDate,(member.extensionDays||0)+resumeDays);
+  // 연장 후 종료일: 기존 홀딩 연장분 + 이번 복귀분을 평일 기준으로 추가
+  const newEnd=addWeekdays(member.endDate,(member.extensionDays||0)+resumeDays);
 
   function handleResume(){
     // endDate = 복귀일 전날 (복귀 당일은 수업 가능 → 홀딩 기간에서 제외)
