@@ -17,9 +17,9 @@ export function getClosureExtDays(m, closures=[]) {
 
 export const effEnd=(m, closures=[])=>{
   const closureExt = getClosureExtDays(m, closures); // 별도휴강: 캘린더 일수 연장
-  // 홀딩 연장: 평일 기준 — addWeekdays로 주말 건너뜀
-  const activeHoldDays = m.holding ? holdingElapsed(m.holding) : 0;
-  const holdExt = (m.extensionDays||0) + (m.holdingDays||0) + activeHoldDays;
+  // 홀딩 연장: 평일 기준 — addWeekdays로 주말 건너뜀 (표시는 캘린더, 연장은 평일)
+  const activeHoldWorkdays = m.holding ? holdingWorkdays(m.holding) : 0;
+  const holdExt = (m.extensionDays||0) + (m.holdingDays||0) + activeHoldWorkdays;
   let result = m.endDate;
   if(closureExt > 0) result = addDays(result, closureExt);
   if(holdExt > 0) result = addWeekdays(result, holdExt);
@@ -42,12 +42,18 @@ export function calc3MonthEnd(startStr, closures=[]) {
   return `${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}-${String(r.getDate()).padStart(2,'0')}`;
 }
 
+// 표시용: 주말 포함 캘린더 경과일 (사용자에게 보이는 숫자)
 export function holdingElapsed(holding) {
-  // 진행 중인 홀딩 경과 평일수 — 주말 제외 (복귀일 당일 미포함)
+  if(!holding || !holding.startDate) return 0;
+  return Math.max(0, Math.ceil((TODAY - parseLocal(holding.startDate)) / 86400000));
+}
+// 연장 계산용: 주말 제외 평일 경과일 (종료일 연장에 반영할 실제 수업일수)
+function holdingWorkdays(holding) {
   if(!holding || !holding.startDate) return 0;
   const yesterday = new Date(TODAY.getTime() - 86400000);
   if(parseLocal(holding.startDate) > yesterday) return 0;
-  return countWorkdays(holding.startDate, `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,"0")}-${String(yesterday.getDate()).padStart(2,"0")}`);
+  const ys=`${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,"0")}-${String(yesterday.getDate()).padStart(2,"0")}`;
+  return countWorkdays(holding.startDate, ys);
 }
 
 export function get3MonthsInfo(s){

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, parseLocal, addDays } from "../utils.js";
 import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, getActivePeriod, holdingElapsed } from "../memberCalc.js";
+import { addWeekdays } from "../utils.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 
@@ -31,11 +32,16 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   // 미정 기수(startDate null)가 활성 기수로 올라온 경우
   const isPendingPeriod=_ap?.startDate===null;
   const closureExt=getClosureExtDays(m,closures); // 별도휴강으로 늘어난 일수 (뱃지 표시용)
-  // 활성 기수(_ap) endDate 기준으로 연장 계산 — m.endDate가 기수와 불일치할 때 보정
+  // activeHoldDays: 캘린더 일수 — 뱃지·표시용 / holdingElapsed 사용
   const activeHoldDays=m.holding?holdingElapsed(m.holding):0;
-  const totalExt=closureExt+(m.extensionDays||0)+(m.holdingDays||0)+activeHoldDays;
-  // _ap.endDate 기준 연장 적용 — m.endDate와 기수 endDate 불일치 시 기수 값 우선
-  const displayEnd=isPendingPeriod?null:isFuturePeriod?(_ap?.endDate||m.endDate):(()=>{const base=_ap?.endDate||m.endDate;return totalExt>0?addDays(base,totalExt):base;})();
+  const totalExt=closureExt+(m.extensionDays||0)+(m.holdingDays||0)+activeHoldDays; // 뱃지 표시용
+  // displayEnd: 휴강=캘린더 연장 / 홀딩=평일 연장 (연장일 보정, 기수 endDate 우선)
+  const displayEnd=isPendingPeriod?null:isFuturePeriod?(_ap?.endDate||m.endDate):(()=>{
+    const base=_ap?.endDate||m.endDate;
+    const holdExt=(m.extensionDays||0)+(m.holdingDays||0)+activeHoldDays;
+    let d=closureExt>0?addDays(base,closureExt):base;
+    return holdExt>0?addWeekdays(d,holdExt):d;
+  })();
   const TODAY=parseLocal(TODAY_STR);
   const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);
   const displayTotal=isFuturePeriod?(_ap.total||periodTotal):periodTotal;

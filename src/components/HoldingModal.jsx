@@ -19,9 +19,9 @@ export default function HoldingModal({member,onClose,onSave,closures=[]}){
 
   // 홀딩 endDate = 복귀일 전날 (복귀일 당일은 수업 가능 → 홀딩에 포함 안 됨)
   const holdingEndDate = resumeDate ? addDays(resumeDate, -1) : (start ? addDays(TODAY_STR, -1) : TODAY_STR);
-  // 평일(월~금)만 카운트 — 주말은 어차피 수업 없으므로 홀딩 일수에서 제외
-  const elapsed=start?countWorkdays(start,addDays(TODAY_STR,-1)):0;
-  const rawDays=resumeDate&&start?countWorkdays(start,holdingEndDate):elapsed;
+  // elapsed: 표시용 캘린더 일수(주말 포함) / rawDays: 연장 계산용 평일수(주말 제외)
+  const elapsed=start?Math.max(0,Math.ceil((TODAY-parseLocal(start))/86400000)):0;
+  const rawDays=resumeDate&&start?countWorkdays(start,holdingEndDate):countWorkdays(start,addDays(TODAY_STR,-1));
   // 홀딩 기간 내 정기 휴강일(평일 휴강) 추가 차감
   const closuresInHolding=countClosuresInRange(closures, start, holdingEndDate);
   const resumeDays=Math.max(0, rawDays - closuresInHolding);
