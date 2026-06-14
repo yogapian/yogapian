@@ -136,7 +136,7 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
                     {(m.extensionDays||0)>0&&(()=>{
                       const lh=m.holdingHistory?.slice(-1)[0];
                       const calDays=lh?.startDate&&lh?.endDate
-                        ?Math.ceil((parseLocal(lh.endDate)-parseLocal(lh.startDate))/86400000)+1
+                        ?Math.ceil((parseLocal(lh.endDate)-parseLocal(lh.startDate))/86400000)
                         :m.extensionDays;
                       return(
                         <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>

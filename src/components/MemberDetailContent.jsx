@@ -114,13 +114,14 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                 h.startDate >= r.startDate && (!r.endDate || h.startDate <= r.endDate)
               );
               // holdCalDays: 표시용 캘린더 일수 / holdExtDays: 연장 계산용 평일수
-              const holdCalDays = holdInPeriod.reduce((sum,h)=>sum+(h.startDate&&h.endDate?Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000)+1:(h.workdays||0)),0);
+              // startDate=수업일, endDate=마지막홀딩일 → (endDate-startDate)가 실제 홀딩 캘린더 일수
+              const holdCalDays = holdInPeriod.reduce((sum,h)=>sum+(h.startDate&&h.endDate?Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000):(h.workdays||0)),0);
               const holdExtDays = holdInPeriod.reduce((sum, h) => sum + (h.workdays || 0), 0);
               const closureExt = isCurrent ? getClosureExtDays(member, closures) : 0;
               // 현재 기수: extensionDays(평일수), 과거 기수: holdingHistory workdays 합산
               const holdExt = isCurrent ? (member.extensionDays || 0) : holdExtDays;
               // 현재 기수 표시용 캘린더 일수: holdingHistory 마지막 항목 기준
-              const curHoldCal = isCurrent ? (()=>{const lh=member.holdingHistory?.slice(-1)[0];return lh?.startDate&&lh?.endDate?Math.ceil((parseLocal(lh.endDate)-parseLocal(lh.startDate))/86400000)+1:(member.extensionDays||0);})() : holdCalDays;
+              const curHoldCal = isCurrent ? (()=>{const lh=member.holdingHistory?.slice(-1)[0];return lh?.startDate&&lh?.endDate?Math.ceil((parseLocal(lh.endDate)-parseLocal(lh.startDate))/86400000):(member.extensionDays||0);})() : holdCalDays;
               // displayEnd: 휴강=캘린더 연장, 홀딩=평일 연장(addWeekdays)
               let displayEnd = r.endDate;
               if(closureExt > 0) displayEnd = addDays(displayEnd, closureExt);
@@ -182,7 +183,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                             <div key={`hold-${h.startDate}`} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 6px",borderBottom:ri<rows.length-1?"1px solid #f0edf8":"none",background:"#f4f6fb",borderRadius:6,marginBottom:1}}>
                               <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0}}>⏸️</span>
                               <span style={{fontSize:11,color:"#3d5494",flex:1}}>홀딩 {fd(h.startDate)} ~ {fd(h.endDate)}</span>
-                              <span style={{fontSize:10,color:"#6a7fc8",background:"#edf0f8",borderRadius:4,padding:"1px 6px",fontWeight:600}}>{h.startDate&&h.endDate?Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000)+1:(h.workdays||member.extensionDays)}일</span>
+                              <span style={{fontSize:10,color:"#6a7fc8",background:"#edf0f8",borderRadius:4,padding:"1px 6px",fontWeight:600}}>{h.startDate&&h.endDate?Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000):(h.workdays||member.extensionDays)}일</span>
                             </div>
                           );
                         }
