@@ -123,7 +123,7 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
             <span style={{color:"#c8c0b0",fontSize:13,marginTop:9,flexShrink:0}}>→</span>
             <div style={{display:"flex",flexDirection:"column",gap:2,flex:1,minWidth:0}}>
               <span style={S.dateLabel}>종료일</span>
-              <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"nowrap",overflow:"hidden"}}>
                 {isPendingPeriod
                   /* 미정 기수: 시작일 대기 중 */
                   ?<span style={{...S.dateVal,color:"#3d5494",fontWeight:700}}>미정</span>
