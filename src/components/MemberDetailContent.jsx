@@ -11,7 +11,7 @@
 
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS, GE, SC, TYPE_CFG } from "../constants.js";
-import { fmt, fmtWithDow, addDays } from "../utils.js";
+import { fmt, fmtWithDow, addDays, addWeekdays, parseLocal } from "../utils.js";
 import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, holdingElapsed, periodRecs, currentRecs } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 
@@ -113,11 +113,18 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
               const holdInPeriod = (member.holdingHistory || []).filter(h =>
                 h.startDate >= r.startDate && (!r.endDate || h.startDate <= r.endDate)
               );
+              // holdCalDays: 표시용 캘린더 일수 / holdExtDays: 연장 계산용 평일수
+              const holdCalDays = holdInPeriod.reduce((sum,h)=>sum+(h.startDate&&h.endDate?Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000)+1:(h.workdays||0)),0);
               const holdExtDays = holdInPeriod.reduce((sum, h) => sum + (h.workdays || 0), 0);
               const closureExt = isCurrent ? getClosureExtDays(member, closures) : 0;
-              // 현재 기수: extensionDays(진행 중 홀딩 포함), 과거 기수: holdingHistory 합산
+              // 현재 기수: extensionDays(평일수), 과거 기수: holdingHistory workdays 합산
               const holdExt = isCurrent ? (member.extensionDays || 0) : holdExtDays;
-              const displayEnd = (closureExt > 0 || holdExt > 0) ? addDays(r.endDate, closureExt+holdExt) : r.endDate;
+              // 현재 기수 표시용 캘린더 일수: holdingHistory 마지막 항목 기준
+              const curHoldCal = isCurrent ? (()=>{const lh=member.holdingHistory?.slice(-1)[0];return lh?.startDate&&lh?.endDate?Math.ceil((parseLocal(lh.endDate)-parseLocal(lh.startDate))/86400000)+1:(member.extensionDays||0);})() : holdCalDays;
+              // displayEnd: 휴강=캘린더 연장, 홀딩=평일 연장(addWeekdays)
+              let displayEnd = r.endDate;
+              if(closureExt > 0) displayEnd = addDays(displayEnd, closureExt);
+              if(holdExt > 0) displayEnd = addWeekdays(displayEnd, holdExt);
               // 다음 기수 시작일 전날로 캡핑 — 갱신이 기수 만료 전에 일어나면 출석이 두 기수에 중복 표시되는 버그 방지
               // reversedHistory는 최신순이므로 i-1이 바로 다음(더 최신) 기수
               const nextStart = i > 0 ? reversedHistory[i - 1].startDate : null;
@@ -139,7 +146,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                       <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
                         <span style={{fontSize:12,fontWeight:700,color:"#2e3e2e"}}>{fmt(r.startDate)} ~ {fmt(displayEnd)}</span>
                         {closureExt > 0 && <span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
-                        {holdExt > 0    && <span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{holdExt}일</span>}
+                        {holdExt > 0    && <span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{curHoldCal}일</span>}
                       </div>
                       <div style={{display:"flex",gap:5,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
                         {/* 회원권 종류 뱃지: 중립 회색 */}
@@ -175,7 +182,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                             <div key={`hold-${h.startDate}`} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 6px",borderBottom:ri<rows.length-1?"1px solid #f0edf8":"none",background:"#f4f6fb",borderRadius:6,marginBottom:1}}>
                               <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0}}>⏸️</span>
                               <span style={{fontSize:11,color:"#3d5494",flex:1}}>홀딩 {fd(h.startDate)} ~ {fd(h.endDate)}</span>
-                              <span style={{fontSize:10,color:"#6a7fc8",background:"#edf0f8",borderRadius:4,padding:"1px 6px",fontWeight:600}}>{h.workdays || member.extensionDays}일</span>
+                              <span style={{fontSize:10,color:"#6a7fc8",background:"#edf0f8",borderRadius:4,padding:"1px 6px",fontWeight:600}}>{h.startDate&&h.endDate?Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000)+1:(h.workdays||member.extensionDays)}일</span>
                             </div>
                           );
                         }
