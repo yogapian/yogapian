@@ -117,10 +117,11 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
           </div>
 
           {/* ── 날짜 행: 등록일 → 종료일 + 연장 뱃지 + D-day 칩 ──────────── */}
-          <div style={S.dateRow}>
-            <div style={{display:"flex",flexDirection:"column",gap:1}}><span style={S.dateLabel}>등록일</span><span style={S.dateVal}>{fmt(displayStart)}</span></div>
-            <span style={{color:"#c8c0b0",fontSize:13,marginTop:9}}>→</span>
-            <div style={{display:"flex",flexDirection:"column",gap:2}}>
+          {/* flexWrap 제거 + 종료일 col flex:1 → D-day 칩이 줄 넘침 없이 우측 고정 */}
+          <div style={{...S.dateRow,flexWrap:"nowrap",alignItems:"flex-start"}}>
+            <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}><span style={S.dateLabel}>등록일</span><span style={S.dateVal}>{fmt(displayStart)}</span></div>
+            <span style={{color:"#c8c0b0",fontSize:13,marginTop:9,flexShrink:0}}>→</span>
+            <div style={{display:"flex",flexDirection:"column",gap:2,flex:1,minWidth:0}}>
               <span style={S.dateLabel}>종료일</span>
               <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
                 {isPendingPeriod
@@ -131,20 +132,26 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
                     <span style={{...S.dateVal,color:displayDl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(displayEnd)}</span>
                     {/* 별도휴강 연장일 뱃지 */}
                     {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
-                    {/* 홀딩 연장일 뱃지 */}
-                    {(m.extensionDays||0)>0&&(
-                      <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
-                        홀딩+{m.extensionDays}일 {showHoldDetail?"▲":"▼"}
-                      </button>
-                    )}
+                    {/* 홀딩 연장일 뱃지 — 캘린더 일수(주말 포함) 표시 */}
+                    {(m.extensionDays||0)>0&&(()=>{
+                      const lh=m.holdingHistory?.slice(-1)[0];
+                      const calDays=lh?.startDate&&lh?.endDate
+                        ?Math.ceil((parseLocal(lh.endDate)-parseLocal(lh.startDate))/86400000)+1
+                        :m.extensionDays;
+                      return(
+                        <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
+                          홀딩+{calDays}일 {showHoldDetail?"▲":"▼"}
+                        </button>
+                      );
+                    })()}
                   </>
                 }
               </div>
             </div>
-            {/* D-day 칩: 미정이면 "대기" / 음수=D+n / 0=D-Day / 양수=D-n */}
+            {/* D-day 칩: flexShrink:0으로 줄 넘침 방지 */}
             {isPendingPeriod
-              ?<div style={{...S.dChip,background:"#edf3ff",color:"#3d5494"}}>대기</div>
-              :<div style={{...S.dChip,background:displayDl<0?"#f5eeee":displayDl<=7?"#fdf3e3":"#eef4ee",color:displayDl<0?"#c97474":displayDl<=7?"#9a5a10":"#2e6e44"}}>{displayDl<0?`D+${Math.abs(displayDl)}`:displayDl===0?"D-Day":`D-${displayDl}`}</div>
+              ?<div style={{...S.dChip,flexShrink:0,background:"#edf3ff",color:"#3d5494"}}>대기</div>
+              :<div style={{...S.dChip,flexShrink:0,background:displayDl<0?"#f5eeee":displayDl<=7?"#fdf3e3":"#eef4ee",color:displayDl<0?"#c97474":displayDl<=7?"#9a5a10":"#2e6e44"}}>{displayDl<0?`D+${Math.abs(displayDl)}`:displayDl===0?"D-Day":`D-${displayDl}`}</div>
             }
           </div>
           {/* 홀딩 상세 펼침: 홀딩 기간 + 연장 후 종료일 (주황) */}
