@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { FONT, TODAY_STR, SC, GE, TYPE_CFG, lookupPrice, DOW_KO } from "../constants.js";
-import { fmt, fmtWithDow, parseLocal, endOfNextMonth, endOfMonth, useClock } from "../utils.js";
+import { fmt, fmtWithDow, parseLocal, addDays, endOfNextMonth, endOfMonth, useClock } from "../utils.js";
 import { getDisplayStatus, calc3MonthEnd } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import { dbLoadNotifLog } from "../db.js";
@@ -107,17 +107,15 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
 
   function applyRenewal(mid,rf){
     const isPending=rf.startDate===null; // 미정 갱신 여부
-    // 갱신 시 이전 기수 종료일을 신기수 시작월의 전월 말일로 자동 보정
-    // 예: 신기수 6/1 시작 → 이전 기수 5/31로 마감 (6/5 시작이어도 5/31)
-    const prevMonthEnd=(startStr)=>{const d=parseLocal(startStr);return`${d.getFullYear()}-${String(d.getMonth()).padStart(2,"0")}-${String(new Date(d.getFullYear(),d.getMonth(),0).getDate()).padStart(2,"0")}`;};
     setMembers(p=>p.map(m=>{if(m.id!==mid)return m;
       const rh=m.renewalHistory||[];
       if(isPending){
         // 미정 갱신: member 날짜·횟수 필드 유지, renewalHistory에만 추가
         return{...m,renewalHistory:[...rh,{id:(rh.length||0)+1,...rf}]};
       }
-      // 이전 기수 endDate를 신기수 시작월 전월 말일로 보정
-      const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,endDate:prevMonthEnd(rf.startDate)}:r):rh;
+      // 이전 기수 endDate를 신기수 시작일 전날로 보정 (사전 갱신 시 겹침 방지)
+      const prevEnd=addDays(rf.startDate,-1);
+      const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,endDate:prevEnd}:r):rh;
       return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,holding:null,manualStatus:null,isNew:false,renewalHistory:[...updRH,{id:(rh.length||0)+1,...rf}]};}));
     // 갱신 완료 시 이 회원의 renewalPending 플래그 항상 해제
     // includePending=true: 예약 유지(정상 예약으로 전환) / false: 예약 취소
