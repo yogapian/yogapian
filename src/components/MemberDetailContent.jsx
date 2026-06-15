@@ -145,7 +145,8 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                     <span style={{fontSize:14,flexShrink:0}}>{isCurrent ? "🟢" : "⚪"}</span>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
-                        <span style={{fontSize:12,fontWeight:700,color:"#2e3e2e"}}>{fmt(r.startDate)} ~ {fmt(displayEnd)}</span>
+                        {/* 과거 기수: 다음 기수 시작 전날로 캡핑 — 잘못 저장된 endDate가 길어도 실제 수업 기간만 표시 */}
+                        <span style={{fontSize:12,fontWeight:700,color:"#2e3e2e"}}>{fmt(r.startDate)} ~ {fmt(cappedEnd)}</span>
                         {closureExt > 0 && <span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
                         {holdExt > 0    && <span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{curHoldCal}일</span>}
                       </div>
