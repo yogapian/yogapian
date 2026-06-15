@@ -148,10 +148,10 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
                 }
               </div>
             </div>
-            {/* D-day 칩: flexShrink:0으로 줄 넘침 방지 */}
+            {/* D-day 칩: flex-end로 날짜 값 줄에 정렬 */}
             {isPendingPeriod
-              ?<div style={{...S.dChip,flexShrink:0,background:"#edf3ff",color:"#3d5494"}}>대기</div>
-              :<div style={{...S.dChip,flexShrink:0,background:displayDl<0?"#f5eeee":displayDl<=7?"#fdf3e3":"#eef4ee",color:displayDl<0?"#c97474":displayDl<=7?"#9a5a10":"#2e6e44"}}>{displayDl<0?`D+${Math.abs(displayDl)}`:displayDl===0?"D-Day":`D-${displayDl}`}</div>
+              ?<div style={{...S.dChip,flexShrink:0,alignSelf:"flex-end",background:"#edf3ff",color:"#3d5494"}}>대기</div>
+              :<div style={{...S.dChip,flexShrink:0,alignSelf:"flex-end",background:displayDl<0?"#f5eeee":displayDl<=7?"#fdf3e3":"#eef4ee",color:displayDl<0?"#c97474":displayDl<=7?"#9a5a10":"#2e6e44"}}>{displayDl<0?`D+${Math.abs(displayDl)}`:displayDl===0?"D-Day":`D-${displayDl}`}</div>
             }
           </div>
           {/* 홀딩 상세 펼침: 홀딩 기간 + 연장 후 종료일 (주황) */}
