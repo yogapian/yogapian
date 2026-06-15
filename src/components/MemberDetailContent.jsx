@@ -145,8 +145,9 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                     <span style={{fontSize:14,flexShrink:0}}>{isCurrent ? "🟢" : "⚪"}</span>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
-                        {/* 과거 기수: 다음 기수 시작 전날로 캡핑 — 잘못 저장된 endDate가 길어도 실제 수업 기간만 표시 */}
-                        <span style={{fontSize:12,fontWeight:700,color:"#2e3e2e"}}>{fmt(r.startDate)} ~ {fmt(cappedEnd)}</span>
+                        {/* 1개월권: cappedEnd(다음기수 시작 전날)로 캡핑 — 잘못 저장된 3개월 endDate 보정
+                            3개월권: displayEnd 그대로 — 실제 계약 종료일 표시 */}
+                        <span style={{fontSize:12,fontWeight:700,color:"#2e3e2e"}}>{fmt(r.startDate)} ~ {fmt(r.memberType==="3month"?displayEnd:cappedEnd)}</span>
                         {closureExt > 0 && <span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
                         {holdExt > 0    && <span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{curHoldCal}일</span>}
                       </div>
