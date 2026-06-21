@@ -204,32 +204,40 @@ export default function App(){
   }, []); // eslint-disable-line
 
   const setBookings = useCallback((updater) => {
+    // DB 사이드이펙트를 functional updater 바깥에서 실행 —
+    // StrictMode가 updater를 2회 호출해도 INSERT가 1번만 실행되도록 보장
+    let newBookings = [], toUpsert = [], toDelete = [];
     setBookingsState(prev => {
       const next = typeof updater==="function" ? updater(prev) : updater;
       if(!loadedRef.current) return next;
-      setSaving(true);
-      savingRef.current = true; // refresh 시 덮어쓰기 방지
       const prevMap = new Map(prev.map(b=>[b.id, b]));
       const nextMap = new Map(next.map(b=>[b.id, b]));
       // 음수 임시 ID = 신규 booking (DB INSERT 후 실제 ID로 교체)
-      const newBookings = next.filter(b => b.id < 0);
-      const toUpsert = next.filter(b => {
+      newBookings = next.filter(b => b.id < 0);
+      toUpsert = next.filter(b => {
         if(b.id < 0) return false;
         const old = prevMap.get(b.id);
         return !old || JSON.stringify(old) !== JSON.stringify(b);
       });
-      const toDelete = prev.filter(b => !nextMap.has(b.id) && b.id > 0);
-      Promise.all([
-        ...toUpsert.map(b => dbUpsertBooking(b)),
-        ...toDelete.map(b => dbDeleteBooking(b.id)),
-        // 신규: INSERT → DB 실제 ID로 state 교체 (renewalPending 등 프론트 전용 필드 보존)
-        ...newBookings.map(b => dbInsertBooking(b).then(real => {
-          if(!real) return;
-          setBookingsState(prev2 => prev2.map(b2 => b2.id===b.id ? {...real, renewalPending:b.renewalPending} : b2));
-        })),
-      ]).finally(()=>{ setSaving(false); savingRef.current = false; });
+      toDelete = prev.filter(b => !nextMap.has(b.id) && b.id > 0);
       return next;
     });
+    if(!loadedRef.current) return;
+    setSaving(true);
+    savingRef.current = true; // refresh 시 덮어쓰기 방지
+    Promise.all([
+      ...toUpsert.map(b => dbUpsertBooking(b)),
+      ...toDelete.map(b => dbDeleteBooking(b.id)),
+      // 신규: INSERT → DB 실제 ID로 state 교체 (renewalPending 등 프론트 전용 필드 보존)
+      ...newBookings.map(b => dbInsertBooking(b).then(real => {
+        if(!real) return;
+        // 실제 ID로 교체 시 realtime이 먼저 추가한 중복 항목도 제거 (레이스 컨디션 방지)
+        setBookingsState(prev2 => {
+          const filtered = prev2.filter(b2 => b2.id !== real.id);
+          return filtered.map(b2 => b2.id===b.id ? {...real, renewalPending:b.renewalPending} : b2);
+        });
+      })),
+    ]).finally(()=>{ setSaving(false); savingRef.current = false; });
   }, []);
 
   const setNotices = useCallback((updater) => {
