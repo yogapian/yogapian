@@ -212,7 +212,8 @@ export default function App(){
       const prevMap = new Map(prev.map(b=>[b.id, b]));
       const nextMap = new Map(next.map(b=>[b.id, b]));
       // 음수 임시 ID = 신규 booking (DB INSERT 후 실제 ID로 교체)
-      const newBookings = next.filter(b => b.id < 0);
+      // prev에 없는 것만 INSERT — 이미 있는 temp ID는 다른 조작(취소 등) 중에 재INSERT 방지
+      const newBookings = next.filter(b => b.id < 0 && !prevMap.has(b.id));
       const toUpsert = next.filter(b => {
         if(b.id < 0) return false;
         const old = prevMap.get(b.id);
