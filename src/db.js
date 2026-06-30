@@ -240,7 +240,17 @@ export async function dbUpsertBooking(b) {
   if (error) console.error("booking upsert:", error);
 }
 // 신규 booking INSERT — id를 DB sequence가 자동 생성, 생성된 row 반환
+// INSERT 전 DB에서 중복 확인 — 다른 세션·기기에서 동시 예약 시에도 방지
 export async function dbInsertBooking(b) {
+  if (b.memberId) {
+    const { data: existing } = await _supabase.from("bookings")
+      .select("id").eq("member_id", b.memberId).eq("date", b.date).eq("time_slot", b.timeSlot)
+      .in("status", ["reserved","waiting","attended"]).limit(1);
+    if (existing?.length > 0) {
+      console.warn("중복 예약 DB 차단:", existing[0].id);
+      return null;
+    }
+  }
   const snake = bookingToSnake(b);
   delete snake.id; // DB sequence가 할당
   const { data, error } = await _supabase.from("bookings").insert(snake).select().single();
