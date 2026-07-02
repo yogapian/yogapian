@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, TODAY } from "../constants.js";
 import { parseLocal, fmt, addDays, addWeekdays, countWorkdays } from "../utils.js";
-import { holdingElapsed } from "../memberCalc.js";
+import { holdingElapsed, isTerminatedByHolding, totalHoldingCalendarDays } from "../memberCalc.js";
 import S from "../styles.js";
 
 // 홀딩 기간 내 정기 휴강(extensionOverride 없음)만 차감
@@ -14,6 +14,7 @@ function countClosuresInRange(closures=[], startDate, endDate) {
 
 export default function HoldingModal({member,onClose,onSave,closures=[]}){
   const hasH=!!member.holding;
+  const terminated=hasH&&isTerminatedByHolding(member); // 홀딩 90일 초과 → 종료처리 전용 UI
   const [start,setStart]=useState(hasH?member.holding.startDate:TODAY_STR);
   const [resumeDate,setResumeDate]=useState(TODAY_STR);
 
@@ -44,7 +45,22 @@ export default function HoldingModal({member,onClose,onSave,closures=[]}){
       <div style={{...S.modal,maxWidth:420}} onClick={e=>e.stopPropagation()}>
         <div style={S.modalHead}><span>⏸️</span><div><div style={S.modalTitle}>홀딩 관리</div><div style={{fontSize:12,color:"#9a8e80"}}>{member.name}</div></div></div>
 
-        {hasH&&<>
+        {hasH&&terminated&&<>
+          {/* 홀딩 90일 초과: 복귀 불가, 종료처리만 허용 */}
+          <div style={{background:"#fdf0f0",borderRadius:12,padding:"16px",marginBottom:14}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#c97474",marginBottom:8}}>⚠️ 홀딩 90일 초과</div>
+            <div style={{fontSize:12,color:"#9a6060",lineHeight:1.7}}>
+              누적 홀딩 <strong>{totalHoldingCalendarDays(member)}일</strong>로 90일을 초과했습니다.<br/>
+              이 회원권은 종료 처리됩니다.
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>onSave({terminated:true,startDate:start,endDate:holdingEndDate,workdays:0})} style={{flex:2,background:"#c97474",color:"#fff",border:"none",borderRadius:9,padding:"12px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>종료 처리</button>
+            <button onClick={onClose} style={{flex:1,background:"#f5f3ef",color:"#9a8e80",border:"1px solid #e0dcd0",borderRadius:9,padding:"12px 0",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>닫기</button>
+          </div>
+        </>}
+
+        {hasH&&!terminated&&<>
           <div style={{background:"#edf0f8",borderRadius:12,padding:"16px",marginBottom:14}}>
             <div style={{fontSize:13,fontWeight:700,color:"#3d5494",marginBottom:10}}>⏸️ 홀딩 진행 중</div>
             <div style={{display:"flex",gap:12,marginBottom:10}}>

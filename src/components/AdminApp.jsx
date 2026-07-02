@@ -145,6 +145,13 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     setDetailM(null);
   }
 function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(!hd)return{...m,holding:null,holdingDays:0};
+    if(hd.terminated){
+      // 홀딩 90일 초과 종료: 이력 기록 후 홀딩 시작일 전날을 endDate로 확정
+      const holdStart=m.holding?.startDate||hd.startDate;
+      const histEntry={startDate:holdStart,endDate:hd.endDate||TODAY_STR,workdays:0};
+      const newHistory=[...(m.holdingHistory||[]),histEntry];
+      return{...m,holding:null,holdingDays:0,extensionDays:0,holdingHistory:newHistory,endDate:addDays(holdStart,-1)};
+    }
     if(hd.resumed){
       const histEntry={startDate:m.holding?.startDate||hd.startDate,endDate:hd.endDate||TODAY_STR,workdays:hd.workdays};
       const newHistory=[...(m.holdingHistory||[]),histEntry];

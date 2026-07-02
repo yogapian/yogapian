@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, parseLocal, addDays } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, getActivePeriod, holdingElapsed } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, getActivePeriod, holdingElapsed, isTerminatedByHolding } from "../memberCalc.js";
 import { addWeekdays } from "../utils.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
@@ -17,7 +17,7 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const [showHoldDetail,setShowHoldDetail]=useState(false); // 홀딩 상세 펼침 여부
   const dl=calcDL(m,closures);           // 종료까지 남은 일수 (음수 = 이미 지남)
   // 홀딩 중이면 endDate 초과해도 expired 아님 — effEnd가 동적 연장되지만 이중 안전장치
-  const expired=dl<0&&!m.holding;
+  const expired=(dl<0&&!m.holding)||(m.holding&&isTerminatedByHolding(m)); // 홀딩 90일 초과도 만료 처리
   const usedCnt=usedAsOf(m.id,TODAY_STR,bookings,[m]); // 오늘까지 출석(attended) 횟수
   const periodTotal=activePeriodTotal(m,TODAY_STR,bookings,[m]); // 유효 기수 총 횟수 (이월 배분 포함)
   const rem=expired?0:Math.max(0,periodTotal-usedCnt); // 잔여 횟수 (현재 기수 기준)

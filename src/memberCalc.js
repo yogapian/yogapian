@@ -47,6 +47,21 @@ export function holdingElapsed(holding) {
   if(!holding || !holding.startDate) return 0;
   return Math.max(0, Math.ceil((TODAY - parseLocal(holding.startDate)) / 86400000));
 }
+// 누적 홀딩 캘린더 일수: 과거 이력 + 현재 진행 중인 홀딩
+export function totalHoldingCalendarDays(m) {
+  const past=(m.holdingHistory||[]).reduce((sum,h)=>{
+    if(!h.startDate||!h.endDate)return sum;
+    return sum+Math.max(0,Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000));
+  },0);
+  const current=m.holding?holdingElapsed(m.holding):0;
+  return past+current;
+}
+// 3개월권 홀딩 90일 초과 시 종료 처리 대상 여부 (2026-07-01 이후 시작 기수만 적용)
+export function isTerminatedByHolding(m) {
+  if(m.memberType!=="3month")return false;
+  if(!m.startDate||m.startDate<"2026-07-01")return false;
+  return totalHoldingCalendarDays(m)>=90;
+}
 // 연장 계산용: 주말 제외 평일 경과일 (종료일 연장에 반영할 실제 수업일수)
 function holdingWorkdays(holding) {
   if(!holding || !holding.startDate) return 0;
@@ -148,6 +163,7 @@ export function activePeriodTotal(member, targetDate, bookings=[], members=null)
 
 export const getStatus=(m, closures=[])=>{
   const dl=calcDL(m, closures);
+  if(m.holding&&isTerminatedByHolding(m))return"off"; // 홀딩 90일 초과 → 수강종료
   if(m.holding)return"hold";
   if(dl<0)return"off";
   return"on";
@@ -156,6 +172,7 @@ export const getStatus=(m, closures=[])=>{
 // 관리자 UI용 표시 상태 (RENEW 포함, manualStatus 우선)
 export function getDisplayStatus(m, closures=[], bookings=[]) {
   if(m.manualStatus) return m.manualStatus;
+  if(m.holding&&isTerminatedByHolding(m)) return "off"; // 홀딩 90일 초과 → 수강종료
   if(m.holding) return "hold";
   // 미정 or 미래 기수가 있으면 현재 기수 만료·잔여 0 무관하게 정상으로 표시
   if((m.renewalHistory||[]).some(r=>r.startDate===null||r.startDate>TODAY_STR)) return "on";
