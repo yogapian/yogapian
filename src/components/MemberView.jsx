@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, useClock, parseLocal } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, totalHoldingCalendarDays } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 import NoticeBoard from "./NoticeBoard.jsx";
@@ -172,20 +172,31 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
                   <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
                     <span style={{...S.dateVal,color:dl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(end)}</span>
                     {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
-                    {/* 홀딩 버튼: 누르면 기간·원래종료일 펼침 */}
-                    {(m.extensionDays||0)>0&&(()=>{const lh=m.holdingHistory?.slice(-1)[0];const cal=lh?.startDate&&lh?.endDate?Math.ceil((parseLocal(lh.endDate)-parseLocal(lh.startDate))/86400000):m.extensionDays;return(<button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>홀딩+{cal}일 {showHoldDetail?"▲":"▼"}</button>);})()}
+                    {/* 연장 버튼: 홀딩+보너스 합산 — 누르면 세부 내역 펼침 */}
+                    {(totalHoldingCalendarDays(m)>0||(m.bonusDays||0)>0)&&(
+                      <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
+                        연장+{totalHoldingCalendarDays(m)+(m.bonusDays||0)}일 {showHoldDetail?"▲":"▼"}
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div style={{...S.dChip,background:dl<0?"#f5eeee":dl<=7?"#fdf3e3":"#eef4ee",color:dl<0?"#c97474":dl<=7?"#9a5a10":"#2e6e44"}}>{dl<0?`D+${Math.abs(dl)}`:dl===0?"D-Day":`D-${dl}`}</div>
               </div>
-              {/* 홀딩 상세 펼침: holdingHistory 마지막 기록에서 기간 날짜 표시 */}
-              {showHoldDetail&&(m.extensionDays||0)>0&&(()=>{
-                const h = m.holdingHistory?.slice(-1)[0];
-                // YYYY-MM-DD → YYYY.MM.DD 포맷 변환
+              {/* 연장 세부 내역 펼침: 홀딩 기간 / 보너스 기간 / 종료일→연장후 */}
+              {showHoldDetail&&(totalHoldingCalendarDays(m)>0||(m.bonusDays||0)>0)&&(()=>{
                 const fd = s => s ? s.replace(/-/g,".") : "";
+                const h = m.holdingHistory?.slice(-1)[0];
+                const holdCal = totalHoldingCalendarDays(m);
                 return (
                   <div style={{fontSize:11,color:"#6a7090",background:"#f0f2f5",borderRadius:8,padding:"8px 12px",marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
-                    <div>홀딩 기간 <b style={{color:"#3d5494"}}>{h ? `${fd(h.startDate)} ~ ${fd(h.endDate)}` : `${m.extensionDays}일`}</b></div>
+                    {holdCal>0&&(
+                      h?.startDate&&h?.endDate
+                        ?<div>홀딩 기간 <b style={{color:"#3d5494"}}>{fd(h.startDate)} ~ {fd(h.endDate)}</b> <span style={{color:"#6a7fc8"}}>(+{holdCal}일)</span></div>
+                        :m.holding?.startDate
+                        ?<div>홀딩 진행 중 <b style={{color:"#3d5494"}}>{fd(m.holding.startDate)}~</b> <span style={{color:"#6a7fc8"}}>(+{holdCal}일)</span></div>
+                        :null
+                    )}
+                    {(m.bonusDays||0)>0&&<div>보너스 기간 <b style={{color:"#9a5a10"}}>(+{m.bonusDays}일)</b></div>}
                     <div>종료일 <b style={{color:"#5a6070"}}>{fmt(m.endDate)}</b> → 연장 후 <b style={{color:"#b86a10"}}>{fmt(end)}</b></div>
                   </div>
                 );

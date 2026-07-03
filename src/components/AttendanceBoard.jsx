@@ -11,7 +11,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FONT, TODAY_STR, getTodayStr, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
-import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, calc3MonthEnd, getSlotCapacity } from "../memberCalc.js";
+import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, calc3MonthEnd, getSlotCapacity, totalHoldingCalendarDays } from "../memberCalc.js";
 import S from "../styles.js";
 import CalendarPicker from "./CalendarPicker.jsx";
 import AttendCheckModal from "./AttendCheckModal.jsx";
@@ -706,7 +706,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
                       <span style={{color:"#7a6e60"}}>{fmt(qm.startDate)} → <span style={{fontWeight:600,color:qdl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(qend)}</span></span>
                       {qclosureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{qclosureExt}일</span>}
-                      {(qm.extensionDays||0)>0&&(()=>{const qlh=qm.holdingHistory?.slice(-1)[0];const qcal=qlh?.startDate&&qlh?.endDate?Math.ceil((parseLocal(qlh.endDate)-parseLocal(qlh.startDate))/86400000):qm.extensionDays;return<span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{qcal}일</span>})()}
+                      {(totalHoldingCalendarDays(qm)>0||(qm.bonusDays||0)>0)&&<span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>연장+{totalHoldingCalendarDays(qm)+(qm.bonusDays||0)}일</span>}
                     </div>
                     <span style={{fontWeight:700,fontSize:12,color:qdl<0?"#c97474":qdl<=7?"#9a5a10":"#4a6a4a",flexShrink:0}}>{qdl<0?`D+${Math.abs(qdl)}`:qdl===0?"D-Day":`D-${qdl}`}</span>
                   </div>

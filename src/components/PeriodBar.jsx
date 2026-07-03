@@ -1,6 +1,6 @@
 import { useClosures } from "../context.js";
 import { fmt } from "../utils.js";
-import { effEnd, calcDL, getClosureExtDays } from "../memberCalc.js";
+import { effEnd, calcDL, getClosureExtDays, totalHoldingCalendarDays } from "../memberCalc.js";
 
 export default function PeriodBar({member}){
   const closures=useClosures();
@@ -10,7 +10,7 @@ export default function PeriodBar({member}){
   const dlBg=dl<0?"#fef5f5":dl<=7?"#fdf3e3":"#eef5ee";
   const dlLabel=dl<0?`${Math.abs(dl)}일 초과`:dl===0?"오늘 만료":`D-${dl}`;
   const closureExt=getClosureExtDays(member,closures);
-  const holdExt=member.extensionDays||0;
+  const holdExt=totalHoldingCalendarDays(member); // holdingHistory 기반으로 변경
   return(
     <div style={{padding:"10px 16px",background:"#fafaf7",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
       <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",fontSize:12,color:"#7a6e60"}}>

@@ -351,7 +351,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     setMembers(p=>p.map(m=>{
       if(m.id!==member.id) return m;
       const hist={startDate:m.holding.startDate,endDate:holdEnd,workdays:count};
-      return{...m,holding:null,holdingDays:0,extensionDays:(m.extensionDays||0)+count,holdingHistory:[...(m.holdingHistory||[]),hist]};
+      return{...m,holding:null,holdingDays:0,holdingHistory:[...(m.holdingHistory||[]),hist]}; // extensionDays 더 이상 누적 안 함
     }));
   }
 

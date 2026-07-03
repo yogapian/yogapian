@@ -11,8 +11,8 @@
 
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS, GE, SC, TYPE_CFG } from "../constants.js";
-import { fmt, fmtWithDow, addDays, addWeekdays, parseLocal } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, holdingElapsed, periodRecs, currentRecs } from "../memberCalc.js";
+import { fmt, fmtWithDow, addDays, parseLocal } from "../utils.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, holdingElapsed, periodRecs, currentRecs, totalHoldingCalendarDays } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 
 export default function MemberDetailContent({ member, bookings, onClose, showNickname=false, adjSection=null, extraInfoRows=null }) {
@@ -118,10 +118,10 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
               const holdCalDays = holdInPeriod.reduce((sum,h)=>sum+(h.startDate&&h.endDate?Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000):(h.workdays||0)),0);
               const holdExtDays = holdInPeriod.reduce((sum, h) => sum + (h.workdays || 0), 0);
               const closureExt = isCurrent ? getClosureExtDays(member, closures) : 0;
-              // 현재 기수만 extensionDays로 displayEnd 계산 — 과거 기수는 renewalHistory endDate가 이미 갱신보정됨
-              const holdExt = isCurrent ? (member.extensionDays || 0) : 0;
-              // 현재 기수 표시용 캘린더 일수: holdingHistory 마지막 항목 기준
-              const curHoldCal = isCurrent ? (()=>{const lh=member.holdingHistory?.slice(-1)[0];return lh?.startDate&&lh?.endDate?Math.ceil((parseLocal(lh.endDate)-parseLocal(lh.startDate))/86400000):(member.extensionDays||0);})() : holdCalDays;
+              // 현재 기수: holdingHistory 전체 합산 / 과거 기수: renewalHistory endDate가 이미 갱신보정됨
+              const holdExt = isCurrent ? totalHoldingCalendarDays(member) : 0;
+              // 현재 기수 표시용 캘린더 일수: holdingHistory 전체 합산 (진행 중 홀딩 포함)
+              const curHoldCal = isCurrent ? totalHoldingCalendarDays(member) : holdCalDays;
               // displayEnd: 휴강·홀딩·보너스 모두 캘린더 일수 연장
               let displayEnd = r.endDate;
               if(closureExt > 0) displayEnd = addDays(displayEnd, closureExt);
@@ -187,7 +187,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                             <div key={`hold-${h.startDate}`} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 6px",borderBottom:ri<rows.length-1?"1px solid #f0edf8":"none",background:"#f4f6fb",borderRadius:6,marginBottom:1}}>
                               <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0}}>⏸️</span>
                               <span style={{fontSize:11,color:"#3d5494",flex:1}}>홀딩 {fd(h.startDate)} ~ {fd(h.endDate)}</span>
-                              <span style={{fontSize:10,color:"#6a7fc8",background:"#edf0f8",borderRadius:4,padding:"1px 6px",fontWeight:600}}>{h.startDate&&h.endDate?Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000):(h.workdays||member.extensionDays)}일</span>
+                              <span style={{fontSize:10,color:"#6a7fc8",background:"#edf0f8",borderRadius:4,padding:"1px 6px",fontWeight:600}}>{h.startDate&&h.endDate?Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000):(h.workdays||0)}일</span>
                             </div>
                           );
                         }

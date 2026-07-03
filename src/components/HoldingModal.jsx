@@ -15,8 +15,9 @@ export default function HoldingModal({member,onClose,onSave,closures=[]}){
   // calDays: 캘린더 일수 (시작일 당일 미포함) — 연장에 1:1 적용
   const calDays=start?Math.max(0,Math.ceil((parseLocal(holdingEndDate)-parseLocal(start))/86400000)):0;
   const elapsed=start?Math.max(0,Math.ceil((TODAY-parseLocal(start))/86400000)):0; // !hasH 안내용
-  // 연장 후 종료일: 기존 홀딩 연장분 + 이번 캘린더 일수 추가
-  const newEnd=addDays(member.endDate,(member.extensionDays||0)+calDays);
+  // 연장 후 종료일: 완료된 홀딩 이력 합산 + 이번 캘린더 일수 + 보너스
+  const pastHoldCal=(member.holdingHistory||[]).reduce((sum,h)=>sum+(h.startDate&&h.endDate?Math.max(0,Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000)):0),0);
+  const newEnd=addDays(member.endDate,pastHoldCal+calDays+(member.bonusDays||0));
 
   function handleResume(){
     onSave({startDate:start,endDate:holdingEndDate,workdays:calDays,resumed:true});

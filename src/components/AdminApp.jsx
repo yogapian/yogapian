@@ -155,7 +155,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
     if(hd.resumed){
       const histEntry={startDate:m.holding?.startDate||hd.startDate,endDate:hd.endDate||TODAY_STR,workdays:hd.workdays};
       const newHistory=[...(m.holdingHistory||[]),histEntry];
-      return{...m,holding:null,holdingDays:0,extensionDays:(m.extensionDays||0)+hd.workdays,holdingHistory:newHistory};
+      return{...m,holding:null,holdingDays:0,holdingHistory:newHistory}; // extensionDays 더 이상 누적 안 함 — holdingHistory로 계산
     }
     return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays:0};}));setHoldT(null);setDetailM(null);}
   function applyAdjust(mid,changes){setMembers(p=>p.map(m=>{

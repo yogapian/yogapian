@@ -17,9 +17,8 @@ export function getClosureExtDays(m, closures=[]) {
 
 export const effEnd=(m, closures=[])=>{
   const closureExt = getClosureExtDays(m, closures); // 별도휴강: 캘린더 일수 연장
-  // 홀딩 연장: 캘린더 일수 기준 (표시 일수와 1:1 대응)
-  const activeHoldCalDays = m.holding ? holdingElapsed(m.holding) : 0;
-  const holdExt = (m.extensionDays||0) + (m.holdingDays||0) + activeHoldCalDays;
+  // 홀딩 연장: holdingHistory 완료 기록 + 진행 중 경과일 (extensionDays 제거)
+  const holdExt = totalHoldingCalendarDays(m);
   let result = m.endDate;
   if(closureExt > 0) result = addDays(result, closureExt);
   if(holdExt > 0) result = addDays(result, holdExt);

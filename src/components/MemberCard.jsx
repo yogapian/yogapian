@@ -6,8 +6,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, parseLocal, addDays } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, getActivePeriod, holdingElapsed, isTerminatedByHolding } from "../memberCalc.js";
-import { addWeekdays } from "../utils.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, getActivePeriod, isTerminatedByHolding, totalHoldingCalendarDays } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 
@@ -32,18 +31,8 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   // 미정 기수(startDate null)가 활성 기수로 올라온 경우
   const isPendingPeriod=_ap?.startDate===null;
   const closureExt=getClosureExtDays(m,closures); // 별도휴강으로 늘어난 일수 (뱃지 표시용)
-  // activeHoldDays: 캘린더 일수 — 뱃지·표시용 / holdingElapsed 사용
-  const activeHoldDays=m.holding?holdingElapsed(m.holding):0;
-  const totalExt=closureExt+(m.extensionDays||0)+(m.holdingDays||0)+activeHoldDays; // 뱃지 표시용
-  // displayEnd: 휴강·홀딩·보너스 모두 캘린더 일수 연장
-  const displayEnd=isPendingPeriod?null:isFuturePeriod?(_ap?.endDate||m.endDate):(()=>{
-    const base=_ap?.endDate||m.endDate;
-    const holdExt=(m.extensionDays||0)+(m.holdingDays||0)+activeHoldDays;
-    let d=closureExt>0?addDays(base,closureExt):base;
-    if(holdExt>0) d=addDays(d,holdExt);
-    if(m.bonusDays>0) d=addDays(d,m.bonusDays);
-    return d;
-  })();
+  // displayEnd: 미래기수는 해당 기수 endDate / 현재기수는 effEnd(all extensions)
+  const displayEnd=isPendingPeriod?null:isFuturePeriod?(_ap?.endDate||m.endDate):end;
   const TODAY=parseLocal(TODAY_STR);
   const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);
   const displayTotal=isFuturePeriod?(_ap.total||periodTotal):periodTotal;
@@ -131,31 +120,36 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
                   :<>
                     <span style={{...S.dateVal,color:displayDl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(displayEnd)}</span>
                     {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
-                    {(m.extensionDays||0)>0&&(()=>{
-                      const lh=m.holdingHistory?.slice(-1)[0];
-                      const calDays=lh?.startDate&&lh?.endDate?Math.ceil((parseLocal(lh.endDate)-parseLocal(lh.startDate))/86400000):m.extensionDays;
-                      return(<button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>홀딩+{calDays}일 {showHoldDetail?"▲":"▼"}</button>);
-                    })()}
+                    {/* 연장 뱃지: 홀딩+보너스 합산 — 누르면 세부 내역 펼침 */}
+                    {(totalHoldingCalendarDays(m)>0||(m.bonusDays||0)>0)&&(
+                      <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
+                        연장+{totalHoldingCalendarDays(m)+(m.bonusDays||0)}일 {showHoldDetail?"▲":"▼"}
+                      </button>
+                    )}
                   </>
                 }
               </div>
-              {/* 보너스 뱃지만 아래 줄 — bonusDays 있는 회원만 줄 추가 */}
-              {!isPendingPeriod&&(m.bonusDays||0)>0&&(
-                <div><span style={{fontSize:10,background:"#fdf3e3",color:"#9a5a10",borderRadius:4,padding:"1px 5px",fontWeight:600}}>보너스+{m.bonusDays}일</span></div>
-              )}
             </div>
             {isPendingPeriod
               ?<div style={{...S.dChip,flexShrink:0,alignSelf:"flex-end",background:"#edf3ff",color:"#3d5494"}}>대기</div>
               :<div style={{...S.dChip,flexShrink:0,alignSelf:"flex-end",background:displayDl<0?"#f5eeee":displayDl<=7?"#fdf3e3":"#eef4ee",color:displayDl<0?"#c97474":displayDl<=7?"#9a5a10":"#2e6e44"}}>{displayDl<0?`D+${Math.abs(displayDl)}`:displayDl===0?"D-Day":`D-${displayDl}`}</div>
             }
           </div>
-          {/* 홀딩 상세 펼침: 홀딩 기간 + 연장 후 종료일 (주황) */}
-          {showHoldDetail&&(m.extensionDays||0)>0&&(()=>{
-            const h=m.holdingHistory?.slice(-1)[0];
+          {/* 연장 세부 내역 펼침: 홀딩 기간 / 보너스 기간 / 종료일→연장후 */}
+          {showHoldDetail&&(totalHoldingCalendarDays(m)>0||(m.bonusDays||0)>0)&&(()=>{
             const fd=s=>s?s.replace(/-/g,"."):""
+            const h=m.holdingHistory?.slice(-1)[0]; // 완료된 홀딩
+            const holdCal=totalHoldingCalendarDays(m);
             return(
               <div style={{fontSize:11,color:"#6a7090",background:"#f0f2f5",borderRadius:8,padding:"8px 12px",marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
-                <div>홀딩 기간 <b style={{color:"#3d5494"}}>{h?`${fd(h.startDate)} ~ ${fd(h.endDate)}`:`${m.extensionDays}일`}</b></div>
+                {holdCal>0&&(
+                  h?.startDate&&h?.endDate
+                    ?<div>홀딩 기간 <b style={{color:"#3d5494"}}>{fd(h.startDate)} ~ {fd(h.endDate)}</b> <span style={{color:"#6a7fc8"}}>(+{holdCal}일)</span></div>
+                    :m.holding?.startDate
+                    ?<div>홀딩 진행 중 <b style={{color:"#3d5494"}}>{fd(m.holding.startDate)}~</b> <span style={{color:"#6a7fc8"}}>(+{holdCal}일)</span></div>
+                    :null
+                )}
+                {(m.bonusDays||0)>0&&<div>보너스 기간 <b style={{color:"#9a5a10"}}>(+{m.bonusDays}일)</b></div>}
                 <div>종료일 <b style={{color:"#5a6070"}}>{fmt(m.endDate)}</b> → 연장 후 <b style={{color:"#b86a10"}}>{fmt(end)}</b></div>
               </div>
             );
