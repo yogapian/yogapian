@@ -52,8 +52,8 @@ export default function NoticeManager({notices,setNotices,members=[],bookings=[]
         <div style={{overflowY:"auto",flex:1}}>
           {!form&&(<>
             <button onClick={openAdd} style={{...S.saveBtn,width:"100%",marginBottom:12,textAlign:"center"}}>+ 새 공지 작성</button>
-            {notices.length===0&&<div style={{textAlign:"center",color:"#b0a090",fontSize:13,padding:"20px 0"}}>공지사항이 없습니다.</div>}
-            {notices.map(n=>(
+            {notices.filter(n=>!n.targetMemberId).length===0&&<div style={{textAlign:"center",color:"#b0a090",fontSize:13,padding:"20px 0"}}>공지사항이 없습니다.</div>}
+            {notices.filter(n=>!n.targetMemberId).map(n=>(
               <div key={n.id} style={{background:n.pinned?"#fffaeb":n.isPopup?"#f0f4ff":"#f7f4ef",borderRadius:10,padding:"12px 14px",marginBottom:8,border:`1px solid ${n.pinned?"#e8c44a":n.isPopup?"#c0ccf0":"#e4e0d8"}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
                   {n.pinned&&<span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:5,padding:"1px 6px",fontWeight:700}}>📌 고정</span>}

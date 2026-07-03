@@ -110,7 +110,7 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
           {/* ── 날짜 행: 등록일 → 종료일 + 연장 뱃지 + D-day 칩 ──────────── */}
           {/* flexWrap 제거 + 종료일 col flex:1 → D-day 칩이 줄 넘침 없이 우측 고정 */}
           <div style={{...S.dateRow,flexWrap:"nowrap",alignItems:"flex-start"}}>
-            <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}><span style={S.dateLabel}>등록일</span><span style={S.dateVal}>{fmt(displayStart)}</span></div>
+            <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}><span style={S.dateLabel}>등록일</span><span style={S.dateVal}>{fmt(displayStart)}</span></div>
             <span style={{color:"#c8c0b0",fontSize:13,marginTop:9,flexShrink:0}}>→</span>
             <div style={{display:"flex",flexDirection:"column",gap:2,flex:1,minWidth:0}}>
               <span style={S.dateLabel}>종료일</span>
