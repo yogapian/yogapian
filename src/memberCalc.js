@@ -23,6 +23,7 @@ export const effEnd=(m, closures=[])=>{
   let result = m.endDate;
   if(closureExt > 0) result = addDays(result, closureExt);
   if(holdExt > 0) result = addDays(result, holdExt);
+  if(m.bonusDays > 0) result = addDays(result, m.bonusDays); // 관리자 보너스 연장
   return result;
 };
 

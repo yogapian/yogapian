@@ -35,12 +35,14 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   // activeHoldDays: 캘린더 일수 — 뱃지·표시용 / holdingElapsed 사용
   const activeHoldDays=m.holding?holdingElapsed(m.holding):0;
   const totalExt=closureExt+(m.extensionDays||0)+(m.holdingDays||0)+activeHoldDays; // 뱃지 표시용
-  // displayEnd: 휴강·홀딩 모두 캘린더 일수 연장 (1:1 대응)
+  // displayEnd: 휴강·홀딩·보너스 모두 캘린더 일수 연장
   const displayEnd=isPendingPeriod?null:isFuturePeriod?(_ap?.endDate||m.endDate):(()=>{
     const base=_ap?.endDate||m.endDate;
     const holdExt=(m.extensionDays||0)+(m.holdingDays||0)+activeHoldDays;
     let d=closureExt>0?addDays(base,closureExt):base;
-    return holdExt>0?addDays(d,holdExt):d;
+    if(holdExt>0) d=addDays(d,holdExt);
+    if(m.bonusDays>0) d=addDays(d,m.bonusDays);
+    return d;
   })();
   const TODAY=parseLocal(TODAY_STR);
   const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);
@@ -132,6 +134,8 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
                     <span style={{...S.dateVal,color:displayDl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(displayEnd)}</span>
                     {/* 별도휴강 연장일 뱃지 */}
                     {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
+                    {/* 보너스 연장일 뱃지 */}
+                    {(m.bonusDays||0)>0&&<span style={{fontSize:10,background:"#fdf3e3",color:"#9a5a10",borderRadius:4,padding:"1px 5px",fontWeight:600}}>보너스+{m.bonusDays}일</span>}
                     {/* 홀딩 연장일 뱃지 — 캘린더 일수(주말 포함) 표시 */}
                     {(m.extensionDays||0)>0&&(()=>{
                       const lh=m.holdingHistory?.slice(-1)[0];

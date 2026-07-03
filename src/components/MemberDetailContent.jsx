@@ -122,10 +122,11 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
               const holdExt = isCurrent ? (member.extensionDays || 0) : 0;
               // 현재 기수 표시용 캘린더 일수: holdingHistory 마지막 항목 기준
               const curHoldCal = isCurrent ? (()=>{const lh=member.holdingHistory?.slice(-1)[0];return lh?.startDate&&lh?.endDate?Math.ceil((parseLocal(lh.endDate)-parseLocal(lh.startDate))/86400000):(member.extensionDays||0);})() : holdCalDays;
-              // displayEnd: 휴강·홀딩 모두 캘린더 일수 연장 (1:1 대응)
+              // displayEnd: 휴강·홀딩·보너스 모두 캘린더 일수 연장
               let displayEnd = r.endDate;
               if(closureExt > 0) displayEnd = addDays(displayEnd, closureExt);
               if(holdExt > 0) displayEnd = addDays(displayEnd, holdExt);
+              if(isCurrent && (member.bonusDays||0) > 0) displayEnd = addDays(displayEnd, member.bonusDays);
               // 다음 기수 시작일 전날로 캡핑 — 갱신이 기수 만료 전에 일어나면 출석이 두 기수에 중복 표시되는 버그 방지
               // reversedHistory는 최신순이므로 i-1이 바로 다음(더 최신) 기수
               const nextStart = i > 0 ? reversedHistory[i - 1].startDate : null;
@@ -150,6 +151,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                         <span style={{fontSize:12,fontWeight:700,color:"#2e3e2e"}}>{fmt(r.startDate)} ~ {fmt(r.memberType==="3month"?displayEnd:cappedEnd)}</span>
                         {closureExt > 0 && <span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
                         {holdExt > 0    && <span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{curHoldCal}일</span>}
+                        {isCurrent&&(member.bonusDays||0)>0&&<span style={{fontSize:10,background:"#fdf3e3",color:"#9a5a10",borderRadius:4,padding:"1px 5px",fontWeight:600}}>보너스+{member.bonusDays}일</span>}
                       </div>
                       <div style={{display:"flex",gap:5,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
                         {/* 회원권 종류 뱃지: 중립 회색 */}

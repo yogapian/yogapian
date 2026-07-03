@@ -32,6 +32,7 @@ export function toSnake(m) {
     holding:          m.holding ?? null,
     renewal_history:  m.renewalHistory ?? [],
     holding_history:  m.holdingHistory ?? [],  // 완료된 홀딩 이력 [{startDate,endDate,workdays}]
+    bonus_days:       m.bonusDays ?? 0,        // 관리자 수동 보너스 연장일
     card_color:       m.cardColor ?? "",       // 회원카드 배경색 (hex, 비어있으면 기본)
     updated_at:       new Date().toISOString(),
   };
@@ -57,6 +58,7 @@ export function fromSnakeMember(r) {
     holding:        r.holding ?? null,
     renewalHistory: r.renewal_history ?? [],
     holdingHistory: r.holding_history ?? [],  // 완료된 홀딩 이력
+    bonusDays:      r.bonus_days ?? 0,        // 관리자 수동 보너스 연장일
     cardColor:      r.card_color ?? "",        // 회원카드 배경색
   };
 }

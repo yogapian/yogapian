@@ -20,6 +20,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
   const [adjStart,setAdjStart]=useState(_rhStart);
   const [adjEnd,setAdjEnd]=useState(_rhEnd);
   const [adjExtDays,setAdjExtDays]=useState(member.extensionDays||0); // 홀딩 연장일 직접 수정
+  const [adjBonusDays,setAdjBonusDays]=useState(member.bonusDays||0); // 보너스 연장일
   const _adjMemberType=_lastRH?.memberType||member.memberType; // 3개월 재계산 버튼 표시 기준
 
   // 마지막 기수 기준 잔여 — null startDate(미정) 기수는 used=0 으로 계산
@@ -35,7 +36,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
     <>
       {!adjMode && (
         <div style={{marginBottom:10,textAlign:"right"}}>
-          <button onClick={()=>{setAdjTotal(_lastRH?.total??member.total);setAdjStart(_rhStart);setAdjEnd(_rhEnd);setAdjMode(true);}}
+          <button onClick={()=>{setAdjTotal(_lastRH?.total??member.total);setAdjStart(_rhStart);setAdjEnd(_rhEnd);setAdjExtDays(member.extensionDays||0);setAdjBonusDays(member.bonusDays||0);setAdjMode(true);}}
             style={{fontSize:11,background:"#fdf3e3",color:"#9a5a10",border:"1px solid #e8c44a",borderRadius:7,padding:"4px 10px",cursor:"pointer",fontFamily:FONT,fontWeight:600}}>
             ✏️ 횟수·기간 수정
           </button>
@@ -68,20 +69,31 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
               <input type="date" value={adjEnd} onChange={e=>setAdjEnd(e.target.value)} style={{...S.inp,fontSize:13,padding:"7px 9px"}}/>
             </div>
           </div>
-          <div style={{display:"flex",gap:7}}>
-              {/* 홀딩 연장일 — 수동 보정 필요 시 사용 */}
-          {(member.extensionDays||0)>0&&(
-            <div style={{marginBottom:10}}>
-              <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>홀딩 연장일</div>
+          <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap"}}>
+            {/* 홀딩 연장일 — 수동 보정 필요 시 사용 */}
+            {(member.extensionDays||0)>0&&(
+              <div>
+                <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>홀딩 연장일</div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <button onClick={()=>setAdjExtDays(d=>Math.max(0,d-1))} style={{...S.stepper}}>−</button>
+                  <span style={{fontSize:16,fontWeight:700,minWidth:28,textAlign:"center"}}>{adjExtDays}</span>
+                  <button onClick={()=>setAdjExtDays(d=>d+1)} style={{...S.stepper}}>+</button>
+                </div>
+              </div>
+            )}
+            {/* 보너스 연장일 — 관리자 재량 추가 연장 */}
+            <div>
+              <div style={{fontSize:11,color:"#7a5a10",marginBottom:4,fontWeight:600}}>보너스 연장일</div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <button onClick={()=>setAdjExtDays(d=>Math.max(0,d-1))} style={{...S.stepper}}>−</button>
-                <span style={{fontSize:16,fontWeight:700,minWidth:28,textAlign:"center"}}>{adjExtDays}</span>
-                <button onClick={()=>setAdjExtDays(d=>d+1)} style={{...S.stepper}}>+</button>
+                <button onClick={()=>setAdjBonusDays(d=>Math.max(0,d-1))} style={{...S.stepper}}>−</button>
+                <span style={{fontSize:16,fontWeight:700,minWidth:28,textAlign:"center",color:"#7a5a10"}}>{adjBonusDays}</span>
+                <button onClick={()=>setAdjBonusDays(d=>d+1)} style={{...S.stepper}}>+</button>
               </div>
             </div>
-          )}
-          <button onClick={()=>setAdjMode(false)} style={S.cancelBtn}>취소</button>
-            <button onClick={()=>{onAdjust&&onAdjust({total:adjTotal,startDate:adjStart,endDate:adjEnd,extensionDays:adjExtDays});setAdjMode(false);}}
+          </div>
+          <div style={{display:"flex",gap:7}}>
+            <button onClick={()=>setAdjMode(false)} style={S.cancelBtn}>취소</button>
+            <button onClick={()=>{onAdjust&&onAdjust({total:adjTotal,startDate:adjStart,endDate:adjEnd,extensionDays:adjExtDays,bonusDays:adjBonusDays});setAdjMode(false);}}
               style={{...S.saveBtn,background:"#e8a44a",fontSize:12}}>저장</button>
           </div>
         </div>
