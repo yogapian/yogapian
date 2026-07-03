@@ -150,7 +150,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                             3개월권: displayEnd 그대로 — 실제 계약 종료일 표시 */}
                         <span style={{fontSize:12,fontWeight:700,color:"#2e3e2e"}}>{fmt(r.startDate)} ~ {fmt(r.memberType==="3month"?displayEnd:cappedEnd)}</span>
                         {closureExt > 0 && <span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
-                        {holdExt > 0    && <span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{curHoldCal}일</span>}
+                        {curHoldCal > 0 && <span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{curHoldCal}일</span>}
                         {isCurrent&&(member.bonusDays||0)>0&&<span style={{fontSize:10,background:"#fdf3e3",color:"#9a5a10",borderRadius:4,padding:"1px 5px",fontWeight:600}}>보너스+{member.bonusDays}일</span>}
                       </div>
                       <div style={{display:"flex",gap:5,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
