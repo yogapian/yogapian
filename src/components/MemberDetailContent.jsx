@@ -29,7 +29,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
   const dispRem = expired ? 0 : Math.max(0, dispPeriodTotal - dispUsed);
   const tc = TYPE_CFG[member.memberType] || TYPE_CFG["1month"];
   const curRecs = currentRecs(member, bookings);
-  const isActiveStatus = status === "on" || status === "hold";
+  const isActiveStatus = status === "on" || status === "hold" || status === "renew";
   const reversedHistory = [...(member.renewalHistory || [])].reverse();
 
   return (
