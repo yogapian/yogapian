@@ -35,12 +35,12 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   // activeHoldDays: 캘린더 일수 — 뱃지·표시용 / holdingElapsed 사용
   const activeHoldDays=m.holding?holdingElapsed(m.holding):0;
   const totalExt=closureExt+(m.extensionDays||0)+(m.holdingDays||0)+activeHoldDays; // 뱃지 표시용
-  // displayEnd: 휴강=캘린더 연장 / 홀딩=평일 연장 (연장일 보정, 기수 endDate 우선)
+  // displayEnd: 휴강·홀딩 모두 캘린더 일수 연장 (1:1 대응)
   const displayEnd=isPendingPeriod?null:isFuturePeriod?(_ap?.endDate||m.endDate):(()=>{
     const base=_ap?.endDate||m.endDate;
     const holdExt=(m.extensionDays||0)+(m.holdingDays||0)+activeHoldDays;
     let d=closureExt>0?addDays(base,closureExt):base;
-    return holdExt>0?addWeekdays(d,holdExt):d;
+    return holdExt>0?addDays(d,holdExt):d;
   })();
   const TODAY=parseLocal(TODAY_STR);
   const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);

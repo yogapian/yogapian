@@ -17,12 +17,12 @@ export function getClosureExtDays(m, closures=[]) {
 
 export const effEnd=(m, closures=[])=>{
   const closureExt = getClosureExtDays(m, closures); // 별도휴강: 캘린더 일수 연장
-  // 홀딩 연장: 평일 기준 — addWeekdays로 주말 건너뜀 (표시는 캘린더, 연장은 평일)
-  const activeHoldWorkdays = m.holding ? holdingWorkdays(m.holding) : 0;
-  const holdExt = (m.extensionDays||0) + (m.holdingDays||0) + activeHoldWorkdays;
+  // 홀딩 연장: 캘린더 일수 기준 (표시 일수와 1:1 대응)
+  const activeHoldCalDays = m.holding ? holdingElapsed(m.holding) : 0;
+  const holdExt = (m.extensionDays||0) + (m.holdingDays||0) + activeHoldCalDays;
   let result = m.endDate;
   if(closureExt > 0) result = addDays(result, closureExt);
-  if(holdExt > 0) result = addWeekdays(result, holdExt);
+  if(holdExt > 0) result = addDays(result, holdExt);
   return result;
 };
 

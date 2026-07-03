@@ -118,14 +118,14 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
               const holdCalDays = holdInPeriod.reduce((sum,h)=>sum+(h.startDate&&h.endDate?Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000):(h.workdays||0)),0);
               const holdExtDays = holdInPeriod.reduce((sum, h) => sum + (h.workdays || 0), 0);
               const closureExt = isCurrent ? getClosureExtDays(member, closures) : 0;
-              // 현재 기수: extensionDays(평일수), 과거 기수: holdingHistory workdays 합산
-              const holdExt = isCurrent ? (member.extensionDays || 0) : holdExtDays;
+              // 현재 기수만 extensionDays로 displayEnd 계산 — 과거 기수는 renewalHistory endDate가 이미 갱신보정됨
+              const holdExt = isCurrent ? (member.extensionDays || 0) : 0;
               // 현재 기수 표시용 캘린더 일수: holdingHistory 마지막 항목 기준
               const curHoldCal = isCurrent ? (()=>{const lh=member.holdingHistory?.slice(-1)[0];return lh?.startDate&&lh?.endDate?Math.ceil((parseLocal(lh.endDate)-parseLocal(lh.startDate))/86400000):(member.extensionDays||0);})() : holdCalDays;
-              // displayEnd: 휴강=캘린더 연장, 홀딩=평일 연장(addWeekdays)
+              // displayEnd: 휴강·홀딩 모두 캘린더 일수 연장 (1:1 대응)
               let displayEnd = r.endDate;
               if(closureExt > 0) displayEnd = addDays(displayEnd, closureExt);
-              if(holdExt > 0) displayEnd = addWeekdays(displayEnd, holdExt);
+              if(holdExt > 0) displayEnd = addDays(displayEnd, holdExt);
               // 다음 기수 시작일 전날로 캡핑 — 갱신이 기수 만료 전에 일어나면 출석이 두 기수에 중복 표시되는 버그 방지
               // reversedHistory는 최신순이므로 i-1이 바로 다음(더 최신) 기수
               const nextStart = i > 0 ? reversedHistory[i - 1].startDate : null;
