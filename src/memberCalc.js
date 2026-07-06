@@ -47,10 +47,12 @@ export function holdingElapsed(holding) {
   if(!holding || !holding.startDate) return 0;
   return Math.max(0, Math.ceil((TODAY - parseLocal(holding.startDate)) / 86400000));
 }
-// 누적 홀딩 캘린더 일수: 과거 이력 + 현재 진행 중인 홀딩
+// 누적 홀딩 캘린더 일수: 현재 기수(m.startDate 이후) 이력만 합산 — 이전 기수 홀딩 제외
 export function totalHoldingCalendarDays(m) {
+  const curStart = m.startDate || "";
   const past=(m.holdingHistory||[]).reduce((sum,h)=>{
     if(!h.startDate||!h.endDate)return sum;
+    if(curStart && h.startDate < curStart) return sum; // 이전 기수 홀딩 제외
     return sum+Math.max(0,Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000));
   },0);
   const current=m.holding?holdingElapsed(m.holding):0;
