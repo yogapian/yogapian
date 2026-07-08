@@ -48,7 +48,8 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
     if(mem&&(mem.renewalHistory||[]).some(r=>r.startDate===null)){
       const ap=getActivePeriod(mem,rec.date,newBookings);
       if(ap&&ap.startDate===null){
-        const newStart=addDays(rec.date,1); // 마지막 회차 당일이 아닌 다음날부터 새 기수 시작
+        // 회차 소진 스필오버: 마지막 회차 다음날이 새 기수 시작
+        const newStart=addDays(rec.date,1);
         const pendingPeriod=(mem.renewalHistory||[]).find(r=>r.startDate===null);
         const mType=pendingPeriod?.memberType||mem.memberType;
         const newEnd=mType==="3month"?calc3MonthEnd(newStart):endOfMonth(newStart);
@@ -57,6 +58,22 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
           const updRH=(m.renewalHistory||[]).map(r=>r.startDate===null?{...r,startDate:newStart,endDate:newEnd}:r);
           return{...m,startDate:newStart,endDate:newEnd,total:pendingPeriod?.total??m.total,memberType:mType,extensionDays:0,holdingDays:0,holding:null,renewalHistory:updRH};
         }));
+      } else {
+        // 날짜 기반 자동 시작: 이전 기수 종료일 초과 후 첫 수업일이 새 기수 시작일
+        const pendingPeriod=(mem.renewalHistory||[]).find(r=>r.startDate===null);
+        if(pendingPeriod){
+          const prevEnd=(mem.renewalHistory||[]).filter(r=>r.startDate&&r.endDate).map(r=>r.endDate).sort().slice(-1)[0];
+          if(!prevEnd||rec.date>prevEnd){
+            const mType=pendingPeriod.memberType||mem.memberType;
+            const newStart=rec.date; // 첫 수업일 = 새 기수 시작일
+            const newEnd=mType==="3month"?calc3MonthEnd(newStart):endOfMonth(newStart);
+            setMembers(p=>p.map(m=>{
+              if(m.id!==mem.id)return m;
+              const updRH=(m.renewalHistory||[]).map(r=>r.startDate===null?{...r,startDate:newStart,endDate:newEnd}:r);
+              return{...m,startDate:newStart,endDate:newEnd,total:pendingPeriod.total??m.total,memberType:mType,extensionDays:0,holdingDays:0,holding:null,renewalHistory:updRH};
+            }));
+          }
+        }
       }
     }
     onClose();

@@ -8,11 +8,13 @@ import { TODAY_STR } from "../constants.js";
 
 export default function RenewalModal({member,onClose,onSave}){
   const closures=useClosures();
-  // 열릴 때 memberType에 맞게 종료일 미리 계산 — endDate:""이면 갱신 버튼 비활성화되는 문제 방지
-  const [pending,setPending]=useState(false); // 시작일 미정 여부
+  // 3개월권은 기본적으로 미정 — 첫 수업일이 자동으로 시작일이 됨
+  const [pending,setPending]=useState(member.memberType==="3month");
   const [form,setForm]=useState(()=>{
-    const initEnd=member.memberType==="3month"?calc3MonthEnd(TODAY_STR,closures):endOfMonth(TODAY_STR);
-    return{startDate:TODAY_STR,endDate:initEnd,total:member.memberType==="3month"?24:10,memberType:member.memberType,payment:"카드",includePending:true};
+    if(member.memberType==="3month")
+      return{startDate:null,endDate:null,total:24,memberType:"3month",payment:"카드",includePending:true};
+    const initEnd=endOfMonth(TODAY_STR);
+    return{startDate:TODAY_STR,endDate:initEnd,total:10,memberType:member.memberType,payment:"카드",includePending:true};
   });
   // 미정 토글 시 startDate/endDate null로 초기화
   function togglePending(){
@@ -39,7 +41,10 @@ export default function RenewalModal({member,onClose,onSave}){
         </div>
         <div style={S.fg}><label style={S.lbl}>갱신 타입</label>
           <div style={{display:"flex",gap:8,marginBottom:8}}>
-            {[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>{const autoEnd=v==="3month"?calc3MonthEnd(form.startDate,closures):endOfMonth(form.startDate);setForm(f=>({...f,memberType:v,total:v==="3month"?24:10,endDate:autoEnd,payment:"카드"}));}} style={{flex:1,padding:"9px 0",borderRadius:10,border:"1.5px solid",cursor:"pointer",fontSize:14,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}
+            {[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>{
+              if(v==="3month"){setPending(true);setForm(f=>({...f,memberType:v,total:24,startDate:null,endDate:null,payment:"카드"}));}
+              else{const s=TODAY_STR;setPending(false);setForm(f=>({...f,memberType:v,total:10,startDate:s,endDate:endOfMonth(s),payment:"카드"}));}
+            }} style={{flex:1,padding:"9px 0",borderRadius:10,border:"1.5px solid",cursor:"pointer",fontSize:14,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}
           </div>
           {/* 결제 방법: 1개월=카드/현금/네이버, 3개월=카드/현금 */}
           <div style={{display:"flex",gap:8}}>
