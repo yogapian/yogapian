@@ -102,8 +102,8 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
             {member.holding ? "⏸️ 홀딩 관리" : "⏸️ 홀딩"}
           </button>
         )}
-        {/* 마지막 기수가 미정이 아닐 때 표시 — 미래 기수뿐 아니라 최근 시작한 기수도 전환 가능 */}
-        {(()=>{const rh=member.renewalHistory||[];const last=rh[rh.length-1];return last&&last.startDate;})()&&(
+        {/* 미래 기수가 있을 때만 표시 — 시작일을 미정으로 전환 */}
+        {(member.renewalHistory||[]).some(r=>r.startDate&&r.startDate>TODAY_STR)&&(
           <button onClick={onSetPending}
             style={{background:"#edf3ff",color:"#3d5494",border:"1px solid #b0c4e8",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
             📅 미정 전환
