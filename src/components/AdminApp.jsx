@@ -40,7 +40,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   function openAdd(){
     const autoEnd=endOfNextMonth(TODAY_STR);
     setEditId(null);
-    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,bonusDays:0,holding:null,renewalHistory:[],manualStatus:null,payment:""});
+    setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,bonusDays:0,holding:null,renewalHistory:[],manualStatus:null,payment:"",paymentPending:false});
     setShowForm(true);
   }
   function openEdit(m){
@@ -158,6 +158,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
       return{...m,holding:null,holdingDays:0,holdingHistory:newHistory}; // extensionDays 더 이상 누적 안 함 — holdingHistory로 계산
     }
     return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays:0};}));setHoldT(null);setDetailM(null);}
+  function applyPaymentPending(mid){setMembers(p=>p.map(m=>m.id===mid?{...m,paymentPending:false}:m));}
   function applyAdjust(mid,changes){setMembers(p=>p.map(m=>{
     if(m.id!==mid)return m;
     const rh=m.renewalHistory||[];
@@ -290,7 +291,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
         </div>
       </>)}
 
-      {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(changes)=>applyAdjust(detailM.id,changes)} onSetPending={()=>applySetPending(detailM.id)} onEdit={()=>{const m=members.find(x=>x.id===detailM.id)||detailM;setDetailM(null);openEdit(m);}} onDel={()=>{const id=detailM.id;setDetailM(null);setDelT(id);}}/>}
+      {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(changes)=>applyAdjust(detailM.id,changes)} onSetPending={()=>applySetPending(detailM.id)} onPaymentPending={()=>applyPaymentPending(detailM.id)} onEdit={()=>{const m=members.find(x=>x.id===detailM.id)||detailM;setDetailM(null);openEdit(m);}} onDel={()=>{const id=detailM.id;setDetailM(null);setDelT(id);}}/>}
       {renewT&&<RenewalModal member={members.find(m=>m.id===renewT)} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)}/>}
       {holdT&&<HoldingModal member={members.find(m=>m.id===holdT)} onClose={()=>setHoldT(null)} onSave={hd=>applyHolding(holdT,hd)}/>}
       {showNotices&&<NoticeManager notices={notices} setNotices={setNotices} members={members} bookings={bookings} onClose={()=>setShowNotices(false)}/>}

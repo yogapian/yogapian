@@ -9,7 +9,7 @@ import { usedAsOf, calc3MonthEnd } from "../memberCalc.js";
 import S from "../styles.js";
 import MemberDetailContent from "./MemberDetailContent.jsx";
 
-export default function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdjust,onSetPending,onEdit,onDel}){
+export default function AdminDetailModal({member,bookings,onClose,onRenew,onHolding,onExt,onAdjust,onSetPending,onPaymentPending,onEdit,onDel}){
   // 마지막 갱신 이력 기준으로 초기화 — member 상위 필드가 이력과 불일치할 때 이력이 정확한 값
   const _lastRH=(member.renewalHistory||[]).slice(-1)[0];
   // null startDate(미정 기수)는 빈 문자열로 — member.* 폴백 금지 (기수 불일치 방지)
@@ -84,6 +84,13 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
             <button onClick={()=>{onAdjust&&onAdjust({total:adjTotal,startDate:adjStart,endDate:adjEnd,bonusDays:adjBonusDays});setAdjMode(false);}}
               style={{...S.saveBtn,background:"#e8a44a",fontSize:12}}>저장</button>
           </div>
+        </div>
+      )}
+      {/* 결제 대기 토글 */}
+      {member.paymentPending&&(
+        <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff5f5",border:"1.5px solid #f0a0a0",borderRadius:10,padding:"9px 14px",marginBottom:12}}>
+          <span style={{fontSize:13,flex:1,fontWeight:700,color:"#c97474"}}>💳 현장결제 대기 중</span>
+          <button onClick={onPaymentPending} style={{fontSize:11,background:"#c97474",color:"#fff",border:"none",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontFamily:FONT,fontWeight:700}}>결제 완료</button>
         </div>
       )}
       {/* 갱신 / 홀딩 버튼 */}
