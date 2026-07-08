@@ -129,15 +129,16 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     if(mem){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Date.now(),date:TODAY_STR,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
     setRenewT(null);setDetailM(null);
   }
-  // 미래 기수의 startDate/endDate를 null로 전환 (미정) — member 날짜·횟수는 이전 기수 기준으로 복원
+  // 마지막 기수의 startDate/endDate를 null로 전환 (미정) — 이미 미정이거나 기수가 없으면 무시
+  // 미래 기수뿐 아니라 최근 시작된 기수(오늘 포함)도 전환 가능
   function applySetPending(mid){
     setMembers(p=>p.map(m=>{
       if(m.id!==mid)return m;
       const rh=[...(m.renewalHistory||[])];
-      const lastIdx=rh.findIndex(r=>r.startDate&&r.startDate>TODAY_STR);
-      if(lastIdx===-1)return m; // 미래 기수 없으면 변경 없음
+      const lastIdx=rh.length-1;
+      if(lastIdx<0||!rh[lastIdx].startDate)return m; // 없거나 이미 미정이면 변경 없음
       const updRH=rh.map((r,i)=>i===lastIdx?{...r,startDate:null,endDate:null}:r);
-      // member 날짜·횟수를 미래 기수 직전 기수 기준으로 복원
+      // member 날짜·횟수를 마지막 기수 직전 기수 기준으로 복원
       const prev=lastIdx>0?rh[lastIdx-1]:null;
       const rollback=prev?{startDate:prev.startDate,endDate:prev.endDate,total:prev.total,memberType:prev.memberType||m.memberType}:{};
       return{...m,...rollback,renewalHistory:updRH};
@@ -356,13 +357,21 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
             </div>
 
             {/* 신규 회원 토글 */}
-            <div style={{...S.fg,marginBottom:10}}>
+            <div style={{display:"flex",gap:16,marginBottom:8,flexWrap:"wrap"}}>
               <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
                 <div onClick={()=>setForm(f=>({...f,isNew:!f.isNew}))} style={{width:36,height:20,borderRadius:10,background:form.isNew?"#4a6a4a":"#ddd",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
                   <div style={{position:"absolute",top:2,left:form.isNew?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
                 </div>
                 <span style={{color:"#4a4a4a"}}>신규 회원 (N 표시)</span>
               </label>
+            </div>
+            {/* 결제 대기 토글 — ON 시 배경 강조 */}
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,padding:"9px 12px",borderRadius:9,border:`1.5px solid ${form.paymentPending?"#f0a0a0":"#e0d8cc"}`,background:form.paymentPending?"#fff5f5":"#faf8f5",cursor:"pointer"}} onClick={()=>setForm(f=>({...f,paymentPending:!f.paymentPending}))}>
+              <div style={{width:36,height:20,borderRadius:10,background:form.paymentPending?"#c97474":"#ddd",position:"relative",transition:"background .2s",flexShrink:0}}>
+                <div style={{position:"absolute",top:2,left:form.paymentPending?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+              </div>
+              <span style={{fontSize:13,fontWeight:form.paymentPending?700:400,color:form.paymentPending?"#c97474":"#9a8e80"}}>💳 결제 대기</span>
+              {form.paymentPending&&<span style={{fontSize:11,color:"#c97474",marginLeft:"auto"}}>현장결제 대기 중</span>}
             </div>
 
             {/* 회원권 섹션 — 신규 추가 시에만 표시 */}
