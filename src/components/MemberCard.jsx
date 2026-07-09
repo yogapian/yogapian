@@ -63,8 +63,6 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
           {m.adminNickname&&<div style={{display:"inline-flex",alignItems:"center",gap:3,background:"#2e3a2e",borderRadius:10,padding:"1px 6px",flexShrink:0}}><span style={{fontSize:9,color:"#7aba7a"}}>👀</span><span style={{fontSize:9,fontWeight:600,color:"#a8e6a8"}}>{m.adminNickname}</span></div>}
           {/* 신규 회원 N 뱃지 (isNew 필드) */}
           {m.isNew&&<span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
-          {/* 현장결제 대기 뱃지 */}
-          {m.paymentPending&&<span style={{fontSize:10,background:"#f5e0e0",color:"#c97474",borderRadius:20,padding:"2px 7px",fontWeight:700,flexShrink:0}}>💳결제</span>}
           {/* 홀딩 중 이모지 */}
           {m.holding&&<span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
           {/* 사전 갱신: 현재 기수 진행 중에 다음 기수가 이미 등록된 회원 */}
