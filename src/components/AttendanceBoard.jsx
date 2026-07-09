@@ -468,10 +468,10 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                               style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isWaiting?"#666":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:isOneday?"default":"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
                               {isOneday?rec.onedayName:mem.name}
                             </span>
-                            {/* 갱신 뱃지: bg #fdf3e3(연노랑) / text #9a5a10(갈색) */}
-                            {!isOneday&&rec.renewalPending&&<span style={{fontSize:10,background:"#fdf3e3",color:"#9a5a10",borderRadius:5,padding:"1px 6px",fontWeight:700,flexShrink:0}}>갱신</span>}
-                            {/* 결제대기: 텍스트 없이 💳 아이콘만 — 이름 잘림 방지 */}
-                            {!isOneday&&mem?.paymentPending&&<span style={{fontSize:13,flexShrink:0}}>💳</span>}
+                            {/* 갱신 뱃지 + 💳 아이콘: renewalPending 예약(갱신·결제대기 포함) */}
+                            {!isOneday&&rec.renewalPending&&<><span style={{fontSize:10,background:"#fdf3e3",color:"#9a5a10",borderRadius:5,padding:"1px 6px",fontWeight:700,flexShrink:0}}>갱신</span><span style={{fontSize:13,flexShrink:0}}>💳</span></>}
+                            {/* paymentPending이지만 renewalPending 예약 없을 때 💳만 표시 (기존 예약 호환) */}
+                            {!isOneday&&mem?.paymentPending&&!rec.renewalPending&&<span style={{fontSize:13,flexShrink:0}}>💳</span>}
                             {/* 잔여 경고: remCount<=1=빨강#a83030 / remCount=2=주황#9a5a10 */}
                             {showRemWarn&&!isAbsent&&!rec.renewalPending&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
                           </div>

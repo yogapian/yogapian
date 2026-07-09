@@ -252,10 +252,13 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   // 이미 예약됨 / 슬롯휴강 / 전일휴강이면 무시
   // 정원 초과이면서 isWaiting=false이면 무시 (대기 버튼만 통과)
   // 잔여 0 or 만료 → needRenewal 팝업 / 잔여 1 → last1 팝업 / 정상 → doReserve 바로 호출
+  // 등록결제 대기(paymentPending) → needPayment 팝업 (잔여 무관하게 임시예약으로 관리자 알림)
   function tryReserve(slotKey, isWaiting=false){
     if(mySlot(slotKey)||getSlotClosure(slotKey)||dayClosure) return;
     if(!isWaiting && slotActiveCount(slotKey)>=getSlotCapacity(selDate,slotKey,specialSchedules,scheduleTemplate)) return;
     if(isWaiting){ doReserve(slotKey,true,false); return; }
+    // 등록결제 대기 회원 → 잔여 무관하게 needPayment 팝업
+    if(member.paymentPending){ setPendingSlot(slotKey); setRenewPopup("needPayment"); return; }
     // 예약 날짜(selDate) 기준 잔여 계산 — 이월 배분으로 미래 기수 자동 반영
     const selDateUsed = usedAsOf(member.id, selDate, bookings, [member]);
     const selDateTotal = activePeriodTotal(member, selDate, bookings, [member]);
@@ -634,6 +637,21 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
             <div style={{display:"flex",gap:8}}>
               <button style={{...S.cancelBtn,flex:1}} onClick={()=>{setRenewPopup(null);setPendingSlot(null);}}>취소</button>
               <button style={{...S.saveBtn,flex:1,background:"#9a5a10"}} onClick={()=>doReserve(pendingSlot,false,true)}>임시 예약</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 등록결제 대기 팝업 ──────────────────────────────── */}
+      {renewPopup==="needPayment"&&(
+        <div style={{...S.overlay,alignItems:"center"}} onClick={()=>{setRenewPopup(null);setPendingSlot(null);}}>
+          <div style={{...S.modal,maxWidth:320,textAlign:"center",borderRadius:16}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:34,marginBottom:10}}>💳</div>
+            <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:8}}>등록 결제가 필요해요</div>
+            <div style={{fontSize:13,color:"#7a6e60",lineHeight:1.8,marginBottom:20}}>임시 예약을 하시겠어요?<br/><span style={{color:"#9a8e80",fontSize:12}}>관리자에게 결제 요청이 전달돼요.</span></div>
+            <div style={{display:"flex",gap:8}}>
+              <button style={{...S.cancelBtn,flex:1}} onClick={()=>{setRenewPopup(null);setPendingSlot(null);}}>취소</button>
+              <button style={{...S.saveBtn,flex:1,background:"#c97474"}} onClick={()=>doReserve(pendingSlot,false,true)}>임시 예약</button>
             </div>
           </div>
         </div>
