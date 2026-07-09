@@ -34,7 +34,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
 
   const renewPendingMembers=useMemo(()=>members.filter(m=>bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.date===TODAY_STR)),[members,bookings]);
   const gds=(m)=>getDisplayStatus(m,closures,bookings);
-  const counts={total:members.length,on:members.filter(m=>gds(m)==="on").length,renew:members.filter(m=>gds(m)==="renew").length,hold:members.filter(m=>gds(m)==="hold").length,off:members.filter(m=>gds(m)==="off").length};
+  const counts={total:members.length,on:members.filter(m=>gds(m)==="on").length,pay:members.filter(m=>gds(m)==="pay").length,renew:members.filter(m=>gds(m)==="renew").length,hold:members.filter(m=>gds(m)==="hold").length,off:members.filter(m=>gds(m)==="off").length};
   const filtered=useMemo(()=>{const gd=(m)=>getDisplayStatus(m,closures,bookings);return members.filter(m=>{if(filter!=="total"&&gd(m)!==filter)return false;if(search&&!m.name.includes(search))return false;return true;}).sort((a,b)=>a.name.localeCompare(b.name,"ko"));},[members,filter,search,closures,bookings]);
 
   function openAdd(){
@@ -278,7 +278,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
         {/* ─── 상태 필터 pill ─── */}
         <div style={S.pillRow}>
           {/* ← 각 pill 활성 색상: Total=#4a4a4a / ON=#4a6a4a / RENEW=#9a5a10 / HOLD=#3d5494 / OFF=#8e3030 */}
-          {[["total","Total","#4a4a4a"],["on","ON","#4a6a4a"],["renew","RENEW","#9a5a10"],["hold","HOLD","#3d5494"],["off","OFF","#8e3030"]].map(([k,l,ac])=>(
+          {[["total","Total","#4a4a4a"],["on","ON","#4a6a4a"],["pay","💳결제","#c97474"],["renew","RENEW","#9a5a10"],["hold","HOLD","#3d5494"],["off","OFF","#8e3030"]].map(([k,l,ac])=>(
             <button key={k} onClick={()=>setFilter(k)} style={{...S.pill,background:filter===k?ac:"#e8e4dc",/* ← 비활성 pill 배경 */color:filter===k?"#fff":"#7a6e60",fontWeight:filter===k?700:400}}>{l} <span style={{opacity:.75,fontSize:11}}>{counts[k]??0}</span></button>
           ))}
         </div>

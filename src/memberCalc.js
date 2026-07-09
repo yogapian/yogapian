@@ -176,6 +176,7 @@ export function getDisplayStatus(m, closures=[], bookings=[]) {
   if(m.manualStatus) return m.manualStatus;
   if(m.holding&&isTerminatedByHolding(m)) return "off"; // 홀딩 90일 초과 → 수강종료
   if(m.holding) return "hold";
+  if(m.paymentPending) return "pay"; // 현장결제 대기 → 등록필요로 표시
   // 미정 or 미래 기수가 있으면 현재 기수 만료·잔여 0 무관하게 정상으로 표시
   if((m.renewalHistory||[]).some(r=>r.startDate===null||r.startDate>TODAY_STR)) return "on";
   const dl = calcDL(m, closures);
