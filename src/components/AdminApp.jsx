@@ -188,7 +188,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
       {showPendingPopup&&renewPendingMembers.length>0&&(
         <div style={S.overlay} onClick={()=>setShowPendingPopup(false)}>
           <div style={{...S.modal,maxWidth:360}} onClick={e=>e.stopPropagation()}>
-            <div style={S.modalHead}><span>🔔</span><div><div style={S.modalTitle}>결제 대기 회원</div><div style={{fontSize:12,color:"#9a8e80"}}>갱신 또는 등록 결제가 필요한 회원입니다</div></div></div>
+            <div style={S.modalHead}><span>🔔</span><div><div style={S.modalTitle}>결제 대기 회원</div><div style={{fontSize:12,color:"#9a8e80"}}>임시 예약 처리된 회원입니다</div></div></div>
             <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:16}}>
               {renewPendingMembers.map(m=>{
                 const isPayment=m.paymentPending;
@@ -285,7 +285,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
         <div style={S.pillRow}>
           {/* ← 각 pill 활성 색상: Total=#4a4a4a / ON=#4a6a4a / RENEW=#9a5a10 / HOLD=#3d5494 / OFF=#8e3030 */}
           {/* pay 필터 제거 — 결제대기는 RENEW에 통합 */}
-          {[["total","Total","#4a4a4a"],["on","ON","#4a6a4a"],["renew","RENEW","#9a5a10"],["hold","HOLD","#3d5494"],["off","OFF","#8e3030"]].map(([k,l,ac])=>(
+          {[["total","Total","#4a4a4a"],["on","ON","#4a6a4a"],["renew","PENDING","#9a5a10"],["hold","HOLD","#3d5494"],["off","OFF","#8e3030"]].map(([k,l,ac])=>(
             <button key={k} onClick={()=>setFilter(k)} style={{...S.pill,background:filter===k?ac:"#e8e4dc",/* ← 비활성 pill 배경 */color:filter===k?"#fff":"#7a6e60",fontWeight:filter===k?700:400}}>{l} <span style={{opacity:.75,fontSize:11}}>{counts[k]??0}</span></button>
           ))}
         </div>
