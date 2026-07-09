@@ -355,13 +355,19 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
               </div>
             </div>
 
-            {/* 신규 회원 토글 */}
-            <div style={{...S.fg,marginBottom:10}}>
+            {/* 신규 회원 / 결제대기 토글 */}
+            <div style={{display:"flex",gap:12,marginBottom:10,flexWrap:"wrap"}}>
               <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
                 <div onClick={()=>setForm(f=>({...f,isNew:!f.isNew}))} style={{width:36,height:20,borderRadius:10,background:form.isNew?"#4a6a4a":"#ddd",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
                   <div style={{position:"absolute",top:2,left:form.isNew?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
                 </div>
-                <span style={{color:"#4a4a4a"}}>신규 회원 (N 표시)</span>
+                <span style={{color:"#4a4a4a"}}>신규 회원 (N)</span>
+              </label>
+              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,padding:"4px 10px",borderRadius:8,border:`1.5px solid ${form.paymentPending?"#f0a0a0":"#e0d8cc"}`,background:form.paymentPending?"#fff5f5":"#faf8f5"}}>
+                <div onClick={()=>setForm(f=>({...f,paymentPending:!f.paymentPending}))} style={{width:36,height:20,borderRadius:10,background:form.paymentPending?"#c97474":"#ddd",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
+                  <div style={{position:"absolute",top:2,left:form.paymentPending?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+                </div>
+                <span style={{color:form.paymentPending?"#c97474":"#9a8e80",fontWeight:form.paymentPending?700:400}}>💳 등록필요</span>
               </label>
             </div>
 
