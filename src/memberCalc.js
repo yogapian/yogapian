@@ -140,8 +140,8 @@ export function getActivePeriod(member, targetDate, bookings){
   }
   // 2) 갭 기간: 가장 가까운 미래 기수 (null startDate 제외 — 미정은 날짜 없음)
   for(let i=0;i<rh.length;i++){if(rh[i].startDate&&rh[i].startDate>targetDate)return rh[i];}
-  // 3) 과거 기수만 있을 때 — 스필오버 결과 우선 (미정 기수로 이월됐을 수 있음)
-  for(let i=rh.length-1;i>=0;i--){if(rh[i].endDate&&targetDate>rh[i].endDate)return spillover||rh[i];}
+  // 3) 과거 기수만 있을 때 — 미정 기수(startDate null)가 있으면 우선 반환 (날짜 초과 + 미정 기수 = 다음 기수 활성)
+  for(let i=rh.length-1;i>=0;i--){if(rh[i].endDate&&targetDate>rh[i].endDate){const pending=rh.find(r=>r.startDate===null);return pending||spillover||rh[i];}}
   return spillover||rh[rh.length-1];
 }
 

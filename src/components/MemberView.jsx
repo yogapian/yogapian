@@ -16,18 +16,21 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   const tc = TYPE_CFG[m.memberType] || TYPE_CFG["1month"];
   const dl = calcDL(m, closuresCxt);
   const end = effEnd(m, closuresCxt);
-  // 홀딩 중이면 endDate 초과해도 expired 아님 — effEnd가 동적 연장되지만 이중 안전장치
+  // 홀딩 중이면 endDate 초과해도 expired 아님
   const expired = dl < 0 && !m.holding;
   const usedCnt = usedAsOf(m.id, TODAY_STR, bookings, [m]);
-  const periodTotal = activePeriodTotal(m, TODAY_STR, bookings, [m]); // 유효 기수 총 횟수 (이월 배분 포함)
-  const rem = expired ? 0 : Math.max(0, periodTotal - usedCnt);
-  const pct = expired ? 100 : Math.round(usedCnt / Math.max(periodTotal, 1) * 100);
-  const barColor = expired ? "#c97474" : status === "hold" ? "#6a7fc8" : "#5a9e6a";
+  const periodTotal = activePeriodTotal(m, TODAY_STR, bookings, [m]);
   const isOff = status === "off";
-  // 미정 기수(startDate null)가 활성이면 날짜·연장 표시를 미정으로 처리
+  // 미정 기수 판별 — rem/pct 계산 전에 먼저 확인 (순서 중요)
   const _ap = getActivePeriod(m, TODAY_STR, bookings);
   const isPendingPeriod = _ap?.startDate === null;
   const closureExt = isPendingPeriod ? 0 : getClosureExtDays(m, closuresCxt);
+  // 미정 기수: _ap.total(다음 기수 횟수)·사용0 / 현재기수: 계산값
+  const displayPeriodTotal = isPendingPeriod ? (_ap?.total||0) : periodTotal;
+  const displayUsedCnt = isPendingPeriod ? 0 : usedCnt;
+  const rem = isPendingPeriod ? (_ap?.total||0) : (expired ? 0 : Math.max(0, periodTotal-usedCnt));
+  const pct = isPendingPeriod ? 0 : (expired ? 100 : Math.round(usedCnt/Math.max(periodTotal,1)*100));
+  const barColor = expired && !isPendingPeriod ? "#c97474" : status === "hold" ? "#6a7fc8" : "#5a9e6a";
 
   const [showDetail, setShowDetail] = useState(false);
   const [showHoldDetail, setShowHoldDetail] = useState(false); // 홀딩 상세 펼침 여부
@@ -155,9 +158,9 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
                 {/* 등록·사용 왼쪽 한 줄 / 잔여 횟수 우측 강조 */}
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
                   <span style={{fontSize:11,color:"#9a8e80"}}>
-                    등록 <b style={{color:"#3a4a3a"}}>{periodTotal}회</b>
+                    등록 <b style={{color:"#3a4a3a"}}>{displayPeriodTotal}회</b>
                     <span style={{color:"#c8c0b0",margin:"0 5px"}}>·</span>
-                    사용 <b style={{color:"#3a4a3a"}}>{usedCnt}회</b>
+                    사용 <b style={{color:"#3a4a3a"}}>{displayUsedCnt}회</b>
                   </span>
                   <span style={{fontSize:13,fontWeight:700,color:rem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:22}}>{rem}</span>회</span>
                 </div>

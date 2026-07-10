@@ -36,10 +36,11 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const displayEnd=isPendingPeriod?null:isFuturePeriod?(_ap?.endDate||m.endDate):end;
   const TODAY=parseLocal(TODAY_STR);
   const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);
-  const displayTotal=isFuturePeriod?(_ap.total||periodTotal):periodTotal;
-  const displayUsed=isFuturePeriod?0:usedCnt;
-  const displayRem=expired?0:Math.max(0,displayTotal-displayUsed);
-  const displayPct=expired?100:Math.round(displayUsed/Math.max(displayTotal,1)*100);
+  // 미정 기수: _ap.total(다음 기수 횟수)·사용0·잔여=총수·0% / 미래기수: 해당 기수 total / 현재기수: 계산값
+  const displayTotal=isPendingPeriod?(_ap?.total||0):isFuturePeriod?(_ap.total||periodTotal):periodTotal;
+  const displayUsed=isPendingPeriod?0:isFuturePeriod?0:usedCnt;
+  const displayRem=isPendingPeriod?(_ap?.total||0):expired?0:Math.max(0,displayTotal-displayUsed);
+  const displayPct=isPendingPeriod?0:expired?100:Math.round(displayUsed/Math.max(displayTotal,1)*100);
   // 현재 기수 진행 중에 다음 기수가 이미 등록된 경우 (사전 갱신) — 갭·미정 표시 중엔 숨김
   const hasNextPeriod=!isFuturePeriod&&!isPendingPeriod&&(m.renewalHistory||[]).some(r=>r.startDate>TODAY_STR||r.startDate===null);
   const tc=TYPE_CFG[m.memberType]||TYPE_CFG["1month"]; // 회원권 종류 스타일 (1개월/3개월)
