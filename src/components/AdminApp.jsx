@@ -285,7 +285,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
 
       {tab==="members"&&(<>
         {/* ─── 상태 필터 pill ─── */}
-        <div style={S.pillRow}>
+        <div style={S.pillRow} className="pillRow">
           {/* ← 각 pill 활성 색상: Total=#4a4a4a / ON=#4a6a4a / RENEW=#9a5a10 / HOLD=#3d5494 / OFF=#8e3030 */}
           {/* pay 필터 제거 — 결제대기는 RENEW에 통합 */}
           {[["total","Total","#4a4a4a"],["on","ON","#4a6a4a"],["renew","PENDING","#9a5a10"],["hold","HOLD","#3d5494"],["off","OFF","#8e3030"]].map(([k,l,ac])=>(

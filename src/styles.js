@@ -7,7 +7,7 @@ const S={
   studioName:{fontSize:21,fontWeight:700,color:"#1e2e1e"},
   sub:{fontSize:11,color:"#a09080"},
   addBtn:{background:"#4a6a4a",color:"#fff",border:"none",borderRadius:9,padding:"9px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap"},
-  pillRow:{display:"flex",gap:7,marginBottom:16,flexWrap:"wrap"},
+  pillRow:{display:"flex",gap:7,marginBottom:16,flexWrap:"nowrap",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none"},
   pill:{border:"none",borderRadius:20,padding:"6px 14px",fontSize:12,cursor:"pointer",fontFamily:FONT},
   toolbar:{display:"flex",gap:10,marginBottom:18},
   searchBox:{background:"#fff",border:"1.5px solid #ddd",borderRadius:10,padding:"9px 12px",display:"flex",alignItems:"center",flex:1},
