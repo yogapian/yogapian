@@ -140,8 +140,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     setMembers(p=>p.map(m=>{
       if(m.id!==mid)return m;
       const rh=[...(m.renewalHistory||[])];
-      const lastIdx=rh.findIndex(r=>r.startDate&&r.startDate>TODAY_STR);
-      if(lastIdx===-1)return m; // 미래 기수 없으면 변경 없음
+      const lastIdx=rh.findIndex(r=>r.startDate&&r.startDate>=TODAY_STR);
+      if(lastIdx===-1)return m; // 오늘 이후 기수 없으면 변경 없음
       const updRH=rh.map((r,i)=>i===lastIdx?{...r,startDate:null,endDate:null}:r);
       // member 날짜·횟수를 미래 기수 직전 기수 기준으로 복원
       const prev=lastIdx>0?rh[lastIdx-1]:null;

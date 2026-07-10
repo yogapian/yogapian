@@ -103,7 +103,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
           </button>
         )}
         {/* 미래 기수가 있을 때만 표시 — 시작일을 미정으로 전환 */}
-        {(member.renewalHistory||[]).some(r=>r.startDate&&r.startDate>TODAY_STR)&&(
+        {(member.renewalHistory||[]).some(r=>r.startDate&&r.startDate>=TODAY_STR)&&(
           <button onClick={onSetPending}
             style={{background:"#edf3ff",color:"#3d5494",border:"1px solid #b0c4e8",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
             📅 미정 전환
