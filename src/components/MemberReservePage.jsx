@@ -15,7 +15,7 @@ import { Agentation } from "agentation";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, DOW_KO, KR_HOLIDAYS } from "../constants.js";
 // broadcastAdminNotif는 App.jsx에서 onBookingNotif prop으로 전달받음 (채널 단일 인스턴스 유지)
 import { parseLocal, fmt, fmtWithDow, addDays, toDateStr } from "../utils.js";
-import { calcDL, getClosureExtDays, usedAsOf, activePeriodTotal, getSlotCapacity, holdingElapsed } from "../memberCalc.js";
+import { calcDL, getClosureExtDays, usedAsOf, activePeriodTotal, getSlotCapacity, holdingElapsed, getActivePeriod } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 
@@ -180,11 +180,14 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const hasTimeChange  = isRegular && special?.activeSlots?.some(k=>special.customTimes?.[k]&&special.customTimes[k]!==DEFAULT_TIMES[k]);
 
   const memberDl      = calcDL(member, closuresCxt);
-  const memberExpired = memberDl < 0;
+  // 미정 기수(startDate null)가 활성이면 날짜 초과여도 만료 처리 안 함 (renewalPending 오예약 방지)
+  const _memberAp     = getActivePeriod(member, TODAY_STR, bookings);
+  const isPendingPeriod = _memberAp?.startDate === null;
+  const memberExpired = !isPendingPeriod && memberDl < 0;
   const usedCnt       = usedAsOf(member.id, TODAY_STR, bookings, [member]);
   // activePeriodTotal: 이월 배분 포함 유효 기수 총 횟수 (사전 갱신 시 다음 기수 자동 반영)
   const periodTotal   = activePeriodTotal(member, TODAY_STR, bookings, [member]);
-  const rem           = memberExpired ? 0 : Math.max(0, periodTotal - usedCnt);
+  const rem           = memberExpired ? 0 : Math.max(0, (isPendingPeriod?(_memberAp?.total||0):periodTotal) - (isPendingPeriod?0:usedCnt));
 
   // 현재 KST 시각 (분 단위) — 오늘 지난 슬롯 필터에 사용
   const _kstNow = new Date(new Date().getTime()+9*3600*1000);
