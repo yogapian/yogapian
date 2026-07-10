@@ -32,8 +32,11 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   const [notifHistory,setNotifHistory]=useState(null); // null=미로드, []=로드완료
   const [notifHistoryLoading,setNotifHistoryLoading]=useState(false);
 
-  // 결제 대기 통합: 갱신 임시예약(renewalPending) + 등록결제 대기(paymentPending) 모두 표시
-  const renewPendingMembers=useMemo(()=>members.filter(m=>m.paymentPending||bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.date===TODAY_STR)),[members,bookings]);
+  // 결제 대기 팝업: 오늘 예약(취소 제외)이 있는 회원 중 renewalPending이거나 paymentPending인 경우만
+  // paymentPending 단독으로는 포함하지 않음 — 오늘 예약 없으면 팝업에 안 뜸
+  const renewPendingMembers=useMemo(()=>members.filter(m=>
+    bookings.some(b=>b.memberId===m.id&&b.date===TODAY_STR&&b.status!=="cancelled"&&(b.renewalPending||m.paymentPending))
+  ),[members,bookings]);
   const gds=(m)=>getDisplayStatus(m,closures,bookings);
   // RENEW 카운트에 pay(등록필요) 포함 — 결제대기도 갱신 그룹으로 통합
   const counts={total:members.length,on:members.filter(m=>gds(m)==="on").length,renew:members.filter(m=>gds(m)==="renew"||gds(m)==="pay").length,hold:members.filter(m=>gds(m)==="hold").length,off:members.filter(m=>gds(m)==="off").length};
