@@ -25,7 +25,8 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const end=effEnd(m,closures);          // 실제 표시 종료일 (홀딩·휴강 연장 포함)
   // 카드 등록일·종료일 표시용 활성 기수 — 스필오버·갭 모두 반영
   const _ap=getActivePeriod(m,TODAY_STR,bookings);
-  const displayStart=_ap?.startDate||m.startDate;
+  // 미정 기수가 활성이면 등록일도 미정 (null → fmt이 "미정" 반환)
+  const displayStart=(_ap?.startDate===null)?null:(_ap?.startDate||m.startDate);
   // 표시 기수가 미래 기수(갭 기간)이면 해당 기수의 total/used를 직접 사용
   const isFuturePeriod=_ap&&_ap.startDate>TODAY_STR;
   // 미정 기수(startDate null)가 활성 기수로 올라온 경우

@@ -10,8 +10,9 @@ export function isHoliday(dateStr){ return !!KR_HOLIDAYS[dateStr]; }
 export function holidayName(dateStr){ return KR_HOLIDAYS[dateStr]||""; }
 export function toDateStr(y,m,d){ return`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
 
-export const parseLocal=s=>{if(!s)return TODAY;const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);};
-export const fmt=d=>{const dt=parseLocal(d);return`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,"0")}.${String(dt.getDate()).padStart(2,"0")}`;};
+// parseLocal: null/빈문자열은 TODAY 복사본 반환 (TODAY 원본 참조 금지 — addDays가 setDate로 변경하면 TODAY 전역 상수가 오염됨)
+export const parseLocal=s=>{if(!s)return new Date(TODAY.getTime());const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);};
+export const fmt=d=>{if(!d)return"미정";const dt=parseLocal(d);return`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,"0")}.${String(dt.getDate()).padStart(2,"0")}`;};
 export const fmtWithDow=d=>`${fmt(d)} (${DOW_KO[parseLocal(d).getDay()]})`;
 
 export function useClock(){
@@ -24,7 +25,8 @@ export function useClock(){
   return{timeStr:`${h}:${mi}:${s}`,dateTimeStr:`${fmtWithDow(dateStr)} ${h}:${mi}:${s}`};
 }
 
-export const addDays=(s,n)=>{const d=parseLocal(s);d.setDate(d.getDate()+n);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
+// addDays: null/빈문자열 입력은 null 그대로 반환 (parseLocal이 TODAY 복사본을 반환해도 방어층 추가)
+export const addDays=(s,n)=>{if(!s)return null;const d=parseLocal(s);d.setDate(d.getDate()+n);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
 
 export function wdInMonth(y,mo){let c=0,days=new Date(y,mo+1,0).getDate();for(let d=1;d<=days;d++){const w=new Date(y,mo,d).getDay();if(w&&w!==6)c++;}return c;}
 export function countWorkdays(s,e){let c=0,cur=parseLocal(s),end=parseLocal(e);while(cur<=end){const d=cur.getDay();if(d&&d!==6)c++;cur.setDate(cur.getDate()+1);}return c;}

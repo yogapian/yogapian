@@ -117,16 +117,18 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
               // startDate=수업일, endDate=마지막홀딩일 → (endDate-startDate)가 실제 홀딩 캘린더 일수
               const holdCalDays = holdInPeriod.reduce((sum,h)=>sum+(h.startDate&&h.endDate?Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000):(h.workdays||0)),0);
               const holdExtDays = holdInPeriod.reduce((sum, h) => sum + (h.workdays || 0), 0);
-              const closureExt = isCurrent ? getClosureExtDays(member, closures) : 0;
+              // 미정 기수(startDate null)는 아직 시작 전 → 연장 계산 없음
+              const isPendingRH = r.startDate === null;
+              const closureExt = (isCurrent && !isPendingRH) ? getClosureExtDays(member, closures) : 0;
               // 현재 기수: holdingHistory 전체 합산 / 과거 기수: renewalHistory endDate가 이미 갱신보정됨
-              const holdExt = isCurrent ? totalHoldingCalendarDays(member) : 0;
+              const holdExt = (isCurrent && !isPendingRH) ? totalHoldingCalendarDays(member) : 0;
               // 현재 기수 표시용 캘린더 일수: holdingHistory 전체 합산 (진행 중 홀딩 포함)
-              const curHoldCal = isCurrent ? totalHoldingCalendarDays(member) : holdCalDays;
-              // displayEnd: 휴강·홀딩·보너스 모두 캘린더 일수 연장
+              const curHoldCal = (isCurrent && !isPendingRH) ? totalHoldingCalendarDays(member) : holdCalDays;
+              // displayEnd: 휴강·홀딩·보너스 모두 캘린더 일수 연장 (null endDate = 미정 기수는 계산 생략)
               let displayEnd = r.endDate;
-              if(closureExt > 0) displayEnd = addDays(displayEnd, closureExt);
-              if(holdExt > 0) displayEnd = addDays(displayEnd, holdExt);
-              if(isCurrent && (member.bonusDays||0) > 0) displayEnd = addDays(displayEnd, member.bonusDays);
+              if(displayEnd && closureExt > 0) displayEnd = addDays(displayEnd, closureExt);
+              if(displayEnd && holdExt > 0) displayEnd = addDays(displayEnd, holdExt);
+              if(displayEnd && isCurrent && (member.bonusDays||0) > 0) displayEnd = addDays(displayEnd, member.bonusDays);
               // 다음 기수 시작일 전날로 캡핑 — 갱신이 기수 만료 전에 일어나면 출석이 두 기수에 중복 표시되는 버그 방지
               // reversedHistory는 최신순이므로 i-1이 바로 다음(더 최신) 기수
               const nextStart = i > 0 ? reversedHistory[i - 1].startDate : null;

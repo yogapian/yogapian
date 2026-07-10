@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, useClock, parseLocal } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, totalHoldingCalendarDays } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, totalHoldingCalendarDays, getActivePeriod } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 import NoticeBoard from "./NoticeBoard.jsx";
@@ -24,7 +24,10 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   const pct = expired ? 100 : Math.round(usedCnt / Math.max(periodTotal, 1) * 100);
   const barColor = expired ? "#c97474" : status === "hold" ? "#6a7fc8" : "#5a9e6a";
   const isOff = status === "off";
-  const closureExt = getClosureExtDays(m, closuresCxt);
+  // 미정 기수(startDate null)가 활성이면 날짜·연장 표시를 미정으로 처리
+  const _ap = getActivePeriod(m, TODAY_STR, bookings);
+  const isPendingPeriod = _ap?.startDate === null;
+  const closureExt = isPendingPeriod ? 0 : getClosureExtDays(m, closuresCxt);
 
   const [showDetail, setShowDetail] = useState(false);
   const [showHoldDetail, setShowHoldDetail] = useState(false); // 홀딩 상세 펼침 여부
@@ -165,22 +168,25 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
                 </div>
               </div>
               <div style={S.dateRow}>
-                <div style={{display:"flex",flexDirection:"column",gap:1}}><span style={S.dateLabel}>등록일</span><span style={S.dateVal}>{fmt(m.startDate)}</span></div>
+                <div style={{display:"flex",flexDirection:"column",gap:1}}><span style={S.dateLabel}>등록일</span><span style={S.dateVal}>{isPendingPeriod?"미정":fmt(m.startDate)}</span></div>
                 <span style={{color:"#c8c0b0",fontSize:13,marginTop:9}}>→</span>
                 <div style={{display:"flex",flexDirection:"column",gap:2}}>
                   <span style={S.dateLabel}>종료일</span>
                   <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
-                    <span style={{...S.dateVal,color:dl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(end)}</span>
-                    {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
-                    {/* 연장 버튼: 홀딩+보너스 합산 — 누르면 세부 내역 펼침 */}
-                    {(totalHoldingCalendarDays(m)>0||(m.bonusDays||0)>0)&&(
+                    <span style={{...S.dateVal,color:isPendingPeriod?"#3d5494":dl<=7?"#9a5a10":"#3a4a3a"}}>{isPendingPeriod?"미정":fmt(end)}</span>
+                    {!isPendingPeriod&&closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
+                    {/* 연장 버튼: 미정 기수에는 숨김 (3기 아직 미시작) */}
+                    {!isPendingPeriod&&(totalHoldingCalendarDays(m)>0||(m.bonusDays||0)>0)&&(
                       <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
                         연장+{totalHoldingCalendarDays(m)+(m.bonusDays||0)}일 {showHoldDetail?"▲":"▼"}
                       </button>
                     )}
                   </div>
                 </div>
-                <div style={{...S.dChip,background:dl<0?"#f5eeee":dl<=7?"#fdf3e3":"#eef4ee",color:dl<0?"#c97474":dl<=7?"#9a5a10":"#2e6e44"}}>{dl<0?`D+${Math.abs(dl)}`:dl===0?"D-Day":`D-${dl}`}</div>
+                {isPendingPeriod
+                  ?<div style={{...S.dChip,background:"#edf3ff",color:"#3d5494"}}>대기</div>
+                  :<div style={{...S.dChip,background:dl<0?"#f5eeee":dl<=7?"#fdf3e3":"#eef4ee",color:dl<0?"#c97474":dl<=7?"#9a5a10":"#2e6e44"}}>{dl<0?`D+${Math.abs(dl)}`:dl===0?"D-Day":`D-${dl}`}</div>
+                }
               </div>
               {/* 연장 세부 내역 펼침: 홀딩 기간 / 보너스 기간 / 종료일→연장후 */}
               {showHoldDetail&&(totalHoldingCalendarDays(m)>0||(m.bonusDays||0)>0)&&(()=>{

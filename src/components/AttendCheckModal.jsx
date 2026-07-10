@@ -44,18 +44,25 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
     setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"attended",confirmedAttend:true}:b));
     // 미정 기수 자동 시작 체크용으로만 사용 (setBookings와 별도 계산)
     const newBookings=bookings.map(b=>b.id===rec.id?{...b,status:"attended",confirmedAttend:true}:b);
-    // 미정 기수(startDate null)가 있는 회원: 이번 출석으로 스필오버 → 자동 시작
-    if(mem&&(mem.renewalHistory||[]).some(r=>r.startDate===null)){
+    // 미정 기수(startDate null)가 있는 회원: 두 가지 조건 중 하나라도 충족 시 자동 시작
+    // 미래 날짜 출석(실수로 달력 이동)에서는 자동 시작 안 함
+    if(rec.date<=TODAY_STR&&mem&&(mem.renewalHistory||[]).some(r=>r.startDate===null)){
+      const pendingPeriod=(mem.renewalHistory||[]).find(r=>r.startDate===null);
+      // ① 캘린더 기반: 이전 기수 종료일 이후에 출석
+      const prevPeriods=(mem.renewalHistory||[]).filter(r=>r.startDate&&r.endDate).sort((a,b)=>a.startDate.localeCompare(b.startDate));
+      const lastPeriod=prevPeriods[prevPeriods.length-1];
+      const isPastPrevEnd=lastPeriod?rec.date>lastPeriod.endDate:false;
+      // ② 스필오버 기반: 이전 기수 세션 소진 → 미정 기수로 자동 진입
       const ap=getActivePeriod(mem,rec.date,newBookings);
-      if(ap&&ap.startDate===null){
-        const newStart=addDays(rec.date,1); // 마지막 회차 당일이 아닌 다음날부터 새 기수 시작
-        const pendingPeriod=(mem.renewalHistory||[]).find(r=>r.startDate===null);
+      const isSpillover=ap&&ap.startDate===null;
+      if((isPastPrevEnd||isSpillover)&&pendingPeriod){
+        const newStart=rec.date; // 출석 당일이 새 기수 시작일
         const mType=pendingPeriod?.memberType||mem.memberType;
         const newEnd=mType==="3month"?calc3MonthEnd(newStart):endOfMonth(newStart);
         setMembers(p=>p.map(m=>{
           if(m.id!==mem.id)return m;
           const updRH=(m.renewalHistory||[]).map(r=>r.startDate===null?{...r,startDate:newStart,endDate:newEnd}:r);
-          return{...m,startDate:newStart,endDate:newEnd,total:pendingPeriod?.total??m.total,memberType:mType,extensionDays:0,holdingDays:0,holding:null,renewalHistory:updRH};
+          return{...m,startDate:newStart,endDate:newEnd,total:pendingPeriod?.total??m.total,memberType:mType,extensionDays:0,holdingDays:0,bonusDays:0,holding:null,renewalHistory:updRH};
         }));
       }
     }
