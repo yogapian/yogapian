@@ -186,7 +186,8 @@ export function getDisplayStatus(m, closures=[], bookings=[]) {
     let periodStart = m.startDate || "";
     // 역순 순회: 기수 중복 시 최신 기수(startDate 큰 것) 우선 적용
     for(let i=rh.length-1;i>=0;i--){const r=rh[i];if(r.startDate&&r.endDate&&TODAY_STR>=r.startDate&&TODAY_STR<=r.endDate){periodStart=r.startDate;break;}}
-    if(bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.date>=periodStart)) return "renew";
+    // cancelled 예약은 renewalPending 판단 제외 (취소됐어도 플래그 남아있는 경우 오판 방지)
+    if(bookings.some(b=>b.memberId===m.id&&b.renewalPending&&b.status!=="cancelled"&&b.date>=periodStart)) return "renew";
     const {used, total} = _effectivePeriod(m.id, TODAY_STR, bookings, [m]);
     if(Math.max(0, total - used) === 0) return "renew"; // 유효 기수 잔여 0이면 갱신 필요
     return "on";
