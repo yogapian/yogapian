@@ -32,8 +32,16 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   // 미정 기수(startDate null)가 활성 기수로 올라온 경우
   const isPendingPeriod=_ap?.startDate===null;
   const closureExt=getClosureExtDays(m,closures); // 별도휴강으로 늘어난 일수 (뱃지 표시용)
-  // displayEnd: 미래기수는 해당 기수 endDate / 현재기수는 effEnd(all extensions)
-  const displayEnd=isPendingPeriod?null:isFuturePeriod?(_ap?.endDate||m.endDate):end;
+  // 활성 기수 endDate 기준 종료일 (m.endDate가 마지막 갱신 기수 날짜일 수 있으므로 _ap?.endDate 우선)
+  const _apEndBase=_ap?.endDate||m.endDate;
+  const displayEnd=isPendingPeriod?null:isFuturePeriod?_apEndBase:(()=>{
+    let r=_apEndBase;
+    if(closureExt>0)r=addDays(r,closureExt);
+    const holdExt=totalHoldingCalendarDays(m);
+    if(holdExt>0)r=addDays(r,holdExt);
+    if((m.bonusDays||0)>0)r=addDays(r,m.bonusDays);
+    return r;
+  })();
   const TODAY=parseLocal(TODAY_STR);
   const displayDl=Math.ceil((parseLocal(displayEnd)-TODAY)/86400000);
   // 미정 기수: _ap.total(다음 기수 횟수)·사용0·잔여=총수·0% / 미래기수: 해당 기수 total / 현재기수: 계산값
