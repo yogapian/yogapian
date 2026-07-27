@@ -107,7 +107,10 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
           </div>
           <div style={{maxHeight:280,overflowY:"auto"}}>
             {reversedHistory.map((r, i) => {
-              const isCurrent = isActiveStatus && i === 0;
+              // 오늘 날짜를 포함하는 기수가 있으면 그 기수만 현재 — 없으면 마지막(i===0) 폴백
+              const someInRange = reversedHistory.some(x => x.startDate && x.endDate && TODAY_STR >= x.startDate && TODAY_STR <= x.endDate);
+              const isInRange   = r.startDate && r.endDate && TODAY_STR >= r.startDate && TODAY_STR <= r.endDate;
+              const isCurrent   = isActiveStatus && (someInRange ? isInRange : i === 0);
               const isOpenH = expandedRH === r.id;
               // holdInPeriod를 먼저 계산 — 과거 기수의 holdExt·displayEnd·precs 필터에 모두 필요
               const holdInPeriod = (member.holdingHistory || []).filter(h =>
