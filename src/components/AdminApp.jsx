@@ -164,7 +164,11 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
       return{...m,holding:null,holdingDays:0,holdingHistory:newHistory}; // extensionDays 더 이상 누적 안 함 — holdingHistory로 계산
     }
     return{...m,holding:{startDate:hd.startDate,endDate:null,workdays:0},holdingDays:0};}));setHoldT(null);setDetailM(null);}
-  function applyPaymentPending(mid){setMembers(p=>p.map(m=>m.id===mid?{...m,paymentPending:false}:m));}
+  function applyPaymentPending(mid){
+    setMembers(p=>p.map(m=>m.id===mid?{...m,paymentPending:false}:m));
+    // 결제 완료 시 해당 회원의 모든 renewalPending 예약 플래그도 해제 (갱신필요 오표시 방지)
+    setBookings(p=>p.map(b=>b.memberId===mid&&b.renewalPending?{...b,renewalPending:false}:b));
+  }
   function applyAdjust(mid,changes){setMembers(p=>p.map(m=>{
     if(m.id!==mid)return m;
     const rh=m.renewalHistory||[];
