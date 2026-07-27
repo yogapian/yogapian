@@ -154,6 +154,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
               <span style={S.memberName}>{m.name}</span>
               {m.isNew && <span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
               {m.holding && <span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
+              {hasNextPeriod && <span style={{fontSize:9,background:"#e8edf8",color:"#3d5494",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>다음기수↗</span>}
             </div>
             {/* 오른쪽: 개월수 뱃지 + 상태 뱃지 */}
             <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
@@ -187,10 +188,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
               <div style={S.dateRow}>
                 <div style={{display:"flex",flexDirection:"column",gap:1}}>
                   <span style={S.dateLabel}>등록일</span>
-                  <div style={{display:"flex",alignItems:"center",gap:4}}>
-                    <span style={S.dateVal}>{isPendingPeriod?"미정":fmt(displayStart)}</span>
-                    {hasNextPeriod&&<span style={{fontSize:9,background:"#e8edf8",color:"#3d5494",borderRadius:4,padding:"1px 5px",fontWeight:700}}>다음기수↗</span>}
-                  </div>
+                  <span style={S.dateVal}>{isPendingPeriod?"미정":fmt(displayStart)}</span>
                 </div>
                 <span style={{color:"#c8c0b0",fontSize:13,marginTop:9}}>→</span>
                 <div style={{display:"flex",flexDirection:"column",gap:2}}>
