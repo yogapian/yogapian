@@ -19,21 +19,27 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const expired=(dl<0&&!m.holding)||(m.holding&&isTerminatedByHolding(m)); // 홀딩 90일 초과도 만료 처리
   const usedCnt=usedAsOf(m.id,TODAY_STR,bookings,[m]); // 오늘까지 출석(attended) 횟수
   const periodTotal=activePeriodTotal(m,TODAY_STR,bookings,[m]); // 유효 기수 총 횟수 (이월 배분 포함)
-  const rem=expired?0:Math.max(0,periodTotal-usedCnt); // 잔여 횟수 (현재 기수 기준)
-  const pct=expired?100:Math.round(usedCnt/Math.max(periodTotal,1)*100); // 프로그레스바 %
   const status=getDisplayStatus(m,closures,bookings),sc=SC[status]||SC["on"]; // 상태 스타일
   const end=effEnd(m,closures);          // 실제 표시 종료일 (홀딩·휴강 연장 포함)
   // 카드 등록일·종료일 표시용 활성 기수 — 스필오버·갭 모두 반영
   const _ap=getActivePeriod(m,TODAY_STR,bookings);
-  // 미정 기수가 활성이면 등록일도 미정 (null → fmt이 "미정" 반환)
   const displayStart=(_ap?.startDate===null)?null:(_ap?.startDate||m.startDate);
-  // 표시 기수가 미래 기수(갭 기간)이면 해당 기수의 total/used를 직접 사용
   const isFuturePeriod=_ap&&_ap.startDate>TODAY_STR;
-  // 미정 기수(startDate null)가 활성 기수로 올라온 경우
   const isPendingPeriod=_ap?.startDate===null;
   const closureExt=getClosureExtDays(m,closures); // 별도휴강으로 늘어난 일수 (뱃지 표시용)
-  // 활성 기수 endDate 기준 종료일 (m.endDate가 마지막 갱신 기수 날짜일 수 있으므로 _ap?.endDate 우선)
   const _apEndBase=_ap?.endDate||m.endDate;
+  // 노쇼 횟수 → 패널티 동적 계산 (DB값 vs 실계산값 중 큰 것 — 기존 노쇼도 즉시 반영)
+  const noshowPeriodStart=isPendingPeriod?null:(_ap?.startDate||m.startDate);
+  const noshowCnt=noshowPeriodStart
+    ?bookings.filter(b=>b.memberId===m.id&&b.status==="cancelled"&&b.cancelledBy==="noshow"&&b.date>=noshowPeriodStart&&b.date<=(_apEndBase||m.endDate)).length
+    :0;
+  const _threshold=m.memberType==="3month"?4:2;
+  const _expectedCrossings=Math.floor(noshowCnt/_threshold);
+  const _acked=m.noshowThresholdAck||0;
+  // 검토 전(acked < expected): 동적 계산값 표시 / 검토 후(acked >= expected): 관리자 확정값 사용
+  const noshowPenalties=_acked>=_expectedCrossings?(m.noshowPenalties||0):Math.max(m.noshowPenalties||0,_expectedCrossings);
+  const rem=expired?0:Math.max(0,periodTotal-usedCnt-noshowPenalties); // 잔여 횟수
+  const pct=expired?100:Math.round((usedCnt+noshowPenalties)/Math.max(periodTotal,1)*100); // 프로그레스바 %
   const displayEnd=isPendingPeriod?null:isFuturePeriod?_apEndBase:(()=>{
     let r=_apEndBase;
     if(closureExt>0)r=addDays(r,closureExt);
@@ -47,7 +53,7 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   // 미정 기수: _ap.total(다음 기수 횟수)·사용0·잔여=총수·0% / 미래기수: 해당 기수 total / 현재기수: 계산값
   const displayTotal=isPendingPeriod?(_ap?.total||0):isFuturePeriod?(_ap.total||periodTotal):periodTotal;
   const displayUsed=isPendingPeriod?0:isFuturePeriod?0:usedCnt;
-  const displayRem=isPendingPeriod?(_ap?.total||0):expired?0:Math.max(0,displayTotal-displayUsed);
+  const displayRem=isPendingPeriod?(_ap?.total||0):expired?0:Math.max(0,displayTotal-displayUsed-noshowPenalties);
   const displayPct=isPendingPeriod?0:expired?100:Math.round(displayUsed/Math.max(displayTotal,1)*100);
   // 현재 기수 진행 중에 다음 기수가 이미 등록된 경우 (사전 갱신) — 갭·미정 표시 중엔 숨김
   const hasNextPeriod=!isFuturePeriod&&!isPendingPeriod&&(m.renewalHistory||[]).some(r=>r.startDate>TODAY_STR||r.startDate===null);
@@ -77,6 +83,8 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
           {m.holding&&<span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
           {/* 사전 갱신: 현재 기수 진행 중에 다음 기수가 이미 등록된 회원 */}
           {hasNextPeriod&&<span style={{fontSize:9,background:"#e8edf8",color:"#3d5494",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>다음기수↗</span>}
+          {/* 현재 기수 노쇼 횟수 */}
+          {noshowCnt>0&&<span style={{fontSize:10,background:"#fff0f0",color:"#c97474",borderRadius:4,padding:"1px 6px",fontWeight:700,flexShrink:0}}>🚫 {noshowCnt}</span>}
         </div>
         {/* 오른쪽: 개월수 뱃지 + 상태 뱃지 (MemberView.jsx와 동일 구조) */}
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>

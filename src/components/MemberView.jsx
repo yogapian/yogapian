@@ -21,18 +21,27 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   const usedCnt = usedAsOf(m.id, TODAY_STR, bookings, [m]);
   const periodTotal = activePeriodTotal(m, TODAY_STR, bookings, [m]);
   const isOff = status === "off";
-  // 미정 기수 판별 — rem/pct 계산 전에 먼저 확인 (순서 중요)
+  // 활성 기수 (노쇼 계산을 위해 먼저 구함)
   const _ap = getActivePeriod(m, TODAY_STR, bookings);
   const isPendingPeriod = _ap?.startDate === null;
   const closureExt = isPendingPeriod ? 0 : getClosureExtDays(m, closuresCxt);
+  const _apEndBase = _ap?.endDate || m.endDate;
+  // 노쇼 횟수 → 패널티 동적 계산 (DB값 vs 실계산값 중 큰 것 — 기존 노쇼도 즉시 반영)
+  const noshowPeriodStart = isPendingPeriod ? null : (_ap?.startDate || m.startDate);
+  const noshowCnt = noshowPeriodStart
+    ? bookings.filter(b=>b.memberId===m.id&&b.status==="cancelled"&&b.cancelledBy==="noshow"&&b.date>=noshowPeriodStart&&b.date<=(_apEndBase||m.endDate)).length
+    : 0;
+  const _threshold = m.memberType === "3month" ? 4 : 2;
+  const _expectedCrossings = Math.floor(noshowCnt / _threshold);
+  const _acked = m.noshowThresholdAck || 0;
+  // 검토 전(acked < expected): 동적 계산값 표시 / 검토 후(acked >= expected): 관리자 확정값 사용
+  const noshowPenalties = _acked >= _expectedCrossings ? (m.noshowPenalties||0) : Math.max(m.noshowPenalties||0, _expectedCrossings);
   // 미정 기수: _ap.total(다음 기수 횟수)·사용0 / 현재기수: 계산값
   const displayPeriodTotal = isPendingPeriod ? (_ap?.total||0) : periodTotal;
   const displayUsedCnt = isPendingPeriod ? 0 : usedCnt;
-  const rem = isPendingPeriod ? (_ap?.total||0) : (expired ? 0 : Math.max(0, periodTotal-usedCnt));
-  const pct = isPendingPeriod ? 0 : (expired ? 100 : Math.round(usedCnt/Math.max(periodTotal,1)*100));
+  const rem = isPendingPeriod ? (_ap?.total||0) : (expired ? 0 : Math.max(0, periodTotal-usedCnt-noshowPenalties));
+  const pct = isPendingPeriod ? 0 : (expired ? 100 : Math.round((usedCnt+noshowPenalties)/Math.max(periodTotal,1)*100));
   const barColor = expired && !isPendingPeriod ? "#c97474" : status === "hold" ? "#6a7fc8" : "#5a9e6a";
-  // 활성 기수 endDate 기준 표시용 종료일·D-day (m.endDate가 미래 갱신으로 마지막 기수 날짜일 수 있음)
-  const _apEndBase = _ap?.endDate || m.endDate;
   const displayEnd = isPendingPeriod ? null : (()=>{
     let r=_apEndBase;
     if(closureExt>0) r=addDays(r,closureExt);
@@ -155,6 +164,8 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
               {m.isNew && <span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
               {m.holding && <span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
               {hasNextPeriod && <span style={{fontSize:9,background:"#e8edf8",color:"#3d5494",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>다음기수↗</span>}
+              {/* 현재 기수 노쇼 횟수 */}
+              {noshowCnt>0&&<span style={{fontSize:10,background:"#fff0f0",color:"#c97474",borderRadius:4,padding:"1px 6px",fontWeight:700,flexShrink:0}}>🚫 {noshowCnt}</span>}
             </div>
             {/* 오른쪽: 개월수 뱃지 + 상태 뱃지 */}
             <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>

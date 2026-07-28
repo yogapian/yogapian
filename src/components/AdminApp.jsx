@@ -123,7 +123,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       const lastRH=rh.length>0?rh[rh.length-1]:null;
       const prevEnd=addDays(rf.startDate,-1);
       const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1&&lastRH?.endDate&&lastRH.endDate>=rf.startDate?{...r,endDate:prevEnd}:r):rh;
-      return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,bonusDays:0,holding:null,manualStatus:null,isNew:false,renewalHistory:[...updRH,{id:(rh.length||0)+1,...rf}]};}));
+      // 갱신 시 노쇼 패널티 초기화 (새 기수 시작)
+      return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,bonusDays:0,holding:null,manualStatus:null,isNew:false,noshowPenalties:0,renewalHistory:[...updRH,{id:(rh.length||0)+1,...rf}]};}));
     // 갱신 완료 시 이 회원의 renewalPending 플래그 항상 해제
     // includePending=true: 예약 유지(정상 예약으로 전환) / false: 예약 취소
     setBookings(p=>p.map(b=>{

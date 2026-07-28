@@ -11,7 +11,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FONT, TODAY_STR, getTodayStr, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
-import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, calc3MonthEnd, getSlotCapacity, totalHoldingCalendarDays } from "../memberCalc.js";
+import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, calc3MonthEnd, getSlotCapacity, totalHoldingCalendarDays, getActivePeriod } from "../memberCalc.js";
 import S from "../styles.js";
 import CalendarPicker from "./CalendarPicker.jsx";
 import AttendCheckModal from "./AttendCheckModal.jsx";
@@ -36,6 +36,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   const [originalType,setOriginalType]=useState(null); // 수업설정 열기 전 기존 유형 (편집 시 유형 잠금용)
   const closeSpecialMgr=()=>{setShowSpecialMgr(false);setOriginalType(null);setNewSp(INIT_SP);};
   const [cancelModal,setCancelModal]=useState(null);  // 예약 취소 모달: null 또는 booking 객체
+  const [penaltyConfirm,setPenaltyConfirm]=useState(null); // 노쇼 패널티 확인: {memberId,memberName,newCount,expectedCrossings}
   const [attendCheckModal,setAttendCheckModal]=useState(null); // 출석처리 모달: null 또는 booking 객체
   const [dragId,setDragId]=useState(null);            // 드래그 중인 booking id
   const [dragOver,setDragOver]=useState(null);        // 드래그 대상 슬롯 key (하이라이트용)
@@ -97,8 +98,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   // ── adminCancel: 관리자가 예약을 취소할 때 호출 ─────────────────────────
   // - booking을 cancelled로 변경
   // - 대기자가 있으면 첫 번째 대기자를 자동으로 reserved로 올림
+  // - cancelType: "noshow"(노쇼) | "proxy"(대리취소) — cancelled_by에 저장
   // - sendNotice=true면 해당 회원 + 대기 확정된 회원에게 공지 자동 생성
-  function adminCancel(id, note, sendNotice=true){
+  function adminCancel(id, note, sendNotice=false, cancelType="noshow"){
     const b = bookings.find(bk=>bk.id===id);
     if(!b) return;
     const isAttendedCancelled = b.status === "attended" || b.status === "reserved";
@@ -107,7 +109,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     const slotLabel = TIME_SLOTS.find(t=>t.key===b.timeSlot)?.label||"";
     const slotTime  = TIME_SLOTS.find(t=>t.key===b.timeSlot)?.time||"";
     setBookings(p => {
-      const next = p.map(bk => bk.id === id ? { ...bk, status: "cancelled", cancelledBy: "admin", cancelNote: note } : bk);
+      const next = p.map(bk => bk.id === id ? { ...bk, status: "cancelled", cancelledBy: cancelType, cancelNote: note } : bk);
       if(firstWaiter){
         return next.map(bk => bk.id === firstWaiter.id ? { ...bk, status: "reserved" } : bk);
       }
@@ -122,6 +124,27 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
       const waiterMem = members.find(m=>m.id===firstWaiter.memberId);
       const nid2 = Date.now()+1;
       setNotices(prev=>[{id:nid2, title:`✅예약확정✅`, content:`${fmtWithDow(b.date)}\n수업 예약이 확정되었습니다.`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...prev]);
+    }
+    // 노쇼 임계 초과 시 패널티 확인 팝업
+    if(cancelType==="noshow"&&b.memberId){
+      const mem=members.find(m=>m.id===b.memberId);
+      if(mem){
+        const _apP=getActivePeriod(mem,b.date,bookings);
+        const pStart=_apP?.startDate===null?null:(_apP?.startDate||mem.startDate);
+        const pEnd=_apP?.endDate||mem.endDate;
+        if(pStart){
+          const prevNoshows=bookings.filter(bk=>bk.memberId===mem.id&&bk.status==="cancelled"&&bk.cancelledBy==="noshow"&&bk.date>=pStart&&bk.date<=pEnd).length;
+          const newCount=prevNoshows+1;
+          const threshold=mem.memberType==="3month"?4:2;
+          const expectedCrossings=Math.floor(newCount/threshold);
+          const acked=mem.noshowThresholdAck||0;
+          if(expectedCrossings>acked){
+            setPenaltyConfirm({memberId:mem.id,memberName:mem.name,newCount,expectedCrossings});
+            setCancelModal(null);
+            return;
+          }
+        }
+      }
     }
     setCancelModal(null);
   }
@@ -917,7 +940,31 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
       {/* AttendCheckModal: 🕉 아이콘 클릭 시 출석/결석/워크인 처리 */}
       {attendCheckModal&&<AttendCheckModal rec={attendCheckModal} members={members} isOpen={isOpen} bookings={bookings} setBookings={setBookings} setMembers={setMembers} notices={notices} setNotices={setNotices} onClose={()=>setAttendCheckModal(null)}/>}
       {/* AdminCancelModal: 예약 취소 사유 입력 후 adminCancel 호출 */}
-      {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={(note,sendNotice)=>adminCancel(cancelModal.id,note,sendNotice)}/>}
+      {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={(note,sendNotice,cancelType)=>adminCancel(cancelModal.id,note,sendNotice,cancelType)}/>}
+
+      {/* 노쇼 패널티 확인 모달 */}
+      {penaltyConfirm&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300}} onClick={()=>setPenaltyConfirm(null)}>
+          <div style={{background:"#fff",borderRadius:16,padding:"22px 20px",maxWidth:280,width:"90%",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{textAlign:"center",marginBottom:14}}>
+              <div style={{fontSize:22,marginBottom:6}}>⚠️</div>
+              <div style={{fontSize:14,fontWeight:700,color:"#c97474",marginBottom:4}}>{penaltyConfirm.memberName} · 노쇼 {penaltyConfirm.newCount}회 도달</div>
+              <div style={{fontSize:12,color:"#9a8e80"}}>1회 차감할까요?</div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{
+                setMembers(p=>p.map(x=>x.id===penaltyConfirm.memberId?{...x,noshowThresholdAck:penaltyConfirm.expectedCrossings}:x));
+                setPenaltyConfirm(null);
+              }} style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"10px 0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>이번은 넘어가기</button>
+              <button onClick={()=>{
+                setMembers(p=>p.map(x=>x.id===penaltyConfirm.memberId?{...x,noshowPenalties:penaltyConfirm.expectedCrossings,noshowThresholdAck:penaltyConfirm.expectedCrossings}:x));
+                setPenaltyConfirm(null);
+              }} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>차감</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showTemplateMgr&&<ScheduleTemplateManager scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} onClose={()=>setShowTemplateMgr(false)}/>}
     </div>
   );

@@ -35,6 +35,8 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
   const myMonthBookings = bookings.filter(b => b.memberId===member.id && b.date.startsWith(ymStr));
   // attendedSet: 실제 출석 완료된 날짜 (과거 원형 표시에 사용)
   const attendedSet = new Set(myMonthBookings.filter(b=>b.status==="attended").map(b=>parseLocal(b.date).getDate()));
+  // noshowSet: 노쇼 처리된 날짜 (원+사선 표시)
+  const noshowSet  = new Set(myMonthBookings.filter(b=>b.status==="cancelled"&&b.cancelledBy==="noshow").map(b=>parseLocal(b.date).getDate()));
   // reservedSet: 예약됐으나 아직 출석 전인 날짜 (미래 초록 점 표시에 사용)
   const reservedSet = new Set(myMonthBookings.filter(b=>b.status==="reserved").map(b=>parseLocal(b.date).getDate()));
   const waitingSet  = new Set(myMonthBookings.filter(b=>b.status==="waiting").map(b=>parseLocal(b.date).getDate()));
@@ -81,7 +83,8 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
           const hasSlots = sp ? sp.activeSlots?.length > 0 : (dow!==0 && dow!==6);
           const noClass = !isPast && !hasSlots && !isClosure;
           const unselectable = isPast; // 과거 날짜만 클릭 불가 — 주말/휴강도 클릭해 안내 표시
-          const isAtt  = attendedSet.has(day);                   // 출석 완료 (과거)
+          const isAtt    = attendedSet.has(day) && !noshowSet.has(day); // 출석 완료 (노쇼 아닌 경우만)
+          const isNoshow = noshowSet.has(day);                         // 노쇼 처리된 날
           const isRes  = reservedSet.has(day) && !isAtt;        // 예약됨 + 아직 출석 전 (미래 초록 점)
           const isWait = waitingSet.has(day) && !isAtt && !isRes; // 대기 중 (삼각형)
           const isOpen = !isPast && !isClosure && sp?.type==="open";
@@ -123,9 +126,12 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
                 }}>
                   {day}
                 </span>
-                {/* 출석 이모지: 숫자 뒤에 겹쳐서 표시 / opacity로 투명도 조절 */}
+                {/* 출석: 🌀 오버레이 / 노쇼: 파란 원+사선 오버레이 */}
                 {isAtt && (
                   <span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,opacity:0.3,pointerEvents:"none"}}>🌀</span>
+                )}
+                {isNoshow && (
+                  <span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,pointerEvents:"none",opacity:0.75}}>🚫</span>
                 )}
               </div>
 
