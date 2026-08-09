@@ -77,10 +77,9 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
         const threshold=mem.memberType==="3month"?4:2;
         const expectedCrossings=Math.floor(newCount/threshold);
         const acked=mem.noshowThresholdAck||0;
-        if(expectedCrossings>acked){
-          setPenaltyStep({newCount,expectedCrossings});
-          return; // 모달 닫지 않고 패널티 확인 패널로 전환
-        }
+        // 노쇼 시 항상 패널티 확인 패널로 전환 (이번은 패스 / 적용)
+        setPenaltyStep({newCount,expectedCrossings,acked});
+        return;
       }
     }
     onClose();
@@ -147,18 +146,20 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
           <>
             <div style={{background:"#fff5f5",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"12px 14px",marginBottom:12,textAlign:"center"}}>
               <div style={{fontSize:18,marginBottom:4}}>⚠️</div>
-              <div style={{fontSize:13,fontWeight:700,color:"#c97474",marginBottom:4}}>노쇼 {penaltyStep.newCount}회 도달</div>
-              <div style={{fontSize:12,color:"#9a8e80"}}>1회 차감할까요?</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#c97474",marginBottom:4}}>노쇼 {penaltyStep.newCount}회</div>
+              <div style={{fontSize:12,color:"#9a8e80"}}>패널티를 적용할까요?</div>
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>{
-                setMembers(p=>p.map(x=>x.id===mem.id?{...x,noshowThresholdAck:penaltyStep.expectedCrossings}:x));
+                // 패스: 패널티 없이 임계 ack만 갱신
+                setMembers(p=>p.map(x=>x.id===mem.id?{...x,noshowThresholdAck:Math.max(x.noshowThresholdAck||0,penaltyStep.expectedCrossings)}:x));
                 onClose();
-              }} style={btn({flex:1,background:"#f5f5f5",color:"#9a8e80"})}>이번은 넘어가기</button>
+              }} style={btn({flex:1,background:"#f5f5f5",color:"#9a8e80"})}>이번은 패스</button>
               <button onClick={()=>{
-                setMembers(p=>p.map(x=>x.id===mem.id?{...x,noshowPenalties:penaltyStep.expectedCrossings,noshowThresholdAck:penaltyStep.expectedCrossings}:x));
+                // 적용: 잔여 1회 즉시 차감
+                setMembers(p=>p.map(x=>x.id===mem.id?{...x,noshowPenalties:(x.noshowPenalties||0)+1,noshowThresholdAck:Math.max(x.noshowThresholdAck||0,penaltyStep.expectedCrossings)}:x));
                 onClose();
-              }} style={btn({flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0"})}>차감</button>
+              }} style={btn({flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0"})}>적용</button>
             </div>
           </>
         )}

@@ -125,7 +125,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
       const nid2 = Date.now()+1;
       setNotices(prev=>[{id:nid2, title:`✅예약확정✅`, content:`${fmtWithDow(b.date)}\n수업 예약이 확정되었습니다.`, pinned:false, createdAt:TODAY_STR, targetMemberId:firstWaiter.memberId}, ...prev]);
     }
-    // 노쇼 임계 초과 시 패널티 확인 팝업
+    // 노쇼 시 항상 패널티 확인 팝업 표시 (이번은 패스 / 적용)
     if(cancelType==="noshow"&&b.memberId){
       const mem=members.find(m=>m.id===b.memberId);
       if(mem){
@@ -138,11 +138,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
           const threshold=mem.memberType==="3month"?4:2;
           const expectedCrossings=Math.floor(newCount/threshold);
           const acked=mem.noshowThresholdAck||0;
-          if(expectedCrossings>acked){
-            setPenaltyConfirm({memberId:mem.id,memberName:mem.name,newCount,expectedCrossings});
-            setCancelModal(null);
-            return;
-          }
+          setPenaltyConfirm({memberId:mem.id,memberName:mem.name,newCount,expectedCrossings,acked});
+          setCancelModal(null);
+          return;
         }
       }
     }
@@ -948,18 +946,20 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
           <div style={{background:"#fff",borderRadius:16,padding:"22px 20px",maxWidth:280,width:"90%",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}} onClick={e=>e.stopPropagation()}>
             <div style={{textAlign:"center",marginBottom:14}}>
               <div style={{fontSize:22,marginBottom:6}}>⚠️</div>
-              <div style={{fontSize:14,fontWeight:700,color:"#c97474",marginBottom:4}}>{penaltyConfirm.memberName} · 노쇼 {penaltyConfirm.newCount}회 도달</div>
-              <div style={{fontSize:12,color:"#9a8e80"}}>1회 차감할까요?</div>
+              <div style={{fontSize:14,fontWeight:700,color:"#c97474",marginBottom:4}}>{penaltyConfirm.memberName} · 노쇼 {penaltyConfirm.newCount}회</div>
+              <div style={{fontSize:12,color:"#9a8e80"}}>패널티를 적용할까요?</div>
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>{
-                setMembers(p=>p.map(x=>x.id===penaltyConfirm.memberId?{...x,noshowThresholdAck:penaltyConfirm.expectedCrossings}:x));
+                // 패스: 패널티 없이 임계 ack만 갱신
+                setMembers(p=>p.map(x=>x.id===penaltyConfirm.memberId?{...x,noshowThresholdAck:Math.max(x.noshowThresholdAck||0,penaltyConfirm.expectedCrossings)}:x));
                 setPenaltyConfirm(null);
-              }} style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"10px 0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>이번은 넘어가기</button>
+              }} style={{flex:1,background:"#f5f5f5",color:"#9a8e80",border:"none",borderRadius:10,padding:"10px 0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>이번은 패스</button>
               <button onClick={()=>{
-                setMembers(p=>p.map(x=>x.id===penaltyConfirm.memberId?{...x,noshowPenalties:penaltyConfirm.expectedCrossings,noshowThresholdAck:penaltyConfirm.expectedCrossings}:x));
+                // 적용: 잔여 1회 즉시 차감
+                setMembers(p=>p.map(x=>x.id===penaltyConfirm.memberId?{...x,noshowPenalties:(x.noshowPenalties||0)+1,noshowThresholdAck:Math.max(x.noshowThresholdAck||0,penaltyConfirm.expectedCrossings)}:x));
                 setPenaltyConfirm(null);
-              }} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>차감</button>
+              }} style={{flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>적용</button>
             </div>
           </div>
         </div>
