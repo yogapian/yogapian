@@ -561,6 +561,13 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
               <div style={S.fg}>
                 <label style={S.lbl}>참여자 이름</label>
                 <input style={S.inp} value={addForm.onedayName} onChange={e=>setAddForm(f=>({...f,onedayName:e.target.value}))} placeholder="원데이 참여자 이름" autoFocus/>
+                {/* 입력한 이름이 기존 회원과 일치하면 경고 + 회원 탭 전환 버튼 */}
+                {(()=>{const matched=members.find(m=>m.name===addForm.onedayName.trim());return matched?(
+                  <div style={{marginTop:6,background:"#fff8e8",border:"1.5px solid #f0c040",borderRadius:9,padding:"8px 12px",fontSize:12,color:"#7a5a00",display:"flex",alignItems:"center",gap:8}}>
+                    <span>⚠️ <b>{matched.name}</b> 회원이 있습니다</span>
+                    <button onClick={()=>setAddForm(f=>({...f,type:"member",memberId:String(matched.id),onedayName:""}))} style={{marginLeft:"auto",background:"#e8a820",color:"#fff",border:"none",borderRadius:7,padding:"3px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>회원으로 선택</button>
+                  </div>
+                ):null;})()}
               </div>
             )}
             {addError&&<div style={{fontSize:12,color:"#c97474",background:"#fff0f0",borderRadius:8,padding:"8px 12px",marginBottom:10,textAlign:"center"}}>{addError}</div>}
