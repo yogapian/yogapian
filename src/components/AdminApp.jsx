@@ -62,14 +62,20 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     const phone=form.phone||"";
     const phone4=(phone.replace(/\D/g,"")).slice(-4)||form.phone4||"";
     const e={...form,phone,phone4,endDate:autoEnd||form.endDate,total:+form.total,extensionDays:+(form.extensionDays||0),holdingDays:+(form.holdingDays||0),isNew:!!form.isNew,manualStatus:form.manualStatus||null};
-    if(editId)setMembers(p=>p.map(m=>{
-      if(m.id!==editId)return m;
-      // 편집 시 renewalHistory 마지막 항목도 동기화 (total/날짜 불일치 버그 방지)
-      const rh=m.renewalHistory||[];
-      const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,total:e.total,startDate:e.startDate,endDate:e.endDate,memberType:e.memberType}:r):rh;
-      return{...m,...e,renewalHistory:updRH};
-    }));
-    else{
+    if(editId){
+      setMembers(p=>p.map(m=>{
+        if(m.id!==editId)return m;
+        // 편집 시 renewalHistory 마지막 항목도 동기화 (total/날짜 불일치 버그 방지)
+        const rh=m.renewalHistory||[];
+        const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,total:e.total,startDate:e.startDate,endDate:e.endDate,memberType:e.memberType}:r):rh;
+        return{...m,...e,renewalHistory:updRH};
+      }));
+      // 편집 시에도 미연결 원데이 예약 자동 연결 (신규 등록 전 출석 처리한 경우 대비)
+      const refDate2=parseLocal(TODAY_STR); refDate2.setDate(refDate2.getDate()-7);
+      const sevenDaysAgo2=`${refDate2.getFullYear()}-${String(refDate2.getMonth()+1).padStart(2,"0")}-${String(refDate2.getDate()).padStart(2,"0")}`;
+      const orphaned=bookings.filter(b=>b.onedayName===form.name&&!b.memberId&&b.date>=sevenDaysAgo2&&b.date<=TODAY_STR&&(b.status==="attended"||b.status==="reserved"));
+      if(orphaned.length>0) setBookings(p=>p.map(b=>orphaned.some(o=>o.id===b.id)?{...b,memberId:editId,onedayName:null}:b));
+    } else{
       const id=Math.max(...members.map(m=>m.id),0)+1;
       const newMember={id,...e,renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]};
       // 원데이→정규 연동: 7일 이내 같은 이름의 방문 완료된 원데이 기록 탐색
