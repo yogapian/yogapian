@@ -71,18 +71,24 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
         return{...m,...e,renewalHistory:updRH};
       }));
       // 편집 시에도 미연결 원데이 예약 자동 연결 (신규 등록 전 출석 처리한 경우 대비)
-      const refDate2=parseLocal(TODAY_STR); refDate2.setDate(refDate2.getDate()-7);
+      // TODAY_STR은 모듈 로드 시 고정 → 앱 장기 실행 시 날짜 오류 방지를 위해 실행 시점 KST 날짜 계산
+      const _kst2=new Date(Date.now()+9*3600*1000);
+      const todayStr2=`${_kst2.getUTCFullYear()}-${String(_kst2.getUTCMonth()+1).padStart(2,"0")}-${String(_kst2.getUTCDate()).padStart(2,"0")}`;
+      const refDate2=new Date(_kst2.getUTCFullYear(),_kst2.getUTCMonth(),_kst2.getUTCDate()-7);
       const sevenDaysAgo2=`${refDate2.getFullYear()}-${String(refDate2.getMonth()+1).padStart(2,"0")}-${String(refDate2.getDate()).padStart(2,"0")}`;
-      const orphaned=bookings.filter(b=>b.onedayName===form.name&&!b.memberId&&b.date>=sevenDaysAgo2&&b.date<=TODAY_STR&&(b.status==="attended"||b.status==="reserved"));
+      const orphaned=bookings.filter(b=>b.onedayName===form.name&&!b.memberId&&b.date>=sevenDaysAgo2&&b.date<=todayStr2&&(b.status==="attended"||b.status==="reserved"));
       if(orphaned.length>0) setBookings(p=>p.map(b=>orphaned.some(o=>o.id===b.id)?{...b,memberId:editId,onedayName:null}:b));
     } else{
       const id=Math.max(...members.map(m=>m.id),0)+1;
       const newMember={id,...e,renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]};
       // 원데이→정규 연동: 7일 이내 같은 이름의 방문 완료된 원데이 기록 탐색
-      const refDate=parseLocal(TODAY_STR); refDate.setDate(refDate.getDate()-7);
+      // TODAY_STR 대신 실행 시점 KST 날짜 사용 — 앱을 전날 열고 다음날 등록하면 오늘 예약이 누락되는 버그 수정
+      const _kst=new Date(Date.now()+9*3600*1000);
+      const todayStr=`${_kst.getUTCFullYear()}-${String(_kst.getUTCMonth()+1).padStart(2,"0")}-${String(_kst.getUTCDate()).padStart(2,"0")}`;
+      const refDate=new Date(_kst.getUTCFullYear(),_kst.getUTCMonth(),_kst.getUTCDate()-7);
       const sevenDaysAgo=`${refDate.getFullYear()}-${String(refDate.getMonth()+1).padStart(2,"0")}-${String(refDate.getDate()).padStart(2,"0")}`;
       // attended: 출석완료 / reserved+오늘이하: 당일 원데이(아직 출석 전)도 연동 대상 포함
-      const matchedOneday=bookings.find(b=>b.onedayName===form.name&&b.date>=sevenDaysAgo&&b.date<=TODAY_STR&&(b.status==="attended"||b.status==="reserved"));
+      const matchedOneday=bookings.find(b=>b.onedayName===form.name&&b.date>=sevenDaysAgo&&b.date<=todayStr&&(b.status==="attended"||b.status==="reserved"));
       if(matchedOneday){setOnedayConfirm({newMember,matchedBooking:matchedOneday});setShowForm(false);return;}
       setMembers(p=>[...p,newMember]);
       // 신규 회원 매출 자동 등록
@@ -436,7 +442,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
 
       {/* 원데이→정규 연동 확인 팝업 */}
       {onedayConfirm&&(
-        <div style={S.overlay} onClick={doSkipOneday}>
+        <div style={S.overlay}>
           <div style={{...S.modal,maxWidth:320,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:28,marginBottom:8}}>🌱</div>
             <div style={{...S.modalTitle,marginBottom:8}}>원데이 방문 기록 발견</div>
