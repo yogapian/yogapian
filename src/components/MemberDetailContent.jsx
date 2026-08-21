@@ -26,7 +26,13 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
   const expired = dl < 0;
   const dispUsed = usedAsOf(member.id, TODAY_STR, bookings, [member]);
   const dispPeriodTotal = activePeriodTotal(member, TODAY_STR, bookings, [member]); // 유효 기수 총 횟수 (이월 배분 포함)
-  const dispRem = expired ? 0 : Math.max(0, dispPeriodTotal - dispUsed);
+  // 노쇼 패널티 계산 (MemberCard와 동일 로직)
+  const _noshowCnt = bookings.filter(b=>b.memberId===member.id&&b.status==="cancelled"&&b.cancelledBy==="noshow"&&b.date>=(member.startDate||"")&&b.date<=(member.endDate||"9999")).length;
+  const _threshold = member.memberType==="3month"?4:2;
+  const _expectedCrossings = Math.floor(_noshowCnt/_threshold);
+  const _acked = member.noshowThresholdAck||0;
+  const noshowPenalties = _acked>=_expectedCrossings?(member.noshowPenalties||0):Math.max(member.noshowPenalties||0,_expectedCrossings);
+  const dispRem = expired ? 0 : Math.max(0, dispPeriodTotal - dispUsed - noshowPenalties);
   const tc = TYPE_CFG[member.memberType] || TYPE_CFG["1month"];
   const curRecs = currentRecs(member, bookings);
   const isActiveStatus = status === "on" || status === "hold" || status === "renew";
@@ -61,7 +67,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
       {/* ─── 상단 통계 3칸 ─── */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:12}}>
         {[
-          {l:"이번기수출석", v:`${curRecs.length}/${dispPeriodTotal}`, c:"#5a6070"},
+          {l:"이번기수출석", v:`${curRecs.length+noshowPenalties}/${dispPeriodTotal}`, c:"#5a6070"},
           {l:"잔여 회차",    v:`${dispRem}회`, c:expired?"#9a7878":dispRem===0?"#8a7050":"#5a7060"},
           {l:"D-day",       v:dl<0?`${Math.abs(dl)}일초과`:dl===0?"오늘":`D-${dl}`, c:dl<0?"#9a7878":dl<=7?"#8a7050":"#4a4a4a"}
         ].map(item => (
@@ -165,6 +171,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                         <span style={{fontSize:10,background:"#efefef",color:"#707070",borderRadius:4,padding:"1px 6px",fontWeight:500}}>{(TYPE_CFG[r.memberType]||TYPE_CFG["1month"]).label}</span>
                         {r.total > 0 && <span style={{fontSize:10,color:"#9a8e80"}}>등록 {r.total}회</span>}
                         <span style={{fontSize:10,color:precs.length>0?"#171717":"#b0a090"}}>출석 {precs.length}회</span>
+                        {isCurrent&&noshowPenalties>0&&<span style={{fontSize:10,color:"#c97474",background:"#fff0f0",borderRadius:4,padding:"1px 5px",fontWeight:600}}>차감 {noshowPenalties}회</span>}
                         {/* 결제수단 뱃지: 네이버=슬레이트 / 현금=주황 / 카드=파랑 */}
                         {r.payment && (() => {
                           const p = r.payment.replace("3개월,","");
