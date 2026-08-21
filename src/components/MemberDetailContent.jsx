@@ -206,7 +206,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                             <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0}}>{isNoshow ? "🚫" : (sl?.icon || "📍")}</span>
                             <span style={{fontSize:11,color:isNoshow?"#c97474":"#3a4a3a",flex:1}}>{fmtWithDow(rec.date)}</span>
                             {isNoshow
-                              ? <><span style={{fontSize:10,color:sl?.color,background:sl?.bg,borderRadius:4,padding:"1px 6px",fontWeight:600}}>{sl?.label}</span><span style={{fontSize:10,color:"#c97474",background:"#fff0f0",borderRadius:4,padding:"1px 6px",fontWeight:600}}>노쇼</span></>
+                              ? <><span style={{fontSize:10,color:"#c97474",background:"#fff0f0",borderRadius:4,padding:"1px 6px",fontWeight:600}}>노쇼</span><span style={{fontSize:10,color:sl?.color,background:sl?.bg,borderRadius:4,padding:"1px 6px",fontWeight:600}}>{sl?.label}</span></>
                               : <span style={{fontSize:10,color:sl?.color,background:sl?.bg,borderRadius:4,padding:"1px 6px",fontWeight:600}}>{sl?.label}</span>
                             }
                           </div>
