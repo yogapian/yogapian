@@ -137,10 +137,12 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
               const nextStart = i > 0 ? reversedHistory[i - 1].startDate : null;
               const cappedEnd = nextStart && addDays(nextStart, -1) < displayEnd ? addDays(nextStart, -1) : displayEnd;
               const precs = periodRecs(member, bookings, {...r, endDate: cappedEnd});
-              // 출석 행 + 홀딩 행을 날짜 내림차순으로 합산
+              // 출석 행 + 홀딩 행 + 노쇼 행을 날짜 내림차순으로 합산
+              const noshowRecs = bookings.filter(b => b.memberId===member.id && b.status==="cancelled" && b.cancelledBy==="noshow" && b.date>=(r.startDate||"") && b.date<=(cappedEnd||r.endDate||"9999"));
               const rows = [
                 ...precs.map(rec => ({_type:"att", date:rec.date, rec})),
                 ...holdInPeriod.map(h  => ({_type:"hold", date:h.startDate, h})),
+                ...noshowRecs.map(rec => ({_type:"noshow", date:rec.date, rec})),
               ].sort((a, b) => b.date.localeCompare(a.date));
 
               return (
@@ -198,11 +200,15 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                         }
                         const {rec} = row;
                         const sl = TIME_SLOTS.find(t => t.key === rec.timeSlot);
+                        const isNoshow = row._type === "noshow";
                         return (
-                          <div key={rec.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:ri<rows.length-1?"1px solid #f8f4ef":"none"}}>
-                            <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0}}>{sl?.icon || "📍"}</span>
-                            <span style={{fontSize:11,color:"#3a4a3a",flex:1}}>{fmtWithDow(rec.date)}</span>
-                            <span style={{fontSize:10,color:sl?.color,background:sl?.bg,borderRadius:4,padding:"1px 6px",fontWeight:600}}>{sl?.label}</span>
+                          <div key={rec.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:ri<rows.length-1?"1px solid #f8f4ef":"none",opacity:isNoshow?0.7:1}}>
+                            <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0}}>{isNoshow ? "🚫" : (sl?.icon || "📍")}</span>
+                            <span style={{fontSize:11,color:isNoshow?"#c97474":"#3a4a3a",flex:1}}>{fmtWithDow(rec.date)}</span>
+                            {isNoshow
+                              ? <span style={{fontSize:10,color:"#c97474",background:"#fff0f0",borderRadius:4,padding:"1px 6px",fontWeight:600}}>노쇼</span>
+                              : <span style={{fontSize:10,color:sl?.color,background:sl?.bg,borderRadius:4,padding:"1px 6px",fontWeight:600}}>{sl?.label}</span>
+                            }
                           </div>
                         );
                       })}
