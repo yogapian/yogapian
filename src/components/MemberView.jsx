@@ -42,10 +42,11 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   const rem = isPendingPeriod ? (_ap?.total||0) : (expired ? 0 : Math.max(0, periodTotal-usedCnt-noshowPenalties));
   const pct = isPendingPeriod ? 0 : (expired ? 100 : Math.round((usedCnt+noshowPenalties)/Math.max(periodTotal,1)*100));
   const barColor = expired && !isPendingPeriod ? "#c97474" : status === "hold" ? "#6a7fc8" : "#5a9e6a";
+  // 활성 기수 시작일 기준 홀딩 일수 — 미래 기수 pre-register 시 m.startDate 오류 방지
+  const holdExt=isPendingPeriod?0:totalHoldingCalendarDays(m,_ap?.startDate||m.startDate);
   const displayEnd = isPendingPeriod ? null : (()=>{
     let r=_apEndBase;
     if(closureExt>0) r=addDays(r,closureExt);
-    const holdExt=totalHoldingCalendarDays(m);
     if(holdExt>0) r=addDays(r,holdExt);
     if((m.bonusDays||0)>0) r=addDays(r,m.bonusDays);
     return r;
@@ -208,9 +209,9 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
                     <span style={{...S.dateVal,color:isPendingPeriod?"#3d5494":displayDl<=7?"#9a5a10":"#3a4a3a"}}>{isPendingPeriod?"미정":fmt(displayEnd)}</span>
                     {!isPendingPeriod&&closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
                     {/* 연장 버튼: 미정 기수에는 숨김 (3기 아직 미시작) */}
-                    {!isPendingPeriod&&(totalHoldingCalendarDays(m)>0||(m.bonusDays||0)>0)&&(
+                    {!isPendingPeriod&&(holdExt>0||(m.bonusDays||0)>0)&&(
                       <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
-                        연장+{totalHoldingCalendarDays(m)+(m.bonusDays||0)}일 {showHoldDetail?"▲":"▼"}
+                        연장+{holdExt+(m.bonusDays||0)}일 {showHoldDetail?"▲":"▼"}
                       </button>
                     )}
                   </div>
@@ -221,21 +222,20 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
                 }
               </div>
               {/* 연장 세부 내역 펼침: 홀딩 기간 / 보너스 기간 / 종료일→연장후 */}
-              {showHoldDetail&&(totalHoldingCalendarDays(m)>0||(m.bonusDays||0)>0)&&(()=>{
+              {showHoldDetail&&(holdExt>0||(m.bonusDays||0)>0)&&(()=>{
                 const fd = s => s ? s.replace(/-/g,".") : "";
                 const h = m.holdingHistory?.slice(-1)[0];
-                const holdCal = totalHoldingCalendarDays(m);
                 return (
                   <div style={{fontSize:11,color:"#6a7090",background:"#f0f2f5",borderRadius:8,padding:"8px 12px",marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
-                    {holdCal>0&&(
+                    {holdExt>0&&(
                       h?.startDate&&h?.endDate
-                        ?<div>홀딩 기간 <b style={{color:"#3d5494"}}>{fd(h.startDate)} ~ {fd(h.endDate)}</b> <span style={{color:"#6a7fc8"}}>(+{holdCal}일)</span></div>
+                        ?<div>홀딩 기간 <b style={{color:"#3d5494"}}>{fd(h.startDate)} ~ {fd(h.endDate)}</b> <span style={{color:"#6a7fc8"}}>(+{holdExt}일)</span></div>
                         :m.holding?.startDate
-                        ?<div>홀딩 진행 중 <b style={{color:"#3d5494"}}>{fd(m.holding.startDate)}~</b> <span style={{color:"#6a7fc8"}}>(+{holdCal}일)</span></div>
+                        ?<div>홀딩 진행 중 <b style={{color:"#3d5494"}}>{fd(m.holding.startDate)}~</b> <span style={{color:"#6a7fc8"}}>(+{holdExt}일)</span></div>
                         :null
                     )}
                     {(m.bonusDays||0)>0&&<div>보너스 기간 <b style={{color:"#9a5a10"}}>(+{m.bonusDays}일)</b></div>}
-                    <div>종료일 <b style={{color:"#5a6070"}}>{fmt(m.endDate)}</b> → 연장 후 <b style={{color:"#b86a10"}}>{fmt(end)}</b></div>
+                    <div>종료일 <b style={{color:"#5a6070"}}>{fmt(_apEndBase)}</b> → 연장 후 <b style={{color:"#b86a10"}}>{fmt(displayEnd)}</b></div>
                   </div>
                 );
               })()}

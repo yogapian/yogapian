@@ -47,9 +47,10 @@ export function holdingElapsed(holding) {
   if(!holding || !holding.startDate) return 0;
   return Math.max(0, Math.ceil((TODAY - parseLocal(holding.startDate)) / 86400000));
 }
-// 누적 홀딩 캘린더 일수: 현재 기수(m.startDate 이후) 이력만 합산 — 이전 기수 홀딩 제외
-export function totalHoldingCalendarDays(m) {
-  const curStart = m.startDate || "";
+// 누적 홀딩 캘린더 일수: periodStart(활성기수 시작일) 이후 이력만 합산 — 이전 기수 홀딩 제외
+// periodStart 미전달 시 m.startDate 사용 (하위 호환)
+export function totalHoldingCalendarDays(m, periodStart) {
+  const curStart = periodStart !== undefined ? (periodStart || "") : (m.startDate || "");
   const past=(m.holdingHistory||[]).reduce((sum,h)=>{
     if(!h.startDate||!h.endDate)return sum;
     if(curStart && h.startDate < curStart) return sum; // 이전 기수 홀딩 제외
