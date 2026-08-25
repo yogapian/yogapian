@@ -171,6 +171,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const [confirmCancel, setConfirmCancel] = useState(null); // 취소 확인 모달: null 또는 bookingId
   const [pendingSlot, setPendingSlot] = useState(null);     // 팝업 확인 후 예약할 slotKey 임시 저장
   const [renewPopup, setRenewPopup] = useState(null); // "last1"=마지막1회 / "needRenewal"=잔여0/만료
+  const [resumeStep, setResumeStep] = useState(null); // 복귀일 선택 단계: null 또는 {resumeDate: string}
 
   const closuresCxt = useClosures();
 
@@ -341,30 +342,22 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     setConfirmCancel(null);
   }
 
-  // ── resumeHolding: 홀딩 복귀 버튼 클릭 시 (3개월권만 가능) ──────────────
-  // 홀딩 종료일: 미래 예약 있으면 가장 빠른 예약일 전날 / 없으면 selDate 전날 / 둘 다 없으면 오늘
-  function resumeHolding(){
+  // ── resumeHolding: 복귀일 확정 후 홀딩 종료 처리 ──────────────────────────
+  function resumeHolding(resumeDate){
     if(!member.holding||!setMembers) return;
     const startStr = member.holding.startDate;
-    // 이 회원의 미래 예약 중 가장 빠른 날짜 탐색
-    const futureBooking = bookings
-      .filter(b=>b.memberId===member.id&&b.status==="reserved"&&b.date>=TODAY_STR)
-      .sort((a,b)=>a.date.localeCompare(b.date))[0];
-    const holdEnd = futureBooking
-      ? addDays(futureBooking.date, -1)
-      : selDate && selDate > TODAY_STR
-        ? addDays(selDate, -1)
-        : TODAY_STR;
+    // 홀딩 종료일 = 복귀일 전날 (복귀일 당일은 수업 가능)
+    const holdEnd = addDays(resumeDate, -1);
     let count = 0;
-    // 시작일 당일은 수업 가능 → 다음날(start+1)부터 집계
     let cur = parseLocal(addDays(startStr, 1));
     const end = parseLocal(holdEnd);
     while(cur <= end){ const dow=cur.getDay(); if(dow!==0&&dow!==6) count++; cur.setDate(cur.getDate()+1); }
     setMembers(p=>p.map(m=>{
       if(m.id!==member.id) return m;
       const hist={startDate:m.holding.startDate,endDate:holdEnd,workdays:count};
-      return{...m,holding:null,holdingDays:0,holdingHistory:[...(m.holdingHistory||[]),hist]}; // extensionDays 더 이상 누적 안 함
+      return{...m,holding:null,holdingDays:0,holdingHistory:[...(m.holdingHistory||[]),hist]};
     }));
+    setResumeStep(null);
   }
 
   return (
@@ -373,19 +366,35 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
       {/* ─── 홀딩 배너 ─────────────────────────────────────── */}
       {member.holding&&(
-        <div style={{margin:"0 14px 9px",borderRadius:12,background:"#edf0f8",border:"1.5px solid #a0b0d0",padding:"12px 14px"}}>{/* ← 홀딩 카드: 배경/테두리색 */}
+        <div style={{margin:"0 14px 9px",borderRadius:12,background:"#edf0f8",border:"1.5px solid #a0b0d0",padding:"12px 14px"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:20,flexShrink:0}}>⏸️</span>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:700,color:"#3d5494"}}>홀딩 중</div>{/* ← 홀딩 타이틀 색상 */}
+              <div style={{fontSize:13,fontWeight:700,color:"#3d5494"}}>홀딩 중</div>
               <div style={{fontSize:11,color:"#5a5a7a",marginTop:2}}>{fmt(member.holding.startDate)} 시작 · {holdingElapsed(member.holding)}일 경과</div>
             </div>
             {member.memberType==="3month"?(
-              <button onClick={resumeHolding} style={{background:"#3d5494",color:"#fff",border:"none",borderRadius:9,padding:"7px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT,flexShrink:0}}>복귀하기</button>
+              <button onClick={()=>setResumeStep({resumeDate:TODAY_STR})} style={{background:"#3d5494",color:"#fff",border:"none",borderRadius:9,padding:"7px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT,flexShrink:0}}>복귀하기</button>
             ):(
               <span style={{fontSize:11,color:"#c97474",fontWeight:600,flexShrink:0}}>1개월권은 홀딩 불가</span>
             )}
           </div>
+          {/* 복귀일 선택 패널 */}
+          {resumeStep&&(
+            <div style={{marginTop:10,borderTop:"1px solid #c0ccdf",paddingTop:10}}>
+              <div style={{fontSize:12,color:"#5a5a7a",marginBottom:6}}>복귀할 날짜를 선택해 주세요</div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <input type="date" value={resumeStep.resumeDate} min={TODAY_STR}
+                  onChange={e=>setResumeStep({resumeDate:e.target.value})}
+                  style={{flex:1,border:"1px solid #a0b0d0",borderRadius:8,padding:"7px 10px",fontSize:13,fontFamily:FONT,background:"#fff"}}/>
+                <button onClick={()=>resumeHolding(resumeStep.resumeDate)}
+                  style={{background:"#4a7a5a",color:"#fff",border:"none",borderRadius:9,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>확인</button>
+                <button onClick={()=>setResumeStep(null)}
+                  style={{background:"none",border:"1px solid #a0b0d0",borderRadius:9,padding:"7px 10px",fontSize:12,color:"#7a7a9a",cursor:"pointer",fontFamily:FONT}}>취소</button>
+              </div>
+              <div style={{fontSize:11,color:"#7a7a9a",marginTop:5}}>홀딩 종료일: {resumeStep.resumeDate ? fmt(addDays(resumeStep.resumeDate,-1)) : "-"}</div>
+            </div>
+          )}
         </div>
       )}
 
