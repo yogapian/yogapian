@@ -62,7 +62,7 @@ export default function HoldingModal({member,onClose,onSave,closures=[]}){
               </div>
               <div style={{flex:1}}>
                 <label style={S.lbl}>복귀일</label>
-                <input style={S.inp} type="date" value={resumeDate} onChange={e=>setResumeDate(e.target.value)} min={start} max={TODAY_STR}/>
+                <input style={S.inp} type="date" value={resumeDate} onChange={e=>setResumeDate(e.target.value)} min={start}/>
               </div>
             </div>
             <div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#4a4a6a",marginBottom:6}}>
