@@ -97,8 +97,9 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     setShowForm(false);
   }
 
-  // 매출 자동 생성 헬퍼
+  // 매출 자동 생성 헬퍼 — 테스트 계정(요가피안)은 매출 제외
   function _addMemberSale(member, type){
+    if(member.name==="요가피안") return;
     const price=lookupPrice(member.memberType, member.total);
     if(!price) return;
     // 매출 날짜: 최초등록일(firstDate) 기준 — startDate는 수업 시작일로 결제일과 다를 수 있음
@@ -143,10 +144,9 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       if(b.memberId!==mid||!b.renewalPending)return b;
       return{...b,renewalPending:false,status:rf.includePending?b.status:"cancelled"};
     }));
-    // 갱신 매출 자동 등록
+    // 갱신 매출 자동 등록 — 테스트 계정(요가피안)은 제외
     const mem=members.find(m=>m.id===mid);
-    // 갱신 매출: 갱신 처리 당일(TODAY_STR) 기준 — startDate가 미래이면 이번 달 매출에 안 잡히는 버그 방지
-    if(mem){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Date.now(),date:TODAY_STR,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
+    if(mem&&mem.name!=="요가피안"){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Date.now(),date:TODAY_STR,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
     setRenewT(null);setDetailM(null);
   }
   // 미래 기수의 startDate/endDate를 null로 전환 (미정) — member 날짜·횟수는 이전 기수 기준으로 복원
