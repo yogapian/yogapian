@@ -379,22 +379,28 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
               <span style={{fontSize:11,color:"#c97474",fontWeight:600,flexShrink:0}}>1개월권은 홀딩 불가</span>
             )}
           </div>
-          {/* 복귀일 선택 패널 */}
-          {resumeStep&&(
-            <div style={{marginTop:10,borderTop:"1px solid #c0ccdf",paddingTop:10}}>
-              <div style={{fontSize:12,color:"#5a5a7a",marginBottom:6}}>복귀할 날짜를 선택해 주세요</div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <input type="date" value={resumeStep.resumeDate} min={TODAY_STR}
-                  onChange={e=>setResumeStep({resumeDate:e.target.value})}
-                  style={{flex:1,border:"1px solid #a0b0d0",borderRadius:8,padding:"7px 10px",fontSize:13,fontFamily:FONT,background:"#fff"}}/>
-                <button onClick={()=>resumeHolding(resumeStep.resumeDate)}
-                  style={{background:"#4a7a5a",color:"#fff",border:"none",borderRadius:9,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>확인</button>
-                <button onClick={()=>setResumeStep(null)}
-                  style={{background:"none",border:"1px solid #a0b0d0",borderRadius:9,padding:"7px 10px",fontSize:12,color:"#7a7a9a",cursor:"pointer",fontFamily:FONT}}>취소</button>
-              </div>
-              <div style={{fontSize:11,color:"#7a7a9a",marginTop:5}}>홀딩 종료일: {resumeStep.resumeDate ? fmt(addDays(resumeStep.resumeDate,-1)) : "-"}</div>
+        </div>
+      )}
+
+      {/* 복귀일 선택 모달 */}
+      {resumeStep&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setResumeStep(null)}>
+          <div style={{background:"#fff",borderRadius:16,padding:"24px 20px",width:"calc(100% - 40px)",maxWidth:320,boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:15,fontWeight:700,color:"#1e2e1e",marginBottom:16,textAlign:"center"}}>복귀일 선택</div>
+            <div style={{fontSize:12,color:"#9a8e80",marginBottom:8}}>복귀할 날짜를 선택해 주세요</div>
+            <input type="date" value={resumeStep.resumeDate} min={member.holding.startDate}
+              onChange={e=>setResumeStep({resumeDate:e.target.value})}
+              style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #a0b0d0",borderRadius:10,padding:"10px 12px",fontSize:15,fontFamily:FONT,background:"#f7f5f2",marginBottom:10}}/>
+            <div style={{fontSize:12,color:"#6a7090",marginBottom:16,textAlign:"center"}}>
+              홀딩 종료일: <b style={{color:"#3d5494"}}>{resumeStep.resumeDate ? fmt(addDays(resumeStep.resumeDate,-1)) : "-"}</b>
             </div>
-          )}
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setResumeStep(null)}
+                style={{flex:1,background:"#f5f3ef",color:"#9a8e80",border:"1px solid #e0dcd0",borderRadius:10,padding:"12px 0",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FONT}}>취소</button>
+              <button onClick={()=>resumeHolding(resumeStep.resumeDate)} disabled={!resumeStep.resumeDate}
+                style={{flex:2,background:"#4a7a5a",color:"#fff",border:"none",borderRadius:10,padding:"12px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>✅ 복귀 확인</button>
+            </div>
+          </div>
         </div>
       )}
 
