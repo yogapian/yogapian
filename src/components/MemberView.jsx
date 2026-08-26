@@ -205,16 +205,16 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
                 <span style={{color:"#c8c0b0",fontSize:13,marginTop:9}}>→</span>
                 <div style={{display:"flex",flexDirection:"column",gap:2}}>
                   <span style={S.dateLabel}>종료일</span>
-                  <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:4}}>
                     <span style={{...S.dateVal,color:isPendingPeriod?"#3d5494":displayDl<=7?"#9a5a10":"#3a4a3a"}}>{isPendingPeriod?"미정":fmt(displayEnd)}</span>
                     {!isPendingPeriod&&closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
-                    {/* 연장 버튼: 미정 기수에는 숨김 (3기 아직 미시작) */}
-                    {!isPendingPeriod&&(holdExt>0||(m.bonusDays||0)>0)&&(
-                      <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
-                        연장+{holdExt+(m.bonusDays||0)}일 {showHoldDetail?"▲":"▼"}
-                      </button>
-                    )}
                   </div>
+                  {/* 연장 버튼: 날짜 아래 독립 줄 — 레이아웃 영향 없음 */}
+                  {!isPendingPeriod&&(holdExt>0||(m.bonusDays||0)>0)&&(
+                    <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"2px 8px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT,marginTop:1,alignSelf:"flex-start"}}>
+                      연장+{holdExt+(m.bonusDays||0)}일 {showHoldDetail?"▲":"▼"}
+                    </button>
+                  )}
                 </div>
                 {isPendingPeriod
                   ?<div style={{...S.dChip,background:"#edf3ff",color:"#3d5494"}}>대기</div>

@@ -133,27 +133,27 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
             <span style={{color:"#c8c0b0",fontSize:13,marginTop:9,flexShrink:0}}>→</span>
             <div style={{display:"flex",flexDirection:"column",gap:2,flex:1,minWidth:0}}>
               <span style={S.dateLabel}>종료일</span>
-              <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"nowrap",overflow:"hidden"}}>
+              <div style={{display:"flex",alignItems:"center",gap:4}}>
                 {isPendingPeriod
                   ?<span style={{...S.dateVal,color:"#3d5494",fontWeight:700}}>미정</span>
                   :<>
                     <span style={{...S.dateVal,color:displayDl<=7?"#9a5a10":"#3a4a3a"}}>{fmt(displayEnd)}</span>
                     {closureExt>0&&<span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
-                    {/* 연장 뱃지: 홀딩+보너스 합산 — 누르면 세부 내역 펼침 */}
-                    {(holdExt>0||(m.bonusDays||0)>0)&&(
-                      <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 6px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT}}>
-                        연장+{holdExt+(m.bonusDays||0)}일 {showHoldDetail?"▲":"▼"}
-                      </button>
-                    )}
                   </>
                 }
               </div>
             </div>
             {isPendingPeriod
-              ?<div style={{...S.dChip,flexShrink:0,alignSelf:"flex-end",background:"#edf3ff",color:"#3d5494"}}>대기</div>
-              :<div style={{...S.dChip,flexShrink:0,alignSelf:"flex-end",background:displayDl<0?"#f5eeee":displayDl<=7?"#fdf3e3":"#eef4ee",color:displayDl<0?"#c97474":displayDl<=7?"#9a5a10":"#2e6e44"}}>{displayDl<0?`D+${Math.abs(displayDl)}`:displayDl===0?"D-Day":`D-${displayDl}`}</div>
+              ?<div style={{...S.dChip,flexShrink:0,alignSelf:"center",background:"#edf3ff",color:"#3d5494"}}>대기</div>
+              :<div style={{...S.dChip,flexShrink:0,alignSelf:"center",background:displayDl<0?"#f5eeee":displayDl<=7?"#fdf3e3":"#eef4ee",color:displayDl<0?"#c97474":displayDl<=7?"#9a5a10":"#2e6e44"}}>{displayDl<0?`D+${Math.abs(displayDl)}`:displayDl===0?"D-Day":`D-${displayDl}`}</div>
             }
           </div>
+          {/* 연장 버튼: 날짜 행 아래 독립 줄 — 날짜 행 레이아웃 영향 없음 */}
+          {!isPendingPeriod&&(holdExt>0||(m.bonusDays||0)>0)&&(
+            <button onClick={()=>setShowHoldDetail(v=>!v)} style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"2px 8px",fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONT,marginTop:2,alignSelf:"flex-start"}}>
+              연장+{holdExt+(m.bonusDays||0)}일 {showHoldDetail?"▲":"▼"}
+            </button>
+          )}
           {/* 연장 세부 내역 펼침: 홀딩 기간 / 보너스 기간 / 종료일→연장후 */}
           {showHoldDetail&&(holdExt>0||(m.bonusDays||0)>0)&&(()=>{
             const fd=s=>s?s.replace(/-/g,"."):""
