@@ -101,6 +101,14 @@ export default function PollTab({ members }) {
     setCloseComment("");
   }
 
+  async function handleHide(poll) {
+    const updated = await dbUpsertPoll({ ...poll, hidden: true });
+    if (updated) setPolls(p => p.map(x => x.id === updated.id ? updated : x));
+  }
+  async function handleUnhide(poll) {
+    const updated = await dbUpsertPoll({ ...poll, hidden: false });
+    if (updated) setPolls(p => p.map(x => x.id === updated.id ? updated : x));
+  }
   async function handleDelete(id) {
     await dbDeletePoll(id);
     setPolls(p => p.filter(x => x.id !== id));
@@ -168,6 +176,7 @@ export default function PollTab({ members }) {
                 <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: poll.status === "active" ? "#2a6e44" : "#bbb", color: "#fff" }}>
                   {poll.status === "active" ? "진행중" : "마감"}
                 </span>
+                {poll.hidden && <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "#f0e8e0", color: "#9a6050" }}>회원숨김</span>}
                 <span style={{ fontSize: 13, fontWeight: 700, flex: 1 }}>{poll.question}</span>
               </div>
               <div style={{ fontSize: 11, color: "#9a8e80", marginBottom: 8 }}>
@@ -189,6 +198,17 @@ export default function PollTab({ members }) {
                       마감
                     </button>
                   </>
+                )}
+                {poll.status === "closed" && (
+                  poll.hidden
+                    ? <button onClick={() => handleUnhide(poll)}
+                        style={{ fontSize: 11, background: "#f0f8f0", color: "#2a6e44", border: "1px solid #a0c8a0", borderRadius: 7, padding: "4px 10px", cursor: "pointer", fontFamily: FONT, fontWeight: 600 }}>
+                        회원 공개
+                      </button>
+                    : <button onClick={() => handleHide(poll)}
+                        style={{ fontSize: 11, background: "#f0e8e0", color: "#9a6050", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer", fontFamily: FONT, fontWeight: 600 }}>
+                        회원 숨김
+                      </button>
                 )}
                 <button onClick={() => handleDelete(poll.id)}
                   style={{ fontSize: 11, background: "#fff0f0", color: "#c97474", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer", fontFamily: FONT, fontWeight: 600 }}>

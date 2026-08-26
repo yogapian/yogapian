@@ -360,7 +360,7 @@ export async function saveScheduleTemplate(template) {
 
 // ─── 투표 (polls / poll_votes) ───────────────────────────────────────────────
 export function fromSnakePoll(r) {
-  return { id: r.id, question: r.question, options: r.options ?? [], status: r.status ?? "active", createdAt: r.created_at, closeComment: r.close_comment ?? "" };
+  return { id: r.id, question: r.question, options: r.options ?? [], status: r.status ?? "active", createdAt: r.created_at, closeComment: r.close_comment ?? "", hidden: r.hidden ?? false };
 }
 export function fromSnakePollVote(r) {
   return { id: r.id, pollId: r.poll_id, memberId: r.member_id, optionIndex: r.option_index, votedAt: r.voted_at };
@@ -370,7 +370,7 @@ export async function dbLoadPolls() {
   return (data || []).map(fromSnakePoll);
 }
 export async function dbUpsertPoll(p) {
-  const snake = { question: p.question, options: p.options ?? [], status: p.status ?? "active", close_comment: p.closeComment ?? "", updated_at: new Date().toISOString() };
+  const snake = { question: p.question, options: p.options ?? [], status: p.status ?? "active", close_comment: p.closeComment ?? "", hidden: p.hidden ?? false, updated_at: new Date().toISOString() };
   let res;
   if (p.id) {
     res = await _supabase.from("polls").update(snake).eq("id", p.id).select().single();
@@ -400,14 +400,14 @@ export async function dbDeletePollVote(pollId, memberId) {
   await _supabase.from("poll_votes").delete().eq("poll_id", pollId).eq("member_id", memberId);
 }
 export async function dbLoadActivePoll() {
-  const { data } = await _supabase.from("polls").select("*").eq("status", "active").order("id", { ascending: false }).limit(1).maybeSingle();
+  const { data } = await _supabase.from("polls").select("*").eq("status", "active").eq("hidden", false).order("id", { ascending: false }).limit(1).maybeSingle();
   return data ? fromSnakePoll(data) : null;
 }
-// 회원용: 진행중 투표가 없으면 가장 최근 마감 투표 결과 표시
+// 회원용: 숨김 제외, 진행중 없으면 최근 마감 결과 표시
 export async function dbLoadLatestPoll() {
   const active = await dbLoadActivePoll();
   if (active) return { poll: active, closed: false };
-  const { data } = await _supabase.from("polls").select("*").eq("status", "closed").order("id", { ascending: false }).limit(1).maybeSingle();
+  const { data } = await _supabase.from("polls").select("*").eq("status", "closed").eq("hidden", false).order("id", { ascending: false }).limit(1).maybeSingle();
   return data ? { poll: fromSnakePoll(data), closed: true } : null;
 }
 
