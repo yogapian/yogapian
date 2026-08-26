@@ -6,11 +6,16 @@ import { useClosures } from "../context.js";
 import S from "../styles.js";
 import { TODAY_STR } from "../constants.js";
 
-export default function RenewalModal({member,onClose,onSave}){
+export default function RenewalModal({member,onClose,onSave,pendingPeriod=null}){
   const closures=useClosures();
-  // 열릴 때 memberType에 맞게 종료일 미리 계산 — endDate:""이면 갱신 버튼 비활성화되는 문제 방지
-  const [pending,setPending]=useState(false); // 시작일 미정 여부
+  // pendingPeriod: 기존 미정 기수 확정 모드 — 해당 기수 데이터 pre-fill
+  const isConfirm=!!pendingPeriod;
+  const [pending,setPending]=useState(false);
   const [form,setForm]=useState(()=>{
+    if(isConfirm){
+      const initEnd=pendingPeriod.memberType==="3month"?calc3MonthEnd(TODAY_STR,closures):endOfMonth(TODAY_STR);
+      return{startDate:TODAY_STR,endDate:initEnd,total:pendingPeriod.total||24,memberType:pendingPeriod.memberType||member.memberType,payment:pendingPeriod.payment||"카드",includePending:pendingPeriod.includePending??true,confirmPendingId:pendingPeriod.id};
+    }
     const initEnd=member.memberType==="3month"?calc3MonthEnd(TODAY_STR,closures):endOfMonth(TODAY_STR);
     return{startDate:TODAY_STR,endDate:initEnd,total:member.memberType==="3month"?24:10,memberType:member.memberType,payment:"카드",includePending:true};
   });
@@ -26,7 +31,7 @@ export default function RenewalModal({member,onClose,onSave}){
   return(
     <div style={S.overlay} onClick={onClose}>
       <div style={{...S.modal,maxWidth:420}} onClick={e=>e.stopPropagation()}>
-        <div style={S.modalHead}><span>🔄</span><div><div style={S.modalTitle}>회원권 갱신</div><div style={{fontSize:12,color:"#9a8e80"}}>{member.name}</div></div></div>
+        <div style={S.modalHead}><span>{isConfirm?"📅":"🔄"}</span><div><div style={S.modalTitle}>{isConfirm?"미정 기수 시작일 확정":"회원권 갱신"}</div><div style={{fontSize:12,color:"#9a8e80"}}>{member.name}</div></div></div>
         {/* 시작일 미정 토글 — 잔여 회차 소진 시 다음 출석일이 자동으로 시작일이 됨 */}
         <div style={{...S.fg,background:pending?"#edf3ff":"#f7f5f2",borderRadius:9,padding:"10px 12px",border:`1px solid ${pending?"#7a9ad4":"#e0d8cc"}`,marginBottom:4}}>
           <label style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer"}}>
@@ -62,7 +67,7 @@ export default function RenewalModal({member,onClose,onSave}){
             <span style={{fontSize:11,color:"#9a8e80"}}>— 임시 예약을 이번 회원권에 포함</span>
           </label>
         </div>
-        <div style={S.modalBtns}><button style={S.cancelBtn} onClick={onClose}>취소</button><button style={{...S.saveBtn,opacity:(pending||form.endDate)&&form.total?1:0.5}} disabled={!((pending||form.endDate)&&form.total)} onClick={()=>onSave(form)}>갱신</button></div>
+        <div style={S.modalBtns}><button style={S.cancelBtn} onClick={onClose}>취소</button><button style={{...S.saveBtn,opacity:(pending||form.endDate)&&form.total?1:0.5}} disabled={!((pending||form.endDate)&&form.total)} onClick={()=>onSave(form)}>{isConfirm?"확정":"갱신"}</button></div>
       </div>
     </div>
   );

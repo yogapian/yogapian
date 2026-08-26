@@ -126,8 +126,14 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
 
   function applyRenewal(mid,rf){
     const isPending=rf.startDate===null; // 미정 갱신 여부
+    const confirmPendingId=rf.confirmPendingId||null; // 미정 기수 확정 모드
     setMembers(p=>p.map(m=>{if(m.id!==mid)return m;
       const rh=m.renewalHistory||[];
+      if(confirmPendingId){
+        // 미정 기수 확정: 해당 id 기수의 startDate/endDate 업데이트 후 member 날짜도 갱신
+        const updRH=rh.map(r=>r.id===confirmPendingId?{...r,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,payment:rf.payment,includePending:rf.includePending}:r);
+        return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,bonusDays:0,holding:null,manualStatus:null,isNew:false,noshowPenalties:0,renewalHistory:updRH};
+      }
       if(isPending){
         // 미정 갱신: member 날짜·횟수 필드 유지, renewalHistory에만 추가
         return{...m,renewalHistory:[...rh,{id:(rh.length||0)+1,...rf}]};
@@ -320,7 +326,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
       </>)}
 
       {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(changes)=>applyAdjust(detailM.id,changes)} onSetPending={()=>applySetPending(detailM.id)} onPaymentPending={()=>applyPaymentPending(detailM.id)} onEdit={()=>{const m=members.find(x=>x.id===detailM.id)||detailM;setDetailM(null);openEdit(m);}} onDel={()=>{const id=detailM.id;setDetailM(null);setDelT(id);}}/>}
-      {renewT&&<RenewalModal member={members.find(m=>m.id===renewT)} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)}/>}
+      {renewT&&(()=>{const _rm=members.find(m=>m.id===renewT);const _pp=(_rm?.renewalHistory||[]).find(r=>r.startDate===null);return<RenewalModal member={_rm} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)} pendingPeriod={_pp||null}/>;})()}
       {holdT&&<HoldingModal member={members.find(m=>m.id===holdT)} onClose={()=>setHoldT(null)} onSave={hd=>applyHolding(holdT,hd)}/>}
       {showNotices&&<NoticeManager notices={notices} setNotices={setNotices} members={members} bookings={bookings} onClose={()=>setShowNotices(false)}/>}
 
