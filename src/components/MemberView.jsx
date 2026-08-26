@@ -53,7 +53,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   })();
   const displayDl = displayEnd ? Math.ceil((parseLocal(displayEnd)-parseLocal(TODAY_STR))/86400000) : dl;
   const displayStart = isPendingPeriod ? null : (_ap?.startDate || m.startDate);
-  // 미래에 갱신 등록된 기수가 있으면 "다음기수↗" 표시
+  // 미래에 갱신 등록된 기수가 있으면 🔄 이모지 표시
   const hasNextPeriod = !isPendingPeriod && (m.renewalHistory||[]).some(r=>r.startDate>TODAY_STR||r.startDate===null);
 
   const [showDetail, setShowDetail] = useState(false);
@@ -164,7 +164,8 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
               <span style={S.memberName}>{m.name}</span>
               {m.isNew && <span style={{fontSize:10,background:"#fef3c7",color:"#92610a",borderRadius:20,padding:"2px 7px",fontWeight:700}}>N</span>}
               {m.holding && <span style={{fontSize:13,lineHeight:1,flexShrink:0}}>⏸️</span>}
-              {hasNextPeriod && <span style={{fontSize:9,background:"#e8edf8",color:"#3d5494",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>다음기수↗</span>}
+              {/* "다음기수↗" 텍스트가 길어 이모지로 축약 */}
+              {hasNextPeriod && <span title="다음기수 등록됨" style={{fontSize:11,background:"#e8edf8",borderRadius:4,padding:"1px 4px",flexShrink:0}}>🔄</span>}
               {/* 현재 기수 노쇼 횟수 */}
               {noshowCnt>0&&<span style={{fontSize:10,background:"#fff0f0",color:"#c97474",borderRadius:4,padding:"1px 6px",fontWeight:700,flexShrink:0}}>🚫 {noshowCnt}</span>}
             </div>

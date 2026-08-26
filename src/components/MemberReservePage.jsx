@@ -180,16 +180,19 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const [pollOpen, setPollOpen] = useState(false);
   const [pollSelected, setPollSelected] = useState(null);
   const [voting, setVoting] = useState(false);
+  const [pollPopup, setPollPopup] = useState(false); // 로그인 시 미투표 안내 팝업
 
   useEffect(() => {
     dbLoadLatestPoll().then(res => {
       if (!res) return;
+      // 테스트 모드 투표는 요가피안 계정만 표시
+      if (res.poll.testMode && member.name !== "요가피안") return;
       setActivePoll(res.poll);
       setPollClosed(res.closed);
       if (res.closed) {
         dbLoadPollVotes(res.poll.id).then(v => setPollVotes(v));
       } else {
-        dbGetMyPollVote(res.poll.id, member.id).then(v => setMyVote(v));
+        dbGetMyPollVote(res.poll.id, member.id).then(v => { setMyVote(v); if (v === null) setPollPopup(true); });
       }
     });
   }, [member.id]);
@@ -784,6 +787,21 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
             <div style={{display:"flex",gap:8}}>
               <button style={{...S.cancelBtn,flex:1}} onClick={()=>{setRenewPopup(null);setPendingSlot(null);}}>취소</button>
               <button style={{...S.saveBtn,flex:1,background:"#c97474"}} onClick={()=>doReserve(pendingSlot,false,true)}>임시 예약</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 로그인 시 미투표 안내 팝업 ─────────────────────────── */}
+      {pollPopup && activePoll && (
+        <div style={{...S.overlay,alignItems:"center"}} onClick={()=>setPollPopup(false)}>
+          <div style={{...S.modal,maxWidth:320,textAlign:"center",borderRadius:16}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:34,marginBottom:10}}>🗳️</div>
+            <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:8}}>투표가 등록되었습니다</div>
+            <div style={{fontSize:13,color:"#7a6e60",lineHeight:1.8,marginBottom:20}}>{activePoll.question}<br/><span style={{color:"#9a8e80",fontSize:12}}>투표해주세요.</span></div>
+            <div style={{display:"flex",gap:8}}>
+              <button style={{...S.cancelBtn,flex:1}} onClick={()=>setPollPopup(false)}>나중에</button>
+              <button style={{...S.saveBtn,flex:1}} onClick={()=>{setPollPopup(false);setPollOpen(true);}}>투표하기</button>
             </div>
           </div>
         </div>
