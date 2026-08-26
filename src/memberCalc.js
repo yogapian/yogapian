@@ -133,9 +133,16 @@ export function getActivePeriod(member, targetDate, bookings){
   // 스필오버 포함 활성 기수 확보
   const result=_effectivePeriod(member.id,targetDate,bookings,[member]);
   const spillover=result.rh?.[result.periodIndex];
-  // 1) 오늘을 포함하는 기수 — 소진 시 스필오버 결과 우선
+  // 1) 오늘을 포함하는 기수 — 홀딩 연장 적용한 실제 종료일로 비교 (소진 시 스필오버 우선)
   for(let i=rh.length-1;i>=0;i--){
-    if(rh[i].startDate&&rh[i].endDate&&targetDate>=rh[i].startDate&&targetDate<=rh[i].endDate){
+    if(!rh[i].startDate||!rh[i].endDate) continue;
+    if(targetDate<rh[i].startDate) continue;
+    // 이 기수에 속하는 홀딩 연장일수 (endDate를 실제 종료일로 보정)
+    const holdDays=(member.holdingHistory||[])
+      .filter(h=>h.startDate&&h.endDate&&h.startDate>=rh[i].startDate&&h.startDate<=rh[i].endDate)
+      .reduce((sum,h)=>sum+Math.max(0,Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000)),0);
+    const effEnd=holdDays>0?addDays(rh[i].endDate,holdDays):rh[i].endDate;
+    if(targetDate<=effEnd){
       return spillover||rh[i];
     }
   }
