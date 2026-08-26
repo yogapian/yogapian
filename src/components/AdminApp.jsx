@@ -4,7 +4,7 @@ import { fmt, fmtWithDow, parseLocal, addDays, endOfNextMonth, endOfMonth, useCl
 import { getDisplayStatus, calc3MonthEnd } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import { dbLoadNotifLog } from "../db.js";
-import PollModal from "./PollModal.jsx";
+import PollTab from "./PollTab.jsx";
 import S from "../styles.js";
 import AttendanceBoard from "./AttendanceBoard.jsx";
 import MemberCard from "./MemberCard.jsx";
@@ -28,7 +28,6 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   const [holdT,setHoldT]=useState(null);
   const [delT,setDelT]=useState(null);
   const [showNotices,setShowNotices]=useState(false);
-  const [showPolls,setShowPolls]=useState(false);
   const [showPendingPopup,setShowPendingPopup]=useState(true);
   const [onedayConfirm,setOnedayConfirm]=useState(null); // 원데이→정규 연동 확인 팝업
   const [notifHistory,setNotifHistory]=useState(null); // null=미로드, []=로드완료
@@ -262,7 +261,6 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
         </div>
         {/* 헤더 우측: 📢 공지 + 로그아웃 */}
         <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-          <button style={{...S.navBtn,fontSize:11,padding:"6px 9px",color:"#3d5494",background:"#edf0f8",border:"1px solid #b0c4e8",fontWeight:600}} onClick={()=>setShowPolls(true)}>🗳️ 투표</button>
           <button style={{...S.navBtn,fontSize:11,padding:"6px 9px",color:"#92610a",background:"#fef3c7",border:"1px solid #e8c44a",fontWeight:600}} onClick={()=>setShowNotices(true)}>📢 공지</button>
           <button onClick={onLogout} style={{background:"#f0ece4",border:"none",borderRadius:8,padding:"7px 10px",fontSize:11,color:"#7a6e60",cursor:"pointer",fontFamily:FONT}}>로그아웃</button>
         </div>
@@ -271,7 +269,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20,flexWrap:"wrap"}}>
         {/* ─── 탭 전환 (출석/회원관리) ─── */}
         <div style={{display:"flex",gap:0,background:"#e8e4dc",borderRadius:11,padding:3}}>{/* ← 탭바 배경색/둥글기 */}
-          {[["attendance","📋 출석"],["members","🧘🏻 회원관리"],["sales","💰 매출"],["notiflog","🔔 알림이력"]].map(([k,l])=>(
+          {[["attendance","📋 출석"],["members","🧘🏻 회원관리"],["sales","💰 매출"],["polls","🗳️ 투표"],["notiflog","🔔 알림이력"]].map(([k,l])=>(
             <button key={k} onClick={()=>{setTab(k);if(k==="notiflog"){onMarkNotifRead&&onMarkNotifRead();if(notifHistory===null){setNotifHistoryLoading(true);dbLoadNotifLog(300).then(d=>{setNotifHistory(d);setNotifHistoryLoading(false)});}}}} style={{border:"none",borderRadius:9,padding:"9px 14px",fontSize:13,fontWeight:tab===k?700:400,background:tab===k?"#fff":"transparent",color:tab===k?"#1e2e1e":"#9a8e80",boxShadow:tab===k?"0 1px 5px rgba(60,50,40,.12)":"none",cursor:"pointer",fontFamily:FONT,whiteSpace:"nowrap",position:"relative"}}>
               {l}
               {k==="notiflog"&&adminNotifUnread>0&&(
@@ -339,7 +337,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
       {renewT&&(()=>{const _rm=members.find(m=>m.id===renewT);const _pp=(_rm?.renewalHistory||[]).find(r=>!r.startDate);return<RenewalModal member={_rm} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)} pendingPeriod={_pp||null}/>;})()}
       {holdT&&<HoldingModal member={members.find(m=>m.id===holdT)} onClose={()=>setHoldT(null)} onSave={hd=>applyHolding(holdT,hd)}/>}
       {showNotices&&<NoticeManager notices={notices} setNotices={setNotices} members={members} bookings={bookings} onClose={()=>setShowNotices(false)}/>}
-      {showPolls&&<PollModal members={members} onClose={()=>setShowPolls(false)}/>}
+      {tab==="polls"&&<PollTab members={members}/>}
 
       {showForm&&(
         <div style={S.overlay} onClick={()=>setShowForm(false)}>

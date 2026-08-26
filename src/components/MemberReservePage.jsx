@@ -17,7 +17,7 @@ import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, DOW_KO, KR_HOLIDAYS } from "../c
 import { parseLocal, fmt, fmtWithDow, addDays, toDateStr } from "../utils.js";
 import { calcDL, getClosureExtDays, usedAsOf, activePeriodTotal, getSlotCapacity, holdingElapsed, getActivePeriod } from "../memberCalc.js";
 import { useClosures } from "../context.js";
-import { dbLoadActivePoll, dbGetMyPollVote, dbInsertPollVote } from "../db.js";
+import { dbLoadActivePoll, dbGetMyPollVote, dbInsertPollVote, dbDeletePollVote } from "../db.js";
 import S from "../styles.js";
 
 // 슬롯 기본 시간 (수업설정으로 변경된 경우와 비교해 취소선 표시에 사용)
@@ -173,11 +173,11 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const [pendingSlot, setPendingSlot] = useState(null);     // 팝업 확인 후 예약할 slotKey 임시 저장
   const [renewPopup, setRenewPopup] = useState(null); // "last1"=마지막1회 / "needRenewal"=잔여0/만료
   const [resumeStep, setResumeStep] = useState(null); // 복귀일 선택 단계: null 또는 {resumeDate: string}
-  const [activePoll, setActivePoll] = useState(null); // 진행 중인 투표
-  const [myVote, setMyVote] = useState(undefined);    // null=미투표, number=선택한 보기 인덱스
+  const [activePoll, setActivePoll] = useState(null);
+  const [myVote, setMyVote] = useState(undefined); // undefined=로딩중, null=미투표, number=선택인덱스
+  const [pollOpen, setPollOpen] = useState(false);  // 접기/펼치기
   const [voting, setVoting] = useState(false);
 
-  // 활성 투표 + 내 투표 여부 로드
   useEffect(() => {
     dbLoadActivePoll().then(poll => {
       if (!poll) return;
@@ -187,10 +187,11 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   }, [member.id]);
 
   async function handleVote(optionIndex) {
-    if (!activePoll || myVote !== null || voting) return;
+    if (!activePoll || voting) return;
     setVoting(true);
+    if (myVote !== null) await dbDeletePollVote(activePoll.id, member.id);
     const ok = await dbInsertPollVote(activePoll.id, member.id, optionIndex);
-    if (ok) setMyVote(optionIndex);
+    if (ok) { setMyVote(optionIndex); setPollOpen(false); }
     setVoting(false);
   }
 
@@ -385,23 +386,31 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     // ─── 페이지 최외곽 컨테이너 ───
     <div style={{maxWidth:520,margin:"0 auto",width:"100%",fontFamily:FONT,paddingBottom:80}}>
 
-      {/* ─── 투표 배너 ─────────────────────────────────────── */}
-      {activePoll && myVote === undefined ? null : activePoll && (
-        <div style={{margin:"0 14px 10px",borderRadius:12,background:"#f0f8f0",border:"1.5px solid #a0c8a0",padding:"13px 14px"}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#2a6e44",marginBottom:6}}>🗳️ 투표에 참여해주세요</div>
-          <div style={{fontSize:14,fontWeight:700,color:"#1e2e1e",marginBottom:10}}>{activePoll.question}</div>
-          {myVote !== null ? (
-            <div style={{fontSize:13,color:"#2a6e44",fontWeight:600}}>
-              ✅ 투표 완료 — <span style={{color:"#3d3028"}}>{activePoll.options[myVote]}</span> 선택하셨습니다.
-            </div>
-          ) : (
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {activePoll.options.map((opt, i) => (
-                <button key={i} onClick={() => handleVote(i)} disabled={voting}
-                  style={{textAlign:"left",padding:"9px 13px",borderRadius:9,border:"1.5px solid #a0c8a0",background:"#fff",fontSize:13,fontWeight:600,color:"#2e3e2e",cursor:"pointer",fontFamily:FONT,opacity:voting?0.6:1}}>
-                  {opt}
-                </button>
-              ))}
+      {/* ─── 투표 배너 (공지 스타일 접기/펼치기) ───────────── */}
+      {activePoll && myVote !== undefined && (
+        <div style={{margin:"0 14px 9px",borderRadius:12,border:"1.5px solid #a0c8a0",overflow:"hidden"}}>
+          {/* 헤더 행 — 항상 표시 */}
+          <div onClick={()=>setPollOpen(v=>!v)}
+            style={{display:"flex",alignItems:"center",gap:8,padding:"10px 13px",background:"#f0f8f0",cursor:"pointer",userSelect:"none"}}>
+            <span style={{fontSize:13}}>🗳️</span>
+            <span style={{flex:1,fontSize:13,fontWeight:700,color:"#2a6e44"}}>
+              {myVote !== null ? `투표 완료 · ${activePoll.options[myVote]}` : "투표에 참여해주세요"}
+            </span>
+            {myVote !== null && <span style={{fontSize:10,color:"#2a6e44",fontWeight:600,background:"#d4ead4",borderRadius:4,padding:"1px 6px"}}>변경 가능</span>}
+            <span style={{fontSize:12,color:"#9a8e80"}}>{pollOpen ? "▲" : "▼"}</span>
+          </div>
+          {/* 펼쳐진 내용 */}
+          {pollOpen && (
+            <div style={{padding:"12px 13px",background:"#fff",borderTop:"1px solid #d4ead4"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#1e2e1e",marginBottom:10}}>{activePoll.question}</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {activePoll.options.map((opt, i) => (
+                  <button key={i} onClick={()=>handleVote(i)} disabled={voting}
+                    style={{textAlign:"left",padding:"9px 13px",borderRadius:9,border:`1.5px solid ${myVote===i?"#2a6e44":"#a0c8a0"}`,background:myVote===i?"#f0f8f0":"#fff",fontSize:13,fontWeight:myVote===i?700:500,color:"#2e3e2e",cursor:"pointer",fontFamily:FONT,opacity:voting?0.6:1}}>
+                    {myVote===i?"✅ ":""}{opt}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

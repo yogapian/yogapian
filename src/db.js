@@ -396,6 +396,9 @@ export async function dbGetMyPollVote(pollId, memberId) {
   const { data } = await _supabase.from("poll_votes").select("option_index").eq("poll_id", pollId).eq("member_id", memberId).maybeSingle();
   return data ? data.option_index : null;
 }
+export async function dbDeletePollVote(pollId, memberId) {
+  await _supabase.from("poll_votes").delete().eq("poll_id", pollId).eq("member_id", memberId);
+}
 export async function dbLoadActivePoll() {
   const { data } = await _supabase.from("polls").select("*").eq("status", "active").order("id", { ascending: false }).limit(1).maybeSingle();
   return data ? fromSnakePoll(data) : null;
