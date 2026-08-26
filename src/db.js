@@ -371,10 +371,14 @@ export async function dbLoadPolls() {
 }
 export async function dbUpsertPoll(p) {
   const snake = { question: p.question, options: p.options ?? [], status: p.status ?? "active", updated_at: new Date().toISOString() };
-  if (p.id) snake.id = p.id;
-  const { data, error } = await _supabase.from("polls").upsert(snake).select().single();
-  if (error) { console.error("poll upsert:", error); return null; }
-  return fromSnakePoll(data);
+  let res;
+  if (p.id) {
+    res = await _supabase.from("polls").update(snake).eq("id", p.id).select().single();
+  } else {
+    res = await _supabase.from("polls").insert(snake).select().single();
+  }
+  if (res.error) { console.error("poll save:", res.error); return null; }
+  return fromSnakePoll(res.data);
 }
 export async function dbDeletePoll(id) {
   await _supabase.from("polls").delete().eq("id", id);
