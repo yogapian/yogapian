@@ -185,8 +185,6 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   useEffect(() => {
     dbLoadLatestPoll().then(res => {
       if (!res) return;
-      // 테스트 모드 투표는 요가피안 계정만 표시
-      if (res.poll.testMode && member.name !== "요가피안") return;
       setActivePoll(res.poll);
       setPollClosed(res.closed);
       if (res.closed) {
