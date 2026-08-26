@@ -11,6 +11,7 @@ export default function RenewalModal({member,onClose,onSave,pendingPeriod=null})
   // pendingPeriod: 기존 미정 기수 확정 모드 — 해당 기수 데이터 pre-fill
   const isConfirm=!!pendingPeriod;
   const [pending,setPending]=useState(false);
+  const [saving,setSaving]=useState(false); // 중복 클릭 시 매출 이중 생성 방지 (장미순 건 원인)
   const [form,setForm]=useState(()=>{
     if(isConfirm){
       const initEnd=pendingPeriod.memberType==="3month"?calc3MonthEnd(TODAY_STR,closures):endOfMonth(TODAY_STR);
@@ -67,7 +68,7 @@ export default function RenewalModal({member,onClose,onSave,pendingPeriod=null})
             <span style={{fontSize:11,color:"#9a8e80"}}>— 임시 예약을 이번 회원권에 포함</span>
           </label>
         </div>
-        <div style={S.modalBtns}><button style={S.cancelBtn} onClick={onClose}>취소</button><button style={{...S.saveBtn,opacity:(pending||form.endDate)&&form.total?1:0.5}} disabled={!((pending||form.endDate)&&form.total)} onClick={()=>onSave(form)}>{isConfirm?"확정":"갱신"}</button></div>
+        <div style={S.modalBtns}><button style={S.cancelBtn} onClick={onClose}>취소</button><button style={{...S.saveBtn,opacity:(pending||form.endDate)&&form.total&&!saving?1:0.5}} disabled={!((pending||form.endDate)&&form.total)||saving} onClick={()=>{if(saving)return;setSaving(true);onSave(form);}}>{isConfirm?"확정":"갱신"}</button></div>
       </div>
     </div>
   );
