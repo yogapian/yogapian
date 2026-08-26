@@ -113,9 +113,17 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
           </div>
           <div style={{maxHeight:280,overflowY:"auto"}}>
             {reversedHistory.map((r, i) => {
-              // 오늘 날짜를 포함하는 기수가 있으면 그 기수만 현재 — 없으면 마지막(i===0) 폴백
-              const someInRange = reversedHistory.some(x => x.startDate && x.endDate && TODAY_STR >= x.startDate && TODAY_STR <= x.endDate);
-              const isInRange   = r.startDate && r.endDate && TODAY_STR >= r.startDate && TODAY_STR <= r.endDate;
+              // 기수별 홀딩 연장 적용 실제 종료일 계산 헬퍼 (홀딩 연장 중 종료일 초과 방지)
+              const rhEffEnd = (x) => {
+                if(!x.startDate||!x.endDate) return x.endDate;
+                const hDays=(member.holdingHistory||[])
+                  .filter(h=>h.startDate&&h.endDate&&h.startDate>=x.startDate&&h.startDate<=x.endDate)
+                  .reduce((sum,h)=>sum+Math.max(0,Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000)),0);
+                return hDays>0?addDays(x.endDate,hDays):x.endDate;
+              };
+              // 오늘 날짜를 포함하는 기수가 있으면 그 기수만 현재 — 홀딩 연장 종료일 기준 비교
+              const someInRange = reversedHistory.some(x => x.startDate && x.endDate && TODAY_STR >= x.startDate && TODAY_STR <= rhEffEnd(x));
+              const isInRange   = r.startDate && r.endDate && TODAY_STR >= r.startDate && TODAY_STR <= rhEffEnd(r);
               const isCurrent   = isActiveStatus && (someInRange ? isInRange : i === 0);
               const isOpenH = expandedRH === r.id;
               // holdInPeriod를 먼저 계산 — 과거 기수의 holdExt·displayEnd·precs 필터에 모두 필요
