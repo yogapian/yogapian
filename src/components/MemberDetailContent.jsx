@@ -12,7 +12,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, fmtWithDow, addDays, parseLocal } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, holdingElapsed, periodRecs, currentRecs, totalHoldingCalendarDays } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, holdingElapsed, periodRecs, currentRecs, totalHoldingCalendarDays, getActivePeriod } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 
 export default function MemberDetailContent({ member, bookings, onClose, showNickname=false, adjSection=null, extraInfoRows=null }) {
@@ -21,20 +21,28 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
 
   const status = getDisplayStatus(member, closures, bookings);
   const sc = SC[status] || SC["on"];
+  // 활성 기수 기준 날짜 계산 — 미래 기수가 미리 등록된 경우 m.startDate/endDate가 미래 기수 값이므로 보정
+  const _ap = getActivePeriod(member, TODAY_STR, bookings);
+  const apStart = _ap?.startDate || member.startDate;
+  const apEndBase = _ap?.endDate || member.endDate;
+  const apHoldExt = apStart ? totalHoldingCalendarDays(member, apStart) : 0;
+  const apEffEnd = apHoldExt > 0 ? addDays(apEndBase, apHoldExt) : apEndBase;
+  const apDl = apEffEnd ? Math.ceil((parseLocal(apEffEnd) - parseLocal(TODAY_STR)) / 86400000) : 0;
   const end = effEnd(member, closures);
-  const dl = calcDL(member, closures);
-  const expired = dl < 0;
+  const dl = apDl; // 현재 기수 기준 D-day
+  const expired = apDl < 0 && !member.holding;
   const dispUsed = usedAsOf(member.id, TODAY_STR, bookings, [member]);
   const dispPeriodTotal = activePeriodTotal(member, TODAY_STR, bookings, [member]); // 유효 기수 총 횟수 (이월 배분 포함)
-  // 노쇼 패널티 계산 (MemberCard와 동일 로직)
-  const _noshowCnt = bookings.filter(b=>b.memberId===member.id&&b.status==="cancelled"&&b.cancelledBy==="noshow"&&b.date>=(member.startDate||"")&&b.date<=(member.endDate||"9999")).length;
+  // 노쇼 패널티 계산 — 현재 활성 기수 기간 기준
+  const _noshowCnt = bookings.filter(b=>b.memberId===member.id&&b.status==="cancelled"&&b.cancelledBy==="noshow"&&b.date>=(apStart||"")&&b.date<=(apEffEnd||"9999")).length;
   const _threshold = member.memberType==="3month"?4:2;
   const _expectedCrossings = Math.floor(_noshowCnt/_threshold);
   const _acked = member.noshowThresholdAck||0;
   const noshowPenalties = _acked>=_expectedCrossings?(member.noshowPenalties||0):Math.max(member.noshowPenalties||0,_expectedCrossings);
   const dispRem = expired ? 0 : Math.max(0, dispPeriodTotal - dispUsed - noshowPenalties);
   const tc = TYPE_CFG[member.memberType] || TYPE_CFG["1month"];
-  const curRecs = currentRecs(member, bookings);
+  // 이번기수출석: 활성 기수 시작일 기준 필터 (m.startDate가 미래 기수면 출석 누락 방지)
+  const curRecs = bookings.filter(b=>b.memberId===member.id&&b.status==="attended"&&b.date>=(apStart||"")&&(!apEffEnd||b.date<=apEffEnd)).sort((a,b)=>b.date.localeCompare(a.date));
   const isActiveStatus = status === "on" || status === "hold" || status === "renew";
   const reversedHistory = [...(member.renewalHistory || [])].reverse();
 
@@ -85,8 +93,8 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
       <div style={{background:"#f5f5f5",borderRadius:9,padding:"10px 12px",marginBottom:12,fontSize:12}}>
         {[
           ["최초등록", fmt(member.firstDate||member.startDate), "#7a6e60"],
-          ["현재시작", fmt(member.startDate), "#7a6e60"],
-          ["종료일",   fmt(end), dl<0?"#c97474":dl<=7?"#9a5a10":"#3a4a3a"]
+          ["현재시작", fmt(apStart), "#7a6e60"],
+          ["종료일",   fmt(apEffEnd), dl<0?"#c97474":dl<=7?"#9a5a10":"#3a4a3a"]
         ].map(([l,v,c]) => (
           <div key={l} style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
             <span style={{color:"#9a8e80"}}>{l}</span>
