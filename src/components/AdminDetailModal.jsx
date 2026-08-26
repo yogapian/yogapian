@@ -94,8 +94,12 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
         </div>
       )}
       {/* 갱신 / 홀딩 버튼 */}
+      {/* 미정 기수(startDate:null)가 있으면 갱신 대신 시작일 확정 버튼 표시 */}
       <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
-        <button onClick={onRenew} style={{...S.saveBtn,fontSize:12,padding:"7px 12px"}}>🔄 갱신</button>
+        {(member.renewalHistory||[]).some(r=>r.startDate===null)
+          ? <button onClick={onRenew} style={{...S.saveBtn,fontSize:12,padding:"7px 12px",background:"#3d5494"}}>📅 기수 시작일 확정</button>
+          : <button onClick={onRenew} style={{...S.saveBtn,fontSize:12,padding:"7px 12px"}}>🔄 갱신</button>
+        }
         {member.memberType==="3month" && (
           <button onClick={onHolding}
             style={{background:"#edf0f8",color:"#3d5494",border:"none",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
