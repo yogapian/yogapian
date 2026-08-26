@@ -403,6 +403,13 @@ export async function dbLoadActivePoll() {
   const { data } = await _supabase.from("polls").select("*").eq("status", "active").order("id", { ascending: false }).limit(1).maybeSingle();
   return data ? fromSnakePoll(data) : null;
 }
+// 회원용: 진행중 투표가 없으면 가장 최근 마감 투표 결과 표시
+export async function dbLoadLatestPoll() {
+  const active = await dbLoadActivePoll();
+  if (active) return { poll: active, closed: false };
+  const { data } = await _supabase.from("polls").select("*").eq("status", "closed").order("id", { ascending: false }).limit(1).maybeSingle();
+  return data ? { poll: fromSnakePoll(data), closed: true } : null;
+}
 
 // 자동로그인 — DB 공유 버그 수정: localStorage 사용 (기기별 독립 저장)
 export async function saveAutoLogin(memberId) {
