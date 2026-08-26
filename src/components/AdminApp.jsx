@@ -131,7 +131,14 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       const rh=m.renewalHistory||[];
       if(confirmPendingId){
         // 미정 기수 확정: 해당 id 기수의 startDate/endDate 업데이트 후 member 날짜도 갱신
-        const updRH=rh.map(r=>r.id===confirmPendingId?{...r,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,payment:rf.payment,includePending:rf.includePending}:r);
+        const confirmIdx=rh.findIndex(r=>r.id===confirmPendingId);
+        const prevEnd=addDays(rf.startDate,-1);
+        const updRH=rh.map((r,i)=>{
+          if(r.id===confirmPendingId) return{...r,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,payment:rf.payment,includePending:rf.includePending};
+          // 이전 기수 raw endDate가 새 기수 시작일 이후면 당기기
+          if(i===confirmIdx-1&&r.endDate&&r.endDate>=rf.startDate) return{...r,endDate:prevEnd};
+          return r;
+        });
         return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,bonusDays:0,holding:null,manualStatus:null,isNew:false,noshowPenalties:0,renewalHistory:updRH};
       }
       if(isPending){

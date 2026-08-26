@@ -121,17 +121,21 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
           </div>
           <div style={{maxHeight:280,overflowY:"auto"}}>
             {reversedHistory.map((r, i) => {
-              // 기수별 홀딩 연장 적용 실제 종료일 계산 헬퍼 (홀딩 연장 중 종료일 초과 방지)
-              const rhEffEnd = (x) => {
+              // reversedHistory는 최신순 — i-1이 바로 다음(더 최신) 기수
+              const nextStart = i > 0 ? reversedHistory[i - 1].startDate : null;
+              // 기수별 홀딩 연장 적용 실제 종료일 계산 — 다음 기수 시작일 전날로 캡핑
+              const rhEffEnd = (x, nextS) => {
                 if(!x.startDate||!x.endDate) return x.endDate;
                 const hDays=(member.holdingHistory||[])
                   .filter(h=>h.startDate&&h.endDate&&h.startDate>=x.startDate&&h.startDate<=x.endDate)
                   .reduce((sum,h)=>sum+Math.max(0,Math.ceil((parseLocal(h.endDate)-parseLocal(h.startDate))/86400000)),0);
-                return hDays>0?addDays(x.endDate,hDays):x.endDate;
+                const eff=hDays>0?addDays(x.endDate,hDays):x.endDate;
+                if(nextS&&eff>addDays(nextS,-1)) return addDays(nextS,-1);
+                return eff;
               };
               // 오늘 날짜를 포함하는 기수가 있으면 그 기수만 현재 — 홀딩 연장 종료일 기준 비교
-              const someInRange = reversedHistory.some(x => x.startDate && x.endDate && TODAY_STR >= x.startDate && TODAY_STR <= rhEffEnd(x));
-              const isInRange   = r.startDate && r.endDate && TODAY_STR >= r.startDate && TODAY_STR <= rhEffEnd(r);
+              const someInRange = reversedHistory.some((x,j) => { const ns=j>0?reversedHistory[j-1].startDate:null; return x.startDate&&x.endDate&&TODAY_STR>=x.startDate&&TODAY_STR<=rhEffEnd(x,ns); });
+              const isInRange   = r.startDate && r.endDate && TODAY_STR >= r.startDate && TODAY_STR <= rhEffEnd(r, nextStart);
               const isCurrent   = isActiveStatus && (someInRange ? isInRange : i === 0);
               const isOpenH = expandedRH === r.id;
               // holdInPeriod를 먼저 계산 — 과거 기수의 holdExt·displayEnd·precs 필터에 모두 필요
@@ -154,9 +158,7 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
               if(displayEnd && closureExt > 0) displayEnd = addDays(displayEnd, closureExt);
               if(displayEnd && holdExt > 0) displayEnd = addDays(displayEnd, holdExt);
               if(displayEnd && isCurrent && (member.bonusDays||0) > 0) displayEnd = addDays(displayEnd, member.bonusDays);
-              // 다음 기수 시작일 전날로 캡핑 — 갱신이 기수 만료 전에 일어나면 출석이 두 기수에 중복 표시되는 버그 방지
-              // reversedHistory는 최신순이므로 i-1이 바로 다음(더 최신) 기수
-              const nextStart = i > 0 ? reversedHistory[i - 1].startDate : null;
+              // cappedEnd: 다음 기수 시작 전날로 캡핑 — 조기 갱신/미정 확정 시 중복 표시 방지
               const cappedEnd = nextStart && addDays(nextStart, -1) < displayEnd ? addDays(nextStart, -1) : displayEnd;
               const precs = periodRecs(member, bookings, {...r, endDate: cappedEnd});
               // 출석 행 + 홀딩 행 + 노쇼 행을 날짜 내림차순으로 합산
@@ -175,9 +177,8 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
                     <span style={{fontSize:14,flexShrink:0}}>{isCurrent ? "🟢" : "⚪"}</span>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
-                        {/* 1개월권: cappedEnd(다음기수 시작 전날)로 캡핑 — 잘못 저장된 3개월 endDate 보정
-                            3개월권: displayEnd 그대로 — 실제 계약 종료일 표시 */}
-                        <span style={{fontSize:12,fontWeight:700,color:"#2e3e2e"}}>{fmt(r.startDate)} ~ {fmt(r.memberType==="3month"?displayEnd:cappedEnd)}</span>
+                        {/* 다음 기수가 displayEnd 이전에 시작하면(조기 갱신·미정 확정) cappedEnd로 캡핑 */}
+                        <span style={{fontSize:12,fontWeight:700,color:"#2e3e2e"}}>{fmt(r.startDate)} ~ {fmt(cappedEnd)}</span>
                         {closureExt > 0 && <span style={{fontSize:10,background:"#f0ede8",color:"#8a7e70",borderRadius:4,padding:"1px 5px",fontWeight:600}}>휴강+{closureExt}일</span>}
                         {curHoldCal > 0 && <span style={{fontSize:10,background:"#e8eaed",color:"#7a8090",borderRadius:4,padding:"1px 5px",fontWeight:600}}>홀딩+{curHoldCal}일</span>}
                         {isCurrent&&(member.bonusDays||0)>0&&<span style={{fontSize:10,background:"#fdf3e3",color:"#9a5a10",borderRadius:4,padding:"1px 5px",fontWeight:600}}>보너스+{member.bonusDays}일</span>}
