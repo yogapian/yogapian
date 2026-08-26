@@ -433,6 +433,12 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
                     );
                   })}
                   <div style={{fontSize:11,color:"#bbb",marginTop:2}}>총 {pollVotes.length}명 참여</div>
+                  {activePoll.closeComment && (
+                    <div style={{marginTop:10,padding:"10px 12px",background:"#fffaeb",borderRadius:9,border:"1px solid #e8c44a"}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#7a5a10",marginBottom:3}}>📝 운영자 코멘트</div>
+                      <div style={{fontSize:13,color:"#3d3028",lineHeight:1.6}}>{activePoll.closeComment}</div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* 진행중: 투표 버튼 */

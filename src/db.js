@@ -360,7 +360,7 @@ export async function saveScheduleTemplate(template) {
 
 // ─── 투표 (polls / poll_votes) ───────────────────────────────────────────────
 export function fromSnakePoll(r) {
-  return { id: r.id, question: r.question, options: r.options ?? [], status: r.status ?? "active", createdAt: r.created_at };
+  return { id: r.id, question: r.question, options: r.options ?? [], status: r.status ?? "active", createdAt: r.created_at, closeComment: r.close_comment ?? "" };
 }
 export function fromSnakePollVote(r) {
   return { id: r.id, pollId: r.poll_id, memberId: r.member_id, optionIndex: r.option_index, votedAt: r.voted_at };
@@ -370,7 +370,7 @@ export async function dbLoadPolls() {
   return (data || []).map(fromSnakePoll);
 }
 export async function dbUpsertPoll(p) {
-  const snake = { question: p.question, options: p.options ?? [], status: p.status ?? "active", updated_at: new Date().toISOString() };
+  const snake = { question: p.question, options: p.options ?? [], status: p.status ?? "active", close_comment: p.closeComment ?? "", updated_at: new Date().toISOString() };
   let res;
   if (p.id) {
     res = await _supabase.from("polls").update(snake).eq("id", p.id).select().single();

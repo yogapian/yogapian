@@ -55,6 +55,8 @@ export default function PollTab({ members }) {
   const [creating, setCreating] = useState(false);
   const [editingPoll, setEditingPoll] = useState(null); // {id, question, options, status}
   const [saving, setSaving] = useState(false);
+  const [closingPoll, setClosingPoll] = useState(null); // 마감 중인 poll — 코멘트 입력
+  const [closeComment, setCloseComment] = useState("");
   const [result, setResult] = useState(null); // {pollId, poll, votes}
   const [resultLoading, setResultLoading] = useState(false);
 
@@ -89,9 +91,14 @@ export default function PollTab({ members }) {
     setEditingPoll(poll);
   }
 
-  async function handleClose(poll) {
-    const updated = await dbUpsertPoll({ ...poll, status: "closed" });
+  async function handleClose() {
+    if (!closingPoll) return;
+    setSaving(true);
+    const updated = await dbUpsertPoll({ ...closingPoll, status: "closed", closeComment: closeComment.trim() });
     if (updated) setPolls(p => p.map(x => x.id === updated.id ? updated : x));
+    setSaving(false);
+    setClosingPoll(null);
+    setCloseComment("");
   }
 
   async function handleDelete(id) {
@@ -129,6 +136,26 @@ export default function PollTab({ members }) {
         <div style={{ textAlign: "center", color: "#9a8e80", padding: 30 }}>등록된 투표가 없습니다.</div>
       ) : polls.map(poll => (
         <div key={poll.id} style={{ marginBottom: 10, borderRadius: 10, border: `1.5px solid ${poll.status === "active" ? "#b8d8b8" : "#e0d8cc"}`, overflow: "hidden" }}>
+          {/* 마감 코멘트 입력 폼 */}
+          {closingPoll?.id === poll.id ? (
+            <div style={{ padding: "12px 13px", background: "#fffaeb", borderBottom: "1px solid #e8c44a" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#7a5a10", marginBottom: 6 }}>📝 마감 코멘트 (선택)</div>
+              <textarea
+                placeholder="예) 투표 결과에 따라 야외 요가를 진행하겠습니다! 감사합니다 🙏"
+                value={closeComment} onChange={e => setCloseComment(e.target.value)}
+                rows={2}
+                style={{ ...S.inp, width: "100%", boxSizing: "border-box", fontSize: 12, resize: "none", marginBottom: 8 }}
+              />
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => { setClosingPoll(null); setCloseComment(""); }} style={S.cancelBtn}>취소</button>
+                <button onClick={handleClose} disabled={saving}
+                  style={{ ...S.saveBtn, background: "#9a5a10", opacity: saving ? 0.6 : 1 }}>
+                  {saving ? "마감 중..." : "마감 확정"}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           {/* 수정 폼 */}
           {editingPoll?.id === poll.id ? (
             <div style={{ padding: "11px 13px" }}>
@@ -157,7 +184,7 @@ export default function PollTab({ members }) {
                       style={{ fontSize: 11, background: "#f7f5f2", color: "#5a5a5a", border: "1px solid #d0c8c0", borderRadius: 7, padding: "4px 10px", cursor: "pointer", fontFamily: FONT, fontWeight: 600 }}>
                       ✏️ 수정
                     </button>
-                    <button onClick={() => handleClose(poll)}
+                    <button onClick={() => { setClosingPoll(poll); setCloseComment(""); }}
                       style={{ fontSize: 11, background: "#fdf3e3", color: "#9a5a10", border: "1px solid #e8c44a", borderRadius: 7, padding: "4px 10px", cursor: "pointer", fontFamily: FONT, fontWeight: 600 }}>
                       마감
                     </button>
