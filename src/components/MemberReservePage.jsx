@@ -174,8 +174,9 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const [renewPopup, setRenewPopup] = useState(null); // "last1"=마지막1회 / "needRenewal"=잔여0/만료
   const [resumeStep, setResumeStep] = useState(null); // 복귀일 선택 단계: null 또는 {resumeDate: string}
   const [activePoll, setActivePoll] = useState(null);
-  const [myVote, setMyVote] = useState(undefined); // undefined=로딩중, null=미투표, number=선택인덱스
-  const [pollOpen, setPollOpen] = useState(false);  // 접기/펼치기
+  const [myVote, setMyVote] = useState(undefined); // undefined=로딩중, null=미투표, number=확정된 인덱스
+  const [pollOpen, setPollOpen] = useState(false);
+  const [pollSelected, setPollSelected] = useState(null); // 선택했지만 아직 확정 전
   const [voting, setVoting] = useState(false);
 
   useEffect(() => {
@@ -186,12 +187,12 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     });
   }, [member.id]);
 
-  async function handleVote(optionIndex) {
-    if (!activePoll || voting) return;
+  async function confirmVote() {
+    if (!activePoll || pollSelected === null || voting) return;
     setVoting(true);
     if (myVote !== null) await dbDeletePollVote(activePoll.id, member.id);
-    const ok = await dbInsertPollVote(activePoll.id, member.id, optionIndex);
-    if (ok) { setMyVote(optionIndex); setPollOpen(false); }
+    const ok = await dbInsertPollVote(activePoll.id, member.id, pollSelected);
+    if (ok) { setMyVote(pollSelected); setPollOpen(false); setPollSelected(null); }
     setVoting(false);
   }
 
@@ -390,7 +391,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
       {activePoll && myVote !== undefined && (
         <div style={{margin:"0 14px 9px",borderRadius:12,border:"1.5px solid #a0c8a0",overflow:"hidden"}}>
           {/* 헤더 행 — 항상 표시 */}
-          <div onClick={()=>setPollOpen(v=>!v)}
+          <div onClick={()=>{setPollOpen(v=>!v);setPollSelected(null);}}
             style={{display:"flex",alignItems:"center",gap:8,padding:"10px 13px",background:"#f0f8f0",cursor:"pointer",userSelect:"none"}}>
             <span style={{fontSize:13}}>🗳️</span>
             <span style={{flex:1,fontSize:13,fontWeight:700,color:"#2a6e44"}}>
@@ -403,13 +404,28 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
           {pollOpen && (
             <div style={{padding:"12px 13px",background:"#fff",borderTop:"1px solid #d4ead4"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#1e2e1e",marginBottom:10}}>{activePoll.question}</div>
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {activePoll.options.map((opt, i) => (
-                  <button key={i} onClick={()=>handleVote(i)} disabled={voting}
-                    style={{textAlign:"left",padding:"9px 13px",borderRadius:9,border:`1.5px solid ${myVote===i?"#2a6e44":"#a0c8a0"}`,background:myVote===i?"#f0f8f0":"#fff",fontSize:13,fontWeight:myVote===i?700:500,color:"#2e3e2e",cursor:"pointer",fontFamily:FONT,opacity:voting?0.6:1}}>
-                    {myVote===i?"✅ ":""}{opt}
-                  </button>
-                ))}
+              <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+                {activePoll.options.map((opt, i) => {
+                  const isSelected = pollSelected === i;
+                  const isVoted = myVote === i && pollSelected === null;
+                  return (
+                    <button key={i} onClick={()=>setPollSelected(i)}
+                      style={{textAlign:"left",padding:"9px 13px",borderRadius:9,border:`1.5px solid ${isSelected?"#3d5494":isVoted?"#2a6e44":"#a0c8a0"}`,background:isSelected?"#edf0f8":isVoted?"#f0f8f0":"#fff",fontSize:13,fontWeight:isSelected||isVoted?700:500,color:"#2e3e2e",cursor:"pointer",fontFamily:FONT}}>
+                      {isVoted?"✅ ":isSelected?"🔵 ":""}{opt}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* 확정 / 취소 버튼 */}
+              <div style={{display:"flex",gap:7}}>
+                <button onClick={()=>{setPollOpen(false);setPollSelected(null);}}
+                  style={{flex:1,padding:"9px 0",borderRadius:9,border:"1px solid #e0d8cc",background:"#f7f5f2",fontSize:13,fontWeight:600,color:"#9a8e80",cursor:"pointer",fontFamily:FONT}}>
+                  닫기
+                </button>
+                <button onClick={confirmVote} disabled={pollSelected===null||voting}
+                  style={{flex:2,padding:"9px 0",borderRadius:9,border:"none",background:pollSelected===null?"#ccc":"#2a6e44",color:"#fff",fontSize:13,fontWeight:700,cursor:pollSelected===null?"default":"pointer",fontFamily:FONT,opacity:voting?0.6:1}}>
+                  {voting?"저장 중...":"투표 확정"}
+                </button>
               </div>
             </div>
           )}
