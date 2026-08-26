@@ -358,6 +358,45 @@ export async function saveScheduleTemplate(template) {
   } catch(e) { console.warn("schedule_template save:", e); }
 }
 
+// ─── 투표 (polls / poll_votes) ───────────────────────────────────────────────
+export function fromSnakePoll(r) {
+  return { id: r.id, question: r.question, options: r.options ?? [], status: r.status ?? "active", createdAt: r.created_at };
+}
+export function fromSnakePollVote(r) {
+  return { id: r.id, pollId: r.poll_id, memberId: r.member_id, optionIndex: r.option_index, votedAt: r.voted_at };
+}
+export async function dbLoadPolls() {
+  const { data } = await _supabase.from("polls").select("*").order("id", { ascending: false }).limit(100);
+  return (data || []).map(fromSnakePoll);
+}
+export async function dbUpsertPoll(p) {
+  const snake = { question: p.question, options: p.options ?? [], status: p.status ?? "active", updated_at: new Date().toISOString() };
+  if (p.id) snake.id = p.id;
+  const { data, error } = await _supabase.from("polls").upsert(snake).select().single();
+  if (error) { console.error("poll upsert:", error); return null; }
+  return fromSnakePoll(data);
+}
+export async function dbDeletePoll(id) {
+  await _supabase.from("polls").delete().eq("id", id);
+}
+export async function dbLoadPollVotes(pollId) {
+  const { data } = await _supabase.from("poll_votes").select("*").eq("poll_id", pollId);
+  return (data || []).map(fromSnakePollVote);
+}
+export async function dbInsertPollVote(pollId, memberId, optionIndex) {
+  const { error } = await _supabase.from("poll_votes").insert({ poll_id: pollId, member_id: memberId, option_index: optionIndex });
+  if (error) { console.error("poll vote insert:", error); return false; }
+  return true;
+}
+export async function dbGetMyPollVote(pollId, memberId) {
+  const { data } = await _supabase.from("poll_votes").select("option_index").eq("poll_id", pollId).eq("member_id", memberId).maybeSingle();
+  return data ? data.option_index : null;
+}
+export async function dbLoadActivePoll() {
+  const { data } = await _supabase.from("polls").select("*").eq("status", "active").order("id", { ascending: false }).limit(1).maybeSingle();
+  return data ? fromSnakePoll(data) : null;
+}
+
 // 자동로그인 — DB 공유 버그 수정: localStorage 사용 (기기별 독립 저장)
 export async function saveAutoLogin(memberId) {
   try {

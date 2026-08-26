@@ -10,13 +10,14 @@
 // 달력 날짜 선택 → selDate 변경 → 슬롯 영역 표시
 // 월 이동 → selDate 초기화 (슬롯 숨김)
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Agentation } from "agentation";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, DOW_KO, KR_HOLIDAYS } from "../constants.js";
 // broadcastAdminNotif는 App.jsx에서 onBookingNotif prop으로 전달받음 (채널 단일 인스턴스 유지)
 import { parseLocal, fmt, fmtWithDow, addDays, toDateStr } from "../utils.js";
 import { calcDL, getClosureExtDays, usedAsOf, activePeriodTotal, getSlotCapacity, holdingElapsed, getActivePeriod } from "../memberCalc.js";
 import { useClosures } from "../context.js";
+import { dbLoadActivePoll, dbGetMyPollVote, dbInsertPollVote } from "../db.js";
 import S from "../styles.js";
 
 // 슬롯 기본 시간 (수업설정으로 변경된 경우와 비교해 취소선 표시에 사용)
@@ -172,6 +173,26 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   const [pendingSlot, setPendingSlot] = useState(null);     // 팝업 확인 후 예약할 slotKey 임시 저장
   const [renewPopup, setRenewPopup] = useState(null); // "last1"=마지막1회 / "needRenewal"=잔여0/만료
   const [resumeStep, setResumeStep] = useState(null); // 복귀일 선택 단계: null 또는 {resumeDate: string}
+  const [activePoll, setActivePoll] = useState(null); // 진행 중인 투표
+  const [myVote, setMyVote] = useState(undefined);    // null=미투표, number=선택한 보기 인덱스
+  const [voting, setVoting] = useState(false);
+
+  // 활성 투표 + 내 투표 여부 로드
+  useEffect(() => {
+    dbLoadActivePoll().then(poll => {
+      if (!poll) return;
+      setActivePoll(poll);
+      dbGetMyPollVote(poll.id, member.id).then(v => setMyVote(v));
+    });
+  }, [member.id]);
+
+  async function handleVote(optionIndex) {
+    if (!activePoll || myVote !== null || voting) return;
+    setVoting(true);
+    const ok = await dbInsertPollVote(activePoll.id, member.id, optionIndex);
+    if (ok) setMyVote(optionIndex);
+    setVoting(false);
+  }
 
   const closuresCxt = useClosures();
 
@@ -363,6 +384,28 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   return (
     // ─── 페이지 최외곽 컨테이너 ───
     <div style={{maxWidth:520,margin:"0 auto",width:"100%",fontFamily:FONT,paddingBottom:80}}>
+
+      {/* ─── 투표 배너 ─────────────────────────────────────── */}
+      {activePoll && myVote === undefined ? null : activePoll && (
+        <div style={{margin:"0 14px 10px",borderRadius:12,background:"#f0f8f0",border:"1.5px solid #a0c8a0",padding:"13px 14px"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#2a6e44",marginBottom:6}}>🗳️ 투표에 참여해주세요</div>
+          <div style={{fontSize:14,fontWeight:700,color:"#1e2e1e",marginBottom:10}}>{activePoll.question}</div>
+          {myVote !== null ? (
+            <div style={{fontSize:13,color:"#2a6e44",fontWeight:600}}>
+              ✅ 투표 완료 — <span style={{color:"#3d3028"}}>{activePoll.options[myVote]}</span> 선택하셨습니다.
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {activePoll.options.map((opt, i) => (
+                <button key={i} onClick={() => handleVote(i)} disabled={voting}
+                  style={{textAlign:"left",padding:"9px 13px",borderRadius:9,border:"1.5px solid #a0c8a0",background:"#fff",fontSize:13,fontWeight:600,color:"#2e3e2e",cursor:"pointer",fontFamily:FONT,opacity:voting?0.6:1}}>
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ─── 홀딩 배너 ─────────────────────────────────────── */}
       {member.holding&&(
