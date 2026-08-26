@@ -94,25 +94,27 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
         </div>
       )}
       {/* 갱신 / 홀딩 버튼 */}
-      {/* 미정 기수(startDate:null)가 있으면 갱신 대신 시작일 확정 버튼 표시 */}
       <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
-        {(member.renewalHistory||[]).some(r=>r.startDate===null)
-          ? <button onClick={onRenew} style={{...S.saveBtn,fontSize:12,padding:"7px 12px",background:"#3d5494"}}>📅 기수 시작일 확정</button>
-          : <button onClick={onRenew} style={{...S.saveBtn,fontSize:12,padding:"7px 12px"}}>🔄 갱신</button>
-        }
+        <button onClick={onRenew} style={{...S.saveBtn,fontSize:12,padding:"7px 12px"}}>🔄 갱신</button>
         {member.memberType==="3month" && (
           <button onClick={onHolding}
             style={{background:"#edf0f8",color:"#3d5494",border:"none",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
             {member.holding ? "⏸️ 홀딩 관리" : "⏸️ 홀딩"}
           </button>
         )}
-        {/* 미래 기수가 있을 때만 표시 — 시작일을 미정으로 전환 */}
-        {(member.renewalHistory||[]).some(r=>r.startDate&&r.startDate>=TODAY_STR)&&(
-          <button onClick={onSetPending}
-            style={{background:"#edf3ff",color:"#3d5494",border:"1px solid #b0c4e8",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
-            📅 미정 전환
-          </button>
-        )}
+        {/* 미정 기수(startDate:null) 있으면 확정 버튼, 미래 확정 기수 있으면 미정 전환 버튼 */}
+        {(member.renewalHistory||[]).some(r=>r.startDate===null)
+          ? <button onClick={onRenew}
+              style={{background:"#3d5494",color:"#fff",border:"none",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
+              📅 미정 확정
+            </button>
+          : (member.renewalHistory||[]).some(r=>r.startDate&&r.startDate>=TODAY_STR)&&(
+              <button onClick={onSetPending}
+                style={{background:"#edf3ff",color:"#3d5494",border:"1px solid #b0c4e8",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
+                📅 미정 전환
+              </button>
+            )
+        }
       </div>
     </>
   );
