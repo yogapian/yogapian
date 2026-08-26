@@ -129,10 +129,10 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
               // 미정 기수(startDate null)는 아직 시작 전 → 연장 계산 없음
               const isPendingRH = r.startDate === null;
               const closureExt = (isCurrent && !isPendingRH) ? getClosureExtDays(member, closures) : 0;
-              // 현재 기수: holdingHistory 전체 합산 / 과거 기수: renewalHistory endDate가 이미 갱신보정됨
-              const holdExt = (isCurrent && !isPendingRH) ? totalHoldingCalendarDays(member) : 0;
-              // 현재 기수 표시용 캘린더 일수: holdingHistory 전체 합산 (진행 중 홀딩 포함)
-              const curHoldCal = (isCurrent && !isPendingRH) ? totalHoldingCalendarDays(member) : holdCalDays;
+              // 현재 기수: 해당 기수 startDate 기준 홀딩 합산 (m.startDate가 미래 기수면 필터 오류 방지)
+              const holdExt = (isCurrent && !isPendingRH) ? totalHoldingCalendarDays(member, r.startDate) : 0;
+              // 현재 기수 표시용 캘린더 일수: 해당 기수 startDate 기준 (진행 중 홀딩 포함)
+              const curHoldCal = (isCurrent && !isPendingRH) ? totalHoldingCalendarDays(member, r.startDate) : holdCalDays;
               // displayEnd: 휴강·홀딩·보너스 모두 캘린더 일수 연장 (null endDate = 미정 기수는 계산 생략)
               let displayEnd = r.endDate;
               if(displayEnd && closureExt > 0) displayEnd = addDays(displayEnd, closureExt);
