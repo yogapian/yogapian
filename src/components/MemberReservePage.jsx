@@ -388,7 +388,7 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
           <div style={{background:"#fff",borderRadius:16,padding:"24px 20px",width:"calc(100% - 40px)",maxWidth:320,boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:15,fontWeight:700,color:"#1e2e1e",marginBottom:16,textAlign:"center"}}>복귀일 선택</div>
             <div style={{fontSize:12,color:"#9a8e80",marginBottom:8}}>복귀할 날짜를 선택해 주세요</div>
-            <input type="date" value={resumeStep.resumeDate} min={member.holding.startDate}
+            <input type="date" value={resumeStep.resumeDate} min={TODAY_STR}
               onChange={e=>setResumeStep({resumeDate:e.target.value})}
               style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #a0b0d0",borderRadius:10,padding:"10px 12px",fontSize:15,fontFamily:FONT,background:"#f7f5f2",marginBottom:10}}/>
             <div style={{fontSize:12,color:"#6a7090",marginBottom:16,textAlign:"center"}}>
