@@ -32,8 +32,8 @@ export default function RenewalModal({member,onClose,onSave,pendingPeriod=null})
     <div style={S.overlay} onClick={onClose}>
       <div style={{...S.modal,maxWidth:420}} onClick={e=>e.stopPropagation()}>
         <div style={S.modalHead}><span>{isConfirm?"📅":"🔄"}</span><div><div style={S.modalTitle}>{isConfirm?"미정 기수 시작일 확정":"회원권 갱신"}</div><div style={{fontSize:12,color:"#9a8e80"}}>{member.name}</div></div></div>
-        {/* 시작일 미정 토글 — 잔여 회차 소진 시 다음 출석일이 자동으로 시작일이 됨 */}
-        <div style={{...S.fg,background:pending?"#edf3ff":"#f7f5f2",borderRadius:9,padding:"10px 12px",border:`1px solid ${pending?"#7a9ad4":"#e0d8cc"}`,marginBottom:4}}>
+        {/* 시작일 미정 토글 — confirm 모드(미정 확정)에서는 숨김 */}
+        {!isConfirm&&<div style={{...S.fg,background:pending?"#edf3ff":"#f7f5f2",borderRadius:9,padding:"10px 12px",border:`1px solid ${pending?"#7a9ad4":"#e0d8cc"}`,marginBottom:4}}>
           <label style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer"}}>
             <div onClick={togglePending} style={{width:36,height:20,borderRadius:10,background:pending?"#3d5494":"#ddd",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
               <div style={{position:"absolute",top:2,left:pending?17:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
@@ -41,7 +41,7 @@ export default function RenewalModal({member,onClose,onSave,pendingPeriod=null})
             <span style={{fontSize:13,color:pending?"#3d5494":"#9a8e80",fontWeight:600}}>시작일 미정</span>
             <span style={{fontSize:11,color:"#9a8e80"}}>— 잔여 소진 후 다음 출석일이 시작일</span>
           </label>
-        </div>
+        </div>}
         <div style={S.fg}><label style={S.lbl}>갱신 타입</label>
           <div style={{display:"flex",gap:8,marginBottom:8}}>
             {[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>{const autoEnd=v==="3month"?calc3MonthEnd(form.startDate,closures):endOfMonth(form.startDate);setForm(f=>({...f,memberType:v,total:v==="3month"?24:10,endDate:autoEnd,payment:"카드"}));}} style={{flex:1,padding:"9px 0",borderRadius:10,border:"1.5px solid",cursor:"pointer",fontSize:14,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}

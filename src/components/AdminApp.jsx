@@ -125,7 +125,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   }
 
   function applyRenewal(mid,rf){
-    const isPending=rf.startDate===null; // 미정 갱신 여부
+    const isPending=!rf.startDate; // 미정 갱신 여부 (null/"" 모두 처리)
     const confirmPendingId=rf.confirmPendingId||null; // 미정 기수 확정 모드
     setMembers(p=>p.map(m=>{if(m.id!==mid)return m;
       const rh=m.renewalHistory||[];
@@ -326,7 +326,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
       </>)}
 
       {detailM&&<AdminDetailModal member={members.find(m=>m.id===detailM.id)||detailM} bookings={bookings} onClose={()=>setDetailM(null)} onRenew={()=>setRenewT(detailM.id)} onHolding={()=>setHoldT(detailM.id)} onAdjust={(changes)=>applyAdjust(detailM.id,changes)} onSetPending={()=>applySetPending(detailM.id)} onPaymentPending={()=>applyPaymentPending(detailM.id)} onEdit={()=>{const m=members.find(x=>x.id===detailM.id)||detailM;setDetailM(null);openEdit(m);}} onDel={()=>{const id=detailM.id;setDetailM(null);setDelT(id);}}/>}
-      {renewT&&(()=>{const _rm=members.find(m=>m.id===renewT);const _pp=(_rm?.renewalHistory||[]).find(r=>r.startDate===null);return<RenewalModal member={_rm} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)} pendingPeriod={_pp||null}/>;})()}
+      {renewT&&(()=>{const _rm=members.find(m=>m.id===renewT);const _pp=(_rm?.renewalHistory||[]).find(r=>!r.startDate);return<RenewalModal member={_rm} onClose={()=>setRenewT(null)} onSave={rf=>applyRenewal(renewT,rf)} pendingPeriod={_pp||null}/>;})()}
       {holdT&&<HoldingModal member={members.find(m=>m.id===holdT)} onClose={()=>setHoldT(null)} onSave={hd=>applyHolding(holdT,hd)}/>}
       {showNotices&&<NoticeManager notices={notices} setNotices={setNotices} members={members} bookings={bookings} onClose={()=>setShowNotices(false)}/>}
 
