@@ -94,6 +94,12 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
     setBroadcastPopup(null);
   }
 
+  // 노쇼 누적 안내 팝업 — 로그인(마운트) 시 1회 노출, 1개월권 2회/3개월권 4회부터 차감
+  const [noshowPopup, setNoshowPopup] = useState(false);
+  useEffect(() => {
+    if(noshowCnt > 0) setNoshowPopup(true);
+  }, []); // eslint-disable-line
+
   const {dateTimeStr} = useClock();
 
   return (
@@ -129,6 +135,21 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
               ))}
             </div>
             <button onClick={() => markRead(popupNotice)} style={{width:"100%",background:"#4a6a4a",color:"#fff",border:"none",borderRadius:12,padding:"13px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>확인했어요</button>
+          </div>
+        </div>
+      )}
+
+      {/* 노쇼 누적 안내 팝업 — 개인공지/브로드캐스트 팝업 다음 우선순위 */}
+      {noshowPopup && !popupNotice && !broadcastPopup && (
+        <div style={{...S.overlay,zIndex:300}} onClick={()=>setNoshowPopup(false)}>
+          <div style={{...S.modal,maxWidth:340,textAlign:"center",borderRadius:16}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:34,marginBottom:10}}>🚫</div>
+            <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:8}}>노쇼 {noshowCnt}회 누적되었습니다</div>
+            <div style={{fontSize:13,color:"#7a6e60",lineHeight:1.8,marginBottom:20}}>
+              {_threshold}회부터는 1회씩 차감됩니다.
+              {noshowPenalties>0&&<><br/><span style={{color:"#c97474",fontWeight:700}}>현재 {noshowPenalties}회 차감 적용됨</span></>}
+            </div>
+            <button style={{...S.saveBtn,width:"100%"}} onClick={()=>setNoshowPopup(false)}>확인했어요</button>
           </div>
         </div>
       )}
@@ -189,6 +210,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
                     등록 <b style={{color:"#3a4a3a"}}>{displayPeriodTotal}회</b>
                     <span style={{color:"#c8c0b0",margin:"0 5px"}}>·</span>
                     사용 <b style={{color:"#3a4a3a"}}>{displayUsedCnt}회</b>
+                    {noshowPenalties>0&&<><span style={{color:"#c8c0b0",margin:"0 5px"}}>·</span>차감 <b style={{color:"#c97474"}}>{noshowPenalties}회</b></>}
                   </span>
                   <span style={{fontSize:13,fontWeight:700,color:rem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:22}}>{rem}</span>회</span>
                 </div>

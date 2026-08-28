@@ -114,6 +114,7 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
                 등록 <b style={{color:"#3a4a3a"}}>{displayTotal}회</b>
                 <span style={{color:"#c8c0b0",margin:"0 5px"}}>·</span>
                 사용 <b style={{color:"#3a4a3a"}}>{displayUsed}회</b>
+                {noshowPenalties>0&&<><span style={{color:"#c8c0b0",margin:"0 5px"}}>·</span>차감 <b style={{color:"#c97474"}}>{noshowPenalties}회</b></>}
               </span>
               {/* 잔여 0이면 주황색, 아니면 초록색 */}
               <span style={{fontSize:13,fontWeight:700,color:displayRem===0?"#9a5a10":"#2e5c3e"}}>잔여 <span style={{fontSize:20}}>{displayRem}</span>회</span>
