@@ -132,7 +132,7 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
                   <span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,opacity:0.3,pointerEvents:"none"}}>🌀</span>
                 )}
                 {isNoshow && (
-                  <span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,pointerEvents:"none",opacity:0.75}}>🚫</span>
+                  <span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,pointerEvents:"none",opacity:0.3}}>🚫</span>
                 )}
               </div>
 
