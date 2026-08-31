@@ -35,6 +35,8 @@ export function toSnake(m) {
     bonus_days:       m.bonusDays ?? 0,        // 관리자 수동 보너스 연장일
     payment_pending:  m.paymentPending ?? false, // 현장결제 대기
     card_color:       m.cardColor ?? "",       // 회원카드 배경색 (hex, 비어있으면 기본)
+    noshow_penalties:      m.noshowPenalties ?? 0,      // 관리자가 "적용" 확정한 노쇼 차감 횟수
+    noshow_threshold_ack:  m.noshowThresholdAck ?? 0,   // 관리자가 검토 완료한 임계값 크로싱 수
     updated_at:       new Date().toISOString(),
   };
 }
@@ -62,6 +64,8 @@ export function fromSnakeMember(r) {
     bonusDays:      r.bonus_days ?? 0,        // 관리자 수동 보너스 연장일
     paymentPending: r.payment_pending ?? false, // 현장결제 대기
     cardColor:      r.card_color ?? "",        // 회원카드 배경색
+    noshowPenalties:     r.noshow_penalties ?? 0,
+    noshowThresholdAck:  r.noshow_threshold_ack ?? 0,
   };
 }
 export function bookingToSnake(b) {
