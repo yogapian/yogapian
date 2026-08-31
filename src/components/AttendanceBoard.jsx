@@ -331,6 +331,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
           {slots.map(slot=>{
             const recs=dayActive.filter(b=>b.timeSlot===slot.key); // 이 슬롯의 예약 목록
+            // 노쇼/대리취소로 취소된 예약 — 실수 정정용 되돌리기 접근을 위해 회색으로 별도 표시
+            const cancelledRecs=bookings.filter(b=>b.date===date&&b.timeSlot===slot.key&&b.status==="cancelled"&&(b.cancelledBy==="noshow"||b.cancelledBy==="proxy"));
             const slotCl=getSlotClosure(slot.key); // 이 슬롯만의 휴강 정보
             // 카드 외곽: bg 흰색 / borderRadius:14(둥글기) / border: 슬롯휴강=#f0b0a0 / 기본=#e8e4dc
             return(
@@ -373,7 +375,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                 {/* 예약자 목록 영역: minHeight:44 (비어있어도 최소 높이 유지) */}
                 <div style={{minHeight:44}}>
                   {/* 예약자 없을 때 "없음" 텍스트: fontSize:12 / 색 #c8c0b0(연회색) */}
-                  {recs.filter(r=>r.status!=="waiting").length===0&&recs.length===0&&<div style={{padding:12,textAlign:"center",fontSize:12,color:"#c8c0b0"}}>없음</div>}
+                  {recs.length===0&&cancelledRecs.length===0&&<div style={{padding:12,textAlign:"center",fontSize:12,color:"#c8c0b0"}}>없음</div>}
                   {(() => {
                     // 정렬: 회원 먼저 / 대기자는 맨 뒤 / 같은 그룹 내 id 오름차순
                     const sorted = [...recs].sort((a,b)=>{
@@ -449,6 +451,19 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                         </div>
                       );
                   });})()}
+                  {/* 취소됨(노쇼/대리취소): 회색 취소선, 클릭 시 AttendCheckModal 재오픈 → 되돌리기 가능 */}
+                  {cancelledRecs.map(rec=>{
+                    const cMem=rec.memberId?members.find(m=>m.id===rec.memberId):null;
+                    const cName=rec.memberId?(cMem?.name||"?"):rec.onedayName;
+                    return(
+                      <div key={rec.id} onClick={()=>setAttendCheckModal(rec)}
+                        style={{padding:"6px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:0.5,cursor:"pointer",background:"#faf8f6"}}>
+                        <span style={{fontSize:12,flexShrink:0}}>{rec.cancelledBy==="noshow"?"🚫":"📞"}</span>
+                        <span style={{fontSize:12,color:"#9a8e80",textDecoration:"line-through",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cName}</span>
+                        <span style={{fontSize:10,color:"#c8c0b0",flexShrink:0}}>↩ 되돌리기</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -456,7 +471,6 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         </div>
       )}
 
-      {/* ── 터치 드래그 고스트: 손가락을 따라다니는 이름 라벨 ─────────────── */}
       {/* ── 출석 추가 모달: addModal = slotKey일 때 열림 ──────────────────── */}
       {addModal&&(
         <div style={S.overlay} onClick={()=>setAddModal(null)}>

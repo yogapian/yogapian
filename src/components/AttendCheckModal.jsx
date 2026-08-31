@@ -86,6 +86,14 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
   }
 
   function doReset(){
+    // 취소(노쇼/대리취소) 되돌리기면 해당 취소로 생성된 회원 알림도 함께 삭제 — 알림이 이미 나간 상태로 남는 것 방지
+    if(live.status==="cancelled"&&mem){
+      const dateLabel=fmtWithDow(rec.date);
+      setNotices(prev=>{
+        const match=[...prev].filter(n=>n.targetMemberId===mem.id&&n.title==="❌예약취소❌"&&n.content.startsWith(dateLabel)).sort((a,b)=>b.id-a.id)[0];
+        return match?prev.filter(n=>n.id!==match.id):prev;
+      });
+    }
     setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"reserved",confirmedAttend:null}:b));
     onClose();
   }
@@ -175,14 +183,17 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
                 </button>
               ))}
             </div>
-            {/* 대리취소만 사유 입력 (노쇼는 메모 없음) */}
+            {/* 대리취소만 사유 입력 — 사유를 적어야 회원에게 알림이 감 (빈 채로 확인하면 알림 없음) */}
             {cancelType==="proxy"&&(
-              <textarea style={{...S.inp,height:56,resize:"none",fontSize:12,marginBottom:10}}
-                value={note} onChange={e=>setNote(e.target.value)} placeholder="취소 사유 (선택)" autoFocus/>
+              <>
+                <textarea style={{...S.inp,height:56,resize:"none",fontSize:12,marginBottom:4}}
+                  value={note} onChange={e=>setNote(e.target.value)} placeholder="취소 사유" autoFocus/>
+                <div style={{fontSize:11,color:"#9a8e80",marginBottom:10}}>{note.trim()?"✅ 회원에게 알림이 갑니다":"사유를 적으면 회원에게 알림이 갑니다 (비워두면 알림 없음)"}</div>
+              </>
             )}
             <div style={{display:"flex",gap:8}}>
               <button onClick={onClose} style={btn({flex:1,background:"#f5f5f5",color:"#9a8e80"})}>닫기</button>
-              <button onClick={()=>_execDelete(cancelType==="proxy")}
+              <button onClick={()=>_execDelete(cancelType==="proxy"&&note.trim()!=="")}
                 style={btn({flex:2,
                   background:cancelType==="noshow"?"#fff0f0":"#eef5ee",
                   color:cancelType==="noshow"?"#c97474":"#2e6e44",
