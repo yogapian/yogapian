@@ -77,9 +77,12 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
         const threshold=noshowThreshold(mem.memberType);
         const expectedCrossings=noshowCrossings(newCount,threshold);
         const acked=mem.noshowThresholdAck||0;
-        // 노쇼 시 항상 패널티 확인 패널로 전환 (이번은 패스 / 적용)
-        setPenaltyStep({newCount,expectedCrossings,acked});
-        return;
+        // 새로 임계값을 넘은 경우에만 패널티 확인 패널로 전환 — 그 외엔 패널 없이 바로 닫힘
+        // (이전엔 노쇼마다 무조건 패널이 떠서, 임계값 미달인데 "적용"을 눌러 차감이 잘못 올라가는 버그가 있었음)
+        if(expectedCrossings>acked){
+          setPenaltyStep({newCount,expectedCrossings,acked});
+          return;
+        }
       }
     }
     onClose();

@@ -134,9 +134,12 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
           const threshold=noshowThreshold(mem.memberType);
           const expectedCrossings=noshowCrossings(newCount,threshold);
           const acked=mem.noshowThresholdAck||0;
-          setPenaltyConfirm({memberId:mem.id,memberName:mem.name,newCount,expectedCrossings,acked});
-          setCancelModal(null);
-          return;
+          // 새로 임계값을 넘은 경우에만 패널티 확인 팝업 표시
+          if(expectedCrossings>acked){
+            setPenaltyConfirm({memberId:mem.id,memberName:mem.name,newCount,expectedCrossings,acked});
+            setCancelModal(null);
+            return;
+          }
         }
       }
     }
