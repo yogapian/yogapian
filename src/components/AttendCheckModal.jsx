@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS } from "../constants.js";
 import { fmtWithDow, endOfMonth } from "../utils.js";
-import { getActivePeriod, calc3MonthEnd } from "../memberCalc.js";
+import { getActivePeriod, calc3MonthEnd, noshowThreshold, noshowCrossings } from "../memberCalc.js";
 import S from "../styles.js";
 
 export default function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,notices,setNotices,onClose}){
@@ -74,8 +74,8 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
       if(pStart){
         const prevNoshows=bookings.filter(b=>b.memberId===mem.id&&b.status==="cancelled"&&b.cancelledBy==="noshow"&&b.date>=pStart&&b.date<=pEnd).length;
         const newCount=prevNoshows+1;
-        const threshold=mem.memberType==="3month"?4:2;
-        const expectedCrossings=Math.floor(newCount/threshold);
+        const threshold=noshowThreshold(mem.memberType);
+        const expectedCrossings=noshowCrossings(newCount,threshold);
         const acked=mem.noshowThresholdAck||0;
         // 노쇼 시 항상 패널티 확인 패널로 전환 (이번은 패스 / 적용)
         setPenaltyStep({newCount,expectedCrossings,acked});

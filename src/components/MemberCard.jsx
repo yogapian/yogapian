@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, parseLocal, addDays } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, getActivePeriod, isTerminatedByHolding, totalHoldingCalendarDays } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, getActivePeriod, isTerminatedByHolding, totalHoldingCalendarDays, noshowThreshold, noshowCrossings } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 
@@ -33,8 +33,8 @@ export default function MemberCard({m,bookings,onEdit,onDel,onDetail}){
   const noshowCnt=noshowPeriodStart
     ?bookings.filter(b=>b.memberId===m.id&&b.status==="cancelled"&&b.cancelledBy==="noshow"&&b.date>=noshowPeriodStart&&b.date<=(_apEndBase||m.endDate)).length
     :0;
-  const _threshold=m.memberType==="3month"?4:2;
-  const _expectedCrossings=Math.floor(noshowCnt/_threshold);
+  const _threshold=noshowThreshold(m.memberType);
+  const _expectedCrossings=noshowCrossings(noshowCnt,_threshold);
   const _acked=m.noshowThresholdAck||0;
   // 검토 전(acked < expected): 동적 계산값 표시 / 검토 후(acked >= expected): 관리자 확정값 사용
   const noshowPenalties=_acked>=_expectedCrossings?(m.noshowPenalties||0):Math.max(m.noshowPenalties||0,_expectedCrossings);

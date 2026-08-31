@@ -12,7 +12,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, fmtWithDow, addDays, parseLocal } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, holdingElapsed, periodRecs, currentRecs, totalHoldingCalendarDays, getActivePeriod } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, holdingElapsed, periodRecs, currentRecs, totalHoldingCalendarDays, getActivePeriod, noshowThreshold, noshowCrossings } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 
 export default function MemberDetailContent({ member, bookings, onClose, showNickname=false, adjSection=null, extraInfoRows=null }) {
@@ -35,8 +35,8 @@ export default function MemberDetailContent({ member, bookings, onClose, showNic
   const dispPeriodTotal = activePeriodTotal(member, TODAY_STR, bookings, [member]); // 유효 기수 총 횟수 (이월 배분 포함)
   // 노쇼 패널티 계산 — 현재 활성 기수 기간 기준
   const _noshowCnt = bookings.filter(b=>b.memberId===member.id&&b.status==="cancelled"&&b.cancelledBy==="noshow"&&b.date>=(apStart||"")&&b.date<=(apEffEnd||"9999")).length;
-  const _threshold = member.memberType==="3month"?4:2;
-  const _expectedCrossings = Math.floor(_noshowCnt/_threshold);
+  const _threshold = noshowThreshold(member.memberType);
+  const _expectedCrossings = noshowCrossings(_noshowCnt,_threshold);
   const _acked = member.noshowThresholdAck||0;
   const noshowPenalties = _acked>=_expectedCrossings?(member.noshowPenalties||0):Math.max(member.noshowPenalties||0,_expectedCrossings);
   const dispRem = expired ? 0 : Math.max(0, dispPeriodTotal - dispUsed - noshowPenalties);

@@ -204,6 +204,16 @@ export function getDisplayStatus(m, closures=[], bookings=[]) {
   return "off";
 }
 
+// 노쇼 차감 임계값: 1개월권 2회 / 3개월권 4회
+export function noshowThreshold(memberType) {
+  return memberType === "3month" ? 4 : 2;
+}
+// 노쇼 차감 횟수: 임계값 도달 전엔 0 / 도달 후엔 매 회 1회씩 추가 차감
+// 예) threshold=2 → cnt 1:0회, 2:1회, 3:2회, 4:3회...
+export function noshowCrossings(noshowCnt, threshold) {
+  return noshowCnt >= threshold ? noshowCnt - threshold + 1 : 0;
+}
+
 export function getSlotCapacity(date, slotKey, specialSchedules, scheduleTemplate) {
   const special = specialSchedules.find(s => s.date === date);
   if (special?.slotCapacity?.[slotKey] != null) {

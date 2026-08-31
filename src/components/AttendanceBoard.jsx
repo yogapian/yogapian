@@ -11,7 +11,7 @@
 import { useState, useEffect } from "react";
 import { FONT, TODAY_STR, getTodayStr, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
-import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, calc3MonthEnd, getSlotCapacity, totalHoldingCalendarDays, getActivePeriod } from "../memberCalc.js";
+import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, calc3MonthEnd, getSlotCapacity, totalHoldingCalendarDays, getActivePeriod, noshowThreshold, noshowCrossings } from "../memberCalc.js";
 import S from "../styles.js";
 import CalendarPicker from "./CalendarPicker.jsx";
 import AttendCheckModal from "./AttendCheckModal.jsx";
@@ -131,8 +131,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         if(pStart){
           const prevNoshows=bookings.filter(bk=>bk.memberId===mem.id&&bk.status==="cancelled"&&bk.cancelledBy==="noshow"&&bk.date>=pStart&&bk.date<=pEnd).length;
           const newCount=prevNoshows+1;
-          const threshold=mem.memberType==="3month"?4:2;
-          const expectedCrossings=Math.floor(newCount/threshold);
+          const threshold=noshowThreshold(mem.memberType);
+          const expectedCrossings=noshowCrossings(newCount,threshold);
           const acked=mem.noshowThresholdAck||0;
           setPenaltyConfirm({memberId:mem.id,memberName:mem.name,newCount,expectedCrossings,acked});
           setCancelModal(null);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { FONT, TODAY_STR, GE, SC, TYPE_CFG } from "../constants.js";
 import { fmt, useClock, parseLocal, addDays } from "../utils.js";
-import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, totalHoldingCalendarDays, getActivePeriod } from "../memberCalc.js";
+import { getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, totalHoldingCalendarDays, getActivePeriod, noshowThreshold, noshowCrossings } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 import NoticeBoard from "./NoticeBoard.jsx";
@@ -31,8 +31,8 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   const noshowCnt = noshowPeriodStart
     ? bookings.filter(b=>b.memberId===m.id&&b.status==="cancelled"&&b.cancelledBy==="noshow"&&b.date>=noshowPeriodStart&&b.date<=(_apEndBase||m.endDate)).length
     : 0;
-  const _threshold = m.memberType === "3month" ? 4 : 2;
-  const _expectedCrossings = Math.floor(noshowCnt / _threshold);
+  const _threshold = noshowThreshold(m.memberType);
+  const _expectedCrossings = noshowCrossings(noshowCnt, _threshold);
   const _acked = m.noshowThresholdAck || 0;
   // 검토 전(acked < expected): 동적 계산값 표시 / 검토 후(acked >= expected): 관리자 확정값 사용
   const noshowPenalties = _acked >= _expectedCrossings ? (m.noshowPenalties||0) : Math.max(m.noshowPenalties||0, _expectedCrossings);
@@ -144,10 +144,13 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
         <div style={{...S.overlay,zIndex:300}} onClick={()=>setNoshowPopup(false)}>
           <div style={{...S.modal,maxWidth:340,textAlign:"center",borderRadius:16}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:34,marginBottom:10}}>🚫</div>
-            <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:8}}>노쇼 {noshowCnt}회 누적되었습니다</div>
+            {noshowPenalties>0?(
+              <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:8}}>노쇼 {noshowCnt}회 누적 · <span style={{color:"#c97474"}}>차감 {noshowPenalties}회</span> 적용됐어요</div>
+            ):(
+              <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:8}}>노쇼 {noshowCnt}회 누적됐어요</div>
+            )}
             <div style={{fontSize:13,color:"#7a6e60",lineHeight:1.8,marginBottom:20}}>
-              {_threshold}회부터는 1회씩 차감됩니다.
-              {noshowPenalties>0&&<><br/><span style={{color:"#c97474",fontWeight:700}}>현재 {noshowPenalties}회 차감 적용됨</span></>}
+              {noshowPenalties>0?"이후 노쇼부터는 1회씩 더 차감돼요.":`${_threshold}회부터 1회씩 차감돼요.`}
             </div>
             <button style={{...S.saveBtn,width:"100%"}} onClick={()=>setNoshowPopup(false)}>확인했어요</button>
           </div>
