@@ -2,13 +2,13 @@
 // 관리자 "출석보드" 탭
 // 역할: 날짜별 수업 슬롯 목록 + 예약자 행 + 출석체크 / 휴강·수업설정 / 워크인 추가
 //
-// 슬롯 카드 구조: [슬롯 헤더(배경색)] → [예약자 행 목록] (드래그로 슬롯간 이동 가능)
+// 슬롯 카드 구조: [슬롯 헤더(배경색)] → [예약자 행 목록]
 // 예약자 행: 이름 클릭 → quickDetailM 미니카드 / 아이콘 클릭 → AttendCheckModal
 // 모달 목록: addModal(출석추가) / cancelModal(취소) / attendCheckModal(출석처리)
 //           showClosureMgr(휴강설정) / showSpecialMgr(수업설정) / quickDetailM(미니상세)
 //           waitPopup(대기자 수락/거절) / showTemplateMgr(시간표 관리)
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { FONT, TODAY_STR, getTodayStr, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, DOW_KO } from "../constants.js";
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
 import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, calc3MonthEnd, getSlotCapacity, totalHoldingCalendarDays, getActivePeriod } from "../memberCalc.js";
@@ -38,10 +38,6 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
   const [cancelModal,setCancelModal]=useState(null);  // 예약 취소 모달: null 또는 booking 객체
   const [penaltyConfirm,setPenaltyConfirm]=useState(null); // 노쇼 패널티 확인: {memberId,memberName,newCount,expectedCrossings}
   const [attendCheckModal,setAttendCheckModal]=useState(null); // 출석처리 모달: null 또는 booking 객체
-  const [dragId,setDragId]=useState(null);            // 드래그 중인 booking id
-  const [dragOver,setDragOver]=useState(null);        // 드래그 대상 슬롯 key (하이라이트용)
-  const [touchGhost,setTouchGhost]=useState(null);   // 터치 드래그 고스트 {x,y,name}
-  const touchDragRef=useRef({active:false,id:null}); // 비패시브 touchmove 핸들러에서 참조
   const [showClosureMgr,setShowClosureMgr]=useState(false); // 휴강설정 모달
   const [closureForm,setClosureForm]=useState({date:TODAY_STR,timeSlot:"",reason:"",closureType:"regular",extensionOverride:0});
   // closureForm.timeSlot: ""=전체휴강 / 슬롯key=해당 타임만 휴강
@@ -170,61 +166,6 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
     }
     setAddModal(null);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});
   }
-
-  // ── 드래그 앤 드롭: 예약자를 다른 슬롯으로 이동 ─────────────────────────
-  // 같은 슬롯이나 이미 해당 슬롯에 있는 회원이면 이동 불가
-  function doSlotMove(id, slotKey){
-    const rec=bookings.find(b=>b.id===id);
-    if(!rec||rec.timeSlot===slotKey)return;
-    const alreadyIn=dayActive.filter(b=>b.timeSlot===slotKey&&b.memberId).map(b=>b.memberId);
-    if(rec.memberId&&alreadyIn.includes(rec.memberId))return;
-    setBookings(p=>p.map(b=>b.id===id?{...b,timeSlot:slotKey}:b));
-  }
-  function onDragStart(e,id){setDragId(id);e.dataTransfer.effectAllowed="move";}
-  function onDragEnd(){setDragId(null);setDragOver(null);}
-  function onDropSlot(e,slotKey){
-    e.preventDefault();
-    if(!dragId)return;
-    doSlotMove(dragId,slotKey);
-    setDragOver(null);setDragId(null);
-  }
-
-  // ── 터치 드래그: 모바일 슬롯 간 이동 ────────────────────────────────────
-  // data-slot-key 속성으로 슬롯 카드를 식별 (elementFromPoint 사용)
-  function getTouchSlot(x,y){
-    let el=document.elementFromPoint(x,y);
-    while(el){if(el.dataset?.slotKey)return el.dataset.slotKey;el=el.parentElement;}
-    return null;
-  }
-  function onTouchStartBooking(e,rec){
-    if(e.touches.length!==1)return;
-    const name=rec.memberId?members.find(m=>m.id===rec.memberId)?.name:rec.onedayName;
-    touchDragRef.current={active:true,id:rec.id,name}; // name을 ref에 저장 — touchmove에서 ghost 지연 표시
-    setDragId(rec.id);
-    // touchGhost는 여기서 설정하지 않음 — 탭 시 잠깐 뜨는 버그 방지, handleTouchMove에서 첫 이동 시 설정
-  }
-  function onTouchEndBooking(e){
-    if(!touchDragRef.current.active)return;
-    const t=e.changedTouches[0];
-    const slotKey=getTouchSlot(t.clientX,t.clientY);
-    const id=touchDragRef.current.id;
-    touchDragRef.current={active:false,id:null};
-    if(slotKey&&id)doSlotMove(id,slotKey);
-    setDragId(null);setDragOver(null);setTouchGhost(null);
-  }
-  // window 레벨 비패시브 touchmove: e.preventDefault()로 스크롤 억제 후 슬롯 감지
-  useEffect(()=>{
-    function handleTouchMove(e){
-      if(!touchDragRef.current.active)return;
-      e.preventDefault();
-      const t=e.touches[0];
-      // 첫 이동 시 ghost 생성 (touch start에서 즉시 생성하면 탭 시 깜빡이는 버그)
-      setTouchGhost(g=>g?{...g,x:t.clientX,y:t.clientY}:{x:t.clientX,y:t.clientY,name:touchDragRef.current.name});
-      setDragOver(getTouchSlot(t.clientX,t.clientY));
-    }
-    window.addEventListener("touchmove",handleTouchMove,{passive:false});
-    return()=>window.removeEventListener("touchmove",handleTouchMove);
-  },[]);
 
   // slotMids: 특정 슬롯에 이미 예약된 memberId 배열 (중복 방지용)
   const slotMids=k=>dayActive.filter(b=>b.timeSlot===k&&b.memberId).map(b=>b.memberId);
@@ -390,18 +331,12 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
           {slots.map(slot=>{
             const recs=dayActive.filter(b=>b.timeSlot===slot.key); // 이 슬롯의 예약 목록
-            const isDT=dragOver===slot.key;      // 드래그 hover 중인지 (테두리 하이라이트)
             const slotCl=getSlotClosure(slot.key); // 이 슬롯만의 휴강 정보
-            // 카드 외곽: bg 흰색 / borderRadius:14(둥글기)
-            // border: 슬롯휴강=#f0b0a0 / 드래그hover=슬롯고유색(slot.color) / 기본=#e8e4dc
-            // boxShadow: 드래그hover 시 slot.bg 색으로 외곽 빛 / 기본 연한 그림자
+            // 카드 외곽: bg 흰색 / borderRadius:14(둥글기) / border: 슬롯휴강=#f0b0a0 / 기본=#e8e4dc
             return(
               <div key={slot.key}
                 data-slot-key={slot.key}
-                onDragOver={e=>{e.preventDefault();setDragOver(slot.key);}}
-                onDrop={e=>onDropSlot(e,slot.key)}
-                onDragLeave={()=>setDragOver(null)}
-                style={{background:"#fff",borderRadius:14,overflow:"hidden",border:`2px solid ${slotCl?"#f0b0a0":isDT?slot.color:"#e8e4dc"}`,boxShadow:isDT?`0 0 0 3px ${slot.bg}`:"0 2px 8px rgba(60,50,40,.06)"}}>
+                style={{background:"#fff",borderRadius:14,overflow:"hidden",border:`2px solid ${slotCl?"#f0b0a0":"#e8e4dc"}`,boxShadow:"0 2px 8px rgba(60,50,40,.06)"}}>
 
                 {/* 슬롯 개별 휴강 띠: bg #fff3f0(연분홍) / text #8e3030(빨강) / fontSize:11 */}
                 {slotCl&&<div style={{background:"#fff3f0",padding:"6px 12px",fontSize:11,color:"#8e3030",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #f0d0c0"}}>
@@ -459,7 +394,6 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     const waitRank=isWaiting?waiters.findIndex(w=>w.id===rec.id)+1:0;
                     const waitEmoji=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣"][waitRank-1]||`${waitRank}`;
                     const remCount=mem?Math.max(0,activePeriodTotal(mem,date,bookings,members)-usedAsOf(mem.id,date,bookings,members)):null;
-                    const isDragging=dragId===rec.id;
                     // remCount<=2이면 잔여 경고 텍스트 표시 (1이하=빨강, 2=주황)
                     // 종료일이 지난 회원(갱신필요)은 잔여 경고 대신 갱신 뱃지가 표시되어야 함
                     const memDl=mem?calcDL(mem,closures):null;
@@ -470,15 +404,10 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     const isAbsent=rec.confirmedAttend===false;   // 결석 처리됨
                     // 행 배경: 결석=연분홍 / 대기=회색 / 개인색상=투명 오버레이 / 기본=흰색
                     const rowBg=isAbsent?"#fff8f8":isWaiting?"#e8e8e8":cardColor?`${cardColor}22`:"#fff";
-                    // 예약자 행: padding "8px 12px" / 행간 구분선 #f8f4ef
-                    // 드래그중=투명도0.4 / 결석=0.5 / cursor: 드래그가능=grab / 대기·휴강=default
+                    // 예약자 행: padding "8px 12px" / 행간 구분선 #f8f4ef / 결석=0.5
                     return(
-                        <div key={rec.id} draggable={!slotCl&&!isWaiting} onDragStart={e=>!slotCl&&!isWaiting&&onDragStart(e,rec.id)} onDragEnd={onDragEnd}
-                          onTouchStart={e=>!slotCl&&!isWaiting&&onTouchStartBooking(e,rec)}
-                          onTouchEnd={e=>!slotCl&&!isWaiting&&onTouchEndBooking(e)}
-                          style={{padding:"8px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:isDragging?0.4:isAbsent?0.5:1,background:rowBg,cursor:slotCl||isWaiting?"default":"grab",WebkitUserSelect:"none",userSelect:"none"}}>
-                          {/* ⠿ 드래그 핸들: fontSize:11 / 색 #c8c0b0(연회색) / 휴강 중이면 숨김 */}
-                          {!slotCl&&<span style={{fontSize:11,color:"#c8c0b0",flexShrink:0}}>⠿</span>}
+                        <div key={rec.id}
+                          style={{padding:"8px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:isAbsent?0.5:1,background:rowBg,WebkitUserSelect:"none",userSelect:"none"}}>
                           {/* 성별 이모지: fontSize:15 / 원데이=👤 */}
                           <span style={{fontSize:15,flexShrink:0}}>{isOneday?"👤":GE[mem?.gender]||"🧘🏿"}</span>
                           <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
@@ -528,12 +457,6 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
       )}
 
       {/* ── 터치 드래그 고스트: 손가락을 따라다니는 이름 라벨 ─────────────── */}
-      {touchGhost&&(
-        <div style={{position:"fixed",left:touchGhost.x-60,top:touchGhost.y-24,background:"#2e6e44",color:"#fff",borderRadius:8,padding:"6px 14px",fontSize:13,fontWeight:700,pointerEvents:"none",zIndex:9999,boxShadow:"0 4px 16px rgba(0,0,0,.2)",whiteSpace:"nowrap"}}>
-          {touchGhost.name}
-        </div>
-      )}
-
       {/* ── 출석 추가 모달: addModal = slotKey일 때 열림 ──────────────────── */}
       {addModal&&(
         <div style={S.overlay} onClick={()=>setAddModal(null)}>
