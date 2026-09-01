@@ -94,11 +94,18 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
     setBroadcastPopup(null);
   }
 
-  // 노쇼 누적 안내 팝업 — 로그인(마운트) 시 1회 노출, 1개월권 2회/3개월권 4회부터 차감
+  // 노쇼 누적 안내 팝업 — 노쇼 횟수가 새로 늘어났을 때만 1회 노출 (localStorage로 확인 여부 기억, 매 로그인마다 반복 노출 방지)
   const [noshowPopup, setNoshowPopup] = useState(false);
   useEffect(() => {
-    if(noshowCnt > 0) setNoshowPopup(true);
+    if(noshowCnt === 0) return;
+    const seen = parseInt(localStorage.getItem(`noshow_popup_seen_${m.id}`) || "0", 10);
+    if(noshowCnt > seen) setNoshowPopup(true);
   }, []); // eslint-disable-line
+
+  function ackNoshowPopup(){
+    localStorage.setItem(`noshow_popup_seen_${m.id}`, String(noshowCnt));
+    setNoshowPopup(false);
+  }
 
   const {dateTimeStr} = useClock();
 
@@ -141,7 +148,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
 
       {/* 노쇼 누적 안내 팝업 — 개인공지/브로드캐스트 팝업 다음 우선순위 */}
       {noshowPopup && !popupNotice && !broadcastPopup && (
-        <div style={{...S.overlay,zIndex:300}} onClick={()=>setNoshowPopup(false)}>
+        <div style={{...S.overlay,zIndex:300}} onClick={ackNoshowPopup}>
           <div style={{...S.modal,maxWidth:340,textAlign:"center",borderRadius:16}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:34,marginBottom:10}}>🚫</div>
             {noshowPenalties>0?(
@@ -152,7 +159,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
             <div style={{fontSize:13,color:"#7a6e60",lineHeight:1.8,marginBottom:20}}>
               {noshowPenalties>0?"이후 노쇼부터는 1회씩 더 차감돼요.":`${_threshold}회부터 1회씩 차감돼요.`}
             </div>
-            <button style={{...S.saveBtn,width:"100%"}} onClick={()=>setNoshowPopup(false)}>확인했어요</button>
+            <button style={{...S.saveBtn,width:"100%"}} onClick={ackNoshowPopup}>확인했어요</button>
           </div>
         </div>
       )}
