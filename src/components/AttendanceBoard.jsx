@@ -335,7 +335,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
           {slots.map(slot=>{
             const recs=dayActive.filter(b=>b.timeSlot===slot.key); // 이 슬롯의 예약 목록
             // 노쇼/대리취소로 취소된 예약 — 실수 정정용 되돌리기 접근을 위해 회색으로 별도 표시
-            const cancelledRecs=bookings.filter(b=>b.date===date&&b.timeSlot===slot.key&&b.status==="cancelled"&&(b.cancelledBy==="noshow"||b.cancelledBy==="proxy"));
+            const cancelledRecs=bookings.filter(b=>b.date===date&&b.timeSlot===slot.key&&b.status==="cancelled"&&b.memberId&&(b.cancelledBy==="noshow"||b.cancelledBy==="proxy")); // 원데이는 취소 시 삭제되므로 회원만 대상
             const slotCl=getSlotClosure(slot.key); // 이 슬롯만의 휴강 정보
             // 카드 외곽: bg 흰색 / borderRadius:14(둥글기) / border: 슬롯휴강=#f0b0a0 / 기본=#e8e4dc
             return(

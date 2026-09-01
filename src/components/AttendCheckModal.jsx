@@ -57,6 +57,16 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
 
   function _execDelete(sendNotice){
     const isReserved=rec.status==="attended"||rec.status==="reserved";
+    // 원데이(비회원)는 취소 시 기록을 남길 필요가 없어 목록에서 완전히 삭제
+    if(!mem){
+      setBookings(p=>{
+        let next=p.filter(b=>b.id!==rec.id);
+        if(isReserved){const res=promoteWaiterLogic(next);next=res.nextBookings;}
+        return next;
+      });
+      onClose();
+      return;
+    }
     setBookings(p=>{
       let next=p.map(b=>b.id===rec.id?{...b,status:"cancelled",cancelNote:note,cancelledBy:cancelType,confirmedAttend:false}:b);
       if(isReserved){const res=promoteWaiterLogic(next);next=res.nextBookings;}
