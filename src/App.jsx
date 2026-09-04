@@ -417,9 +417,10 @@ export default function App(){
   }, []);
 
   // 관리자 화면에서 30초마다 자동 새로고침 — Broadcast 미수신 시 데이터 최신화 보장
+  // (Supabase Disk IO 예산 초과 경고로 10초→30초 완화, 2026-09-04)
   useEffect(()=>{
     if(screen!=="admin") return;
-    const t=setInterval(()=>{ handleRefreshRef.current?.().catch(()=>{}); }, 10000); // 10초마다 폴링
+    const t=setInterval(()=>{ handleRefreshRef.current?.().catch(()=>{}); }, 30000); // 30초마다 폴링
     return()=>clearInterval(t);
   },[screen]);
 
