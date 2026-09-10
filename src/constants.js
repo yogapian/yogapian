@@ -56,6 +56,9 @@ const _kst=new Date(_now.getTime()+9*60*60*1000);
 export const TODAY_STR=`${_kst.getUTCFullYear()}-${String(_kst.getUTCMonth()+1).padStart(2,"0")}-${String(_kst.getUTCDate()).padStart(2,"0")}`;
 export const TODAY=new Date(_kst.getUTCFullYear(),_kst.getUTCMonth(),_kst.getUTCDate());
 
+// 관리자 로그인 PIN (4자리 숫자)
+export const ADMIN_PIN="0066";
+
 // ─── 회원 상태 스타일 ─────────────────────────────────────────────────────────
 // on=정상 / off=만료 / hold=홀딩 / renew=갱신필요
 // bg: 뱃지 배경색  color: 텍스트색  dot: 상태 점 색상

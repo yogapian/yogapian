@@ -48,6 +48,9 @@ export default function App(){
 
   useEffect(()=>{
     (async()=>{
+      // PIN 로그인 복구 후 이전 Supabase Auth 세션이 남아 있으면 authenticated 역할로
+      // 조회되어 anon 정책의 회원/예약 데이터가 비어 보일 수 있으므로 이 기기 세션만 정리
+      try { await _supabase.auth.signOut({ scope: "local" }); } catch(e) {}
       try {
         const all = await dbLoadAll();
         if(all.members.length)   setMembersState(all.members);
@@ -487,7 +490,7 @@ export default function App(){
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input,select,textarea{font-family:${FONT};outline:none;-webkit-appearance:none}.card{transition:box-shadow .2s,transform .15s}@media(hover:hover){.card:hover{box-shadow:0 6px 24px rgba(60,50,30,.14);transform:translateY(-2px)}}.pill:hover{opacity:.78}button:active{opacity:.72}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c8c0b0;border-radius:4px}.pillRow::-webkit-scrollbar{display:none}@media(max-width:600px){html{font-size:14px}.admin-grid{grid-template-columns:1fr!important}.admin-pillrow{gap:5px!important}.admin-toolbar{flex-direction:column!important}}`}</style>
       <SaveBadge/>
       {/* onRefresh: 🔄 버튼으로 DB 최신 데이터 즉시 재로드 */}
-      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} adminNotifUnread={adminNotifUnread} onMarkNotifRead={()=>{const now=new Date().toISOString();localStorage.setItem("yogapian_notif_read_at",now);adminNotifReadAtRef.current=now;setAdminNotifUnread(0);}} onRefresh={handleRefresh} onLogout={()=>{_supabase.auth.signOut();localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
+      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} adminNotifUnread={adminNotifUnread} onMarkNotifRead={()=>{const now=new Date().toISOString();localStorage.setItem("yogapian_notif_read_at",now);adminNotifReadAtRef.current=now;setAdminNotifUnread(0);}} onRefresh={handleRefresh} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
       {process.env.NODE_ENV === "development" && <Agentation />}
     </div>
     </ClosuresContext.Provider>
