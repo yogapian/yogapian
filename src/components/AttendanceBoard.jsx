@@ -334,8 +334,9 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
           {slots.map(slot=>{
             const recs=dayActive.filter(b=>b.timeSlot===slot.key); // 이 슬롯의 예약 목록
-            // 노쇼/대리취소로 취소된 예약 — 실수 정정용 되돌리기 접근을 위해 회색으로 별도 표시
-            const cancelledRecs=bookings.filter(b=>b.date===date&&b.timeSlot===slot.key&&b.status==="cancelled"&&b.memberId&&(b.cancelledBy==="noshow"||b.cancelledBy==="proxy")); // 원데이는 취소 시 삭제되므로 회원만 대상
+            // 노쇼로 취소된 예약만 실수 정정용 되돌리기 접근을 위해 회색으로 별도 표시
+            // 대리취소는 이력에는 보존하지만 출석보드에는 남기지 않는다.
+            const cancelledRecs=bookings.filter(b=>b.date===date&&b.timeSlot===slot.key&&b.status==="cancelled"&&b.memberId&&b.cancelledBy==="noshow"); // 원데이는 취소 시 삭제되므로 회원만 대상
             const slotCl=getSlotClosure(slot.key); // 이 슬롯만의 휴강 정보
             // 카드 외곽: bg 흰색 / borderRadius:14(둥글기) / border: 슬롯휴강=#f0b0a0 / 기본=#e8e4dc
             return(
@@ -454,7 +455,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                         </div>
                       );
                   });})()}
-                  {/* 취소됨(노쇼/대리취소): 회색 취소선, 클릭 시 AttendCheckModal 재오픈 → 되돌리기 가능 */}
+                  {/* 취소됨(노쇼): 회색 취소선, 클릭 시 AttendCheckModal 재오픈 → 되돌리기 가능 */}
                   {cancelledRecs.map(rec=>{
                     const cMem=rec.memberId?members.find(m=>m.id===rec.memberId):null;
                     const cName=rec.memberId?(cMem?.name||"?"):rec.onedayName;
