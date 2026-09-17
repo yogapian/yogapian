@@ -1,5 +1,12 @@
 import { TODAY, TODAY_STR } from "./constants.js";
-import { parseLocal, addDays, addWeekdays, countWorkdays, wdInMonth } from "./utils.js";
+import { parseLocal, addDays, addWeekdays, countWorkdays, wdInMonth, endOfMonth, endOfNextMonth } from "./utils.js";
+
+// 최초 1개월권: 2026-10-01 시작분부터 당월 말 종료, 이전 시작분은 익월 말 유지.
+// 이미 저장된 종료일은 재계산하지 않고 등록·날짜 변경 시 자동 계산에만 사용한다.
+export function calcInitial1MonthEnd(startStr) {
+  if (!startStr) return null;
+  return startStr >= "2026-10-01" ? endOfMonth(startStr) : endOfNextMonth(startStr);
+}
 
 // 3개월권 휴강 연장일수: startDate~endDate 사이 전체휴강 평일수
 export function getClosureExtDays(m, closures=[]) {

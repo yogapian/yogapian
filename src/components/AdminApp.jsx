@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { FONT, TODAY_STR, SC, GE, TYPE_CFG, lookupPrice, DOW_KO } from "../constants.js";
-import { fmt, fmtWithDow, parseLocal, addDays, endOfNextMonth, endOfMonth, useClock } from "../utils.js";
-import { getDisplayStatus, calc3MonthEnd } from "../memberCalc.js";
+import { fmt, fmtWithDow, parseLocal, addDays, endOfMonth, useClock } from "../utils.js";
+import { getDisplayStatus, calc3MonthEnd, calcInitial1MonthEnd } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import { dbLoadNotifLog } from "../db.js";
 import PollTab from "./PollTab.jsx";
@@ -46,7 +46,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   const filtered=useMemo(()=>{const gd=(m)=>getDisplayStatus(m,closures,bookings);return members.filter(m=>{const s=gd(m);if(filter!=="total"){if(!(s===filter||(filter==="renew"&&s==="pay")))return false;}if(search&&!m.name.includes(search))return false;return true;}).sort((a,b)=>a.name.localeCompare(b.name,"ko"));},[members,filter,search,closures,bookings]);
 
   function openAdd(){
-    const autoEnd=endOfNextMonth(TODAY_STR);
+    const autoEnd=calcInitial1MonthEnd(TODAY_STR);
     setEditId(null);
     setForm({gender:"F",name:"",adminNickname:"",adminNote:"",cardColor:"",phone:"",phone4:"",firstDate:TODAY_STR,memberType:"1month",isNew:true,total:6,startDate:TODAY_STR,endDate:autoEnd,extensionDays:0,holdingDays:0,bonusDays:0,holding:null,renewalHistory:[],manualStatus:null,payment:"",paymentPending:false});
     setShowForm(true);
@@ -60,7 +60,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     if(!form.name)return;
     if(!editId&&!form.startDate)return;
     let autoEnd = form.endDate;
-    if(!editId&&!autoEnd){autoEnd=form.memberType==="3month"?calc3MonthEnd(form.startDate,closures):endOfNextMonth(form.startDate);}
+    if(!editId&&!autoEnd){autoEnd=form.memberType==="3month"?calc3MonthEnd(form.startDate,closures):calcInitial1MonthEnd(form.startDate);}
     const phone=form.phone||"";
     const phone4=(phone.replace(/\D/g,"")).slice(-4)||form.phone4||"";
     const e={...form,phone,phone4,endDate:autoEnd||form.endDate,total:+form.total,extensionDays:+(form.extensionDays||0),holdingDays:+(form.holdingDays||0),isNew:!!form.isNew,manualStatus:form.manualStatus||null};
@@ -428,7 +428,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
 
             {/* 회원권 섹션 — 신규 추가 시에만 표시 */}
             {!editId&&(<>
-              <div style={S.fg}><label style={S.lbl}>회원권</label><div style={{display:"flex",gap:8}}>{[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>setForm(f=>{const newEnd=v==="1month"?endOfNextMonth(f.startDate||TODAY_STR):calc3MonthEnd(f.startDate||TODAY_STR,closures);return{...f,memberType:v,total:v==="3month"?24:f.total,endDate:newEnd,payment:""};})} style={{flex:1,padding:"8px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}</div></div>
+              <div style={S.fg}><label style={S.lbl}>회원권</label><div style={{display:"flex",gap:8}}>{[["1month","1개월"],["3month","3개월"]].map(([v,l])=>(<button key={v} onClick={()=>setForm(f=>{const newEnd=v==="1month"?calcInitial1MonthEnd(f.startDate||TODAY_STR):calc3MonthEnd(f.startDate||TODAY_STR,closures);return{...f,memberType:v,total:v==="3month"?24:f.total,endDate:newEnd,payment:""};})} style={{flex:1,padding:"8px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:form.memberType===v?"#4a7a5a":"#e0d8cc",background:form.memberType===v?"#eef5ee":"#faf8f5",color:form.memberType===v?"#2e5c3e":"#9a8e80",fontWeight:form.memberType===v?700:400}}>{l}</button>))}</div></div>
               {/* 결제 방법: 1개월=카드/현금/네이버, 3개월=카드/현금 */}
               <div style={S.fg}><label style={S.lbl}>결제 방법</label><div style={{display:"flex",gap:8}}>{(form.memberType==="1month"?[["카드","#edf0f8","#3d5494"],["현금","#fdf3e3","#8a5510"],["네이버","#e8f4e8","#2e6e44"]]:[["카드","#edf0f8","#3d5494"],["현금","#fdf3e3","#8a5510"]]).map(([v,bg,color])=>(<button key={v} onClick={()=>setForm(f=>({...f,payment:f.payment===v?"":v}))} style={{flex:1,padding:"8px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:form.payment===v?color:"#e0d8cc",background:form.payment===v?bg:"#faf8f5",color:form.payment===v?color:"#9a8e80",fontWeight:form.payment===v?700:400}}>{v}</button>))}</div></div>
               <div style={{display:"flex",gap:10}}>
@@ -436,7 +436,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
                 <div style={{...S.fg,flex:1}}><label style={S.lbl}>최초 등록일</label><input style={S.inp} type="date" value={form.firstDate||""} onChange={e=>setForm(f=>({...f,firstDate:e.target.value}))}/></div>
               </div>
               <div style={{display:"flex",gap:10}}>
-                <div style={{...S.fg,flex:1}}><label style={S.lbl}>시작일</label><input style={S.inp} type="date" value={form.startDate||""} onChange={e=>{const sd=e.target.value;setForm(f=>({...f,startDate:sd,endDate:f.memberType==="1month"?endOfNextMonth(sd):calc3MonthEnd(sd,closures)}));}}/></div>
+                <div style={{...S.fg,flex:1}}><label style={S.lbl}>시작일</label><input style={S.inp} type="date" value={form.startDate||""} onChange={e=>{const sd=e.target.value;setForm(f=>({...f,startDate:sd,endDate:f.memberType==="1month"?calcInitial1MonthEnd(sd):calc3MonthEnd(sd,closures)}));}}/></div>
                 <div style={{...S.fg,flex:1}}>
                   <label style={S.lbl}>종료일{form.memberType==="3month"&&<span style={{fontSize:10,color:"#7a9a7a",marginLeft:3}}>자동</span>}</label>
                   {form.memberType==="3month"?(
