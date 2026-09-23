@@ -10,7 +10,7 @@
 // 달력 날짜 선택 → selDate 변경 → 슬롯 영역 표시
 // 월 이동 → selDate 초기화 (슬롯 숨김)
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Agentation } from "agentation";
 import { FONT, TODAY_STR, TIME_SLOTS, SCHEDULE, DOW_KO, KR_HOLIDAYS } from "../constants.js";
 // broadcastAdminNotif는 App.jsx에서 onBookingNotif prop으로 전달받음 (채널 단일 인스턴스 유지)
@@ -168,6 +168,8 @@ function InlineCalendar({selDate, onSelect, onMonthChange, bookings, member, clo
 // ─── 회원 예약 페이지 ────────────────────────────────────────────────────────
 export default function MemberReservePage({member,bookings,setBookings,setMembers,setNotices,specialSchedules,closures,scheduleTemplate,onBookingNotif}){
   // ── State ──────────────────────────────────────────────────────────────────
+  const bookingBusyRef = useRef(false);
+  const [bookingBusy, setBookingBusy] = useState(false);
   const [selDate, setSelDate] = useState(TODAY_STR);  // 로그인 시 오늘 날짜 자동 선택 (달력 월 이동 시 null로 리셋)
   const [confirmCancel, setConfirmCancel] = useState(null); // 취소 확인 모달: null 또는 bookingId
   const [pendingSlot, setPendingSlot] = useState(null);     // 팝업 확인 후 예약할 slotKey 임시 저장
@@ -311,32 +313,32 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
 
   // ── doReserve: booking을 실제로 생성 ─────────────────────────────────────
   // renewalPending=true면 갱신 필요 임시예약 (관리자가 갱신 처리할 때까지 표시됨)
-  function doReserve(slotKey, isWaiting, renewalPending){
-    setBookings(p=>{
-      // 같은 회원·날짜·슬롯의 활성 예약이 이미 있으면 중복 생성 차단
-      const alreadyExists = p.some(b=>b.memberId===member.id&&b.date===selDate&&b.timeSlot===slotKey&&(b.status==="reserved"||b.status==="waiting"||b.status==="attended"));
-      if(alreadyExists) return p;
-      const nid = -Date.now(); // 음수 임시 ID — DB INSERT 후 실제 ID로 교체 (클라이언트 ID 충돌 원천 차단)
-      return [...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}];
-    });
-    // 관리자 알림 브로드캐스트 — slots(커스텀시간 포함) 우선, 없으면 TIME_SLOTS 기본값
-    const _slotObj = slots.find(s=>s.key===slotKey) || TIME_SLOTS.find(s=>s.key===slotKey);
-    onBookingNotif?.({
-      event: isWaiting ? "waiting" : "reserve",
-      memberName: member.name,
-      slotKey,
-      slotIcon:  TIME_SLOTS.find(s=>s.key===slotKey)?.icon || "📍",
-      slotLabel: TIME_SLOTS.find(s=>s.key===slotKey)?.label || slotKey,
-      slotTime:  _slotObj?.time  || "",
-      date: selDate,
-    });
-    setPendingSlot(null); setRenewPopup(null);
+  async function doReserve(slotKey, isWaiting, renewalPending){
+    if (bookingBusyRef.current) return;
+    bookingBusyRef.current = true;
+    setBookingBusy(true);
+    try {
+      const saved = await setBookings(p=>{
+        // 같은 회원·날짜·슬롯의 활성 예약이 이미 있으면 중복 생성 차단
+        const alreadyExists = p.some(b=>b.memberId===member.id&&b.date===selDate&&b.timeSlot===slotKey&&(b.status==="reserved"||b.status==="waiting"||b.status==="attended"));
+        if(alreadyExists) return p;
+        const nid = -Date.now(); // 음수 임시 ID — DB INSERT 후 실제 ID로 교체 (클라이언트 ID 충돌 원천 차단)
+        return [...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}];
+      });
+      if (!saved) return; // 실패 안내와 임시 예약 제거는 공통 setter에서 처리
+      // 정상 예약·대기는 화면에만 반영한다. 별도 성공 알림 없이 저장 실패 시에만 안내.
+      setPendingSlot(null); setRenewPopup(null);
+    } finally {
+      bookingBusyRef.current = false;
+      setBookingBusy(false);
+    }
   }
 
   // ── cancelBooking: 예약 취소 + 대기자 자동 승격 ──────────────────────────
   // reserved/attended 취소 시 대기 1번 → status="reserved"로 자동 변경 + 공지 생성
   // (attended가 아닌 reserved: 미래 수업은 출석 미완료 상태로 승격해야 usedAsOf 집계 오류 방지)
-  function cancelBooking(bId){
+  async function cancelBooking(bId){
+    if (bookingBusyRef.current) return;
     const cancelled = bookings.find(b=>b.id===bId);
     if(!cancelled) return;
     const slotKey = cancelled.timeSlot;
@@ -348,29 +350,38 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     const firstWaiter = isConfirmed
       ? bookings.filter(b=>b.date===cancelled.date&&b.timeSlot===slotKey&&b.status==="waiting"&&b.id!==bId).sort((a,b)=>a.id-b.id)[0]
       : null;
-    setBookings(p=>{
-      const next = p.map(b=>b.id===bId?{...b,status:"cancelled",cancelledBy:"member"}:b);
-      return firstWaiter?next.map(b=>b.id===firstWaiter.id?{...b,status:"reserved"}:b):next;
-    });
-    // 관리자 알림 브로드캐스트 (App.jsx 단일 채널 인스턴스 사용)
-    const _slotObj2 = TIME_SLOTS.find(s=>s.key===cancelled.timeSlot);
-    // 취소 알림 시간도 특수수업 customTimes 우선 적용
-    const _cancelSpecial = specialSchedules?.find(s=>s.date===cancelled.date);
-    const _cancelTime = _cancelSpecial?.customTimes?.[cancelled.timeSlot] || _slotObj2?.time || "";
-    onBookingNotif?.({
-      event: "cancel",
-      memberName: member.name,
-      slotKey: cancelled.timeSlot,
-      slotIcon:  _slotObj2?.icon  || "📍",
-      slotLabel: _slotObj2?.label || cancelled.timeSlot,
-      slotTime:  _cancelTime,
-      date: cancelled.date,
-    });
-    if(firstWaiter){
-      // 공지: 날짜 줄바꿈 후 메시지 (팝업 2줄 표시용)
-      setNotices(prev=>[{id:Date.now(),title:`✅예약확정✅`,content:`${fmtWithDow(cancelled.date)}\n수업 예약이 확정되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
+    bookingBusyRef.current = true;
+    setBookingBusy(true);
+    try {
+      const saved = await setBookings(p=>{
+        const next = p.map(b=>b.id===bId?{...b,status:"cancelled",cancelledBy:"member"}:b);
+        return firstWaiter?next.map(b=>b.id===firstWaiter.id?{...b,status:"reserved"}:b):next;
+      });
+      if (!saved) return;
+      // 저장 성공 후 관리자 알림 브로드캐스트 (App.jsx 단일 채널 인스턴스 사용)
+      const _slotObj2 = TIME_SLOTS.find(s=>s.key===cancelled.timeSlot);
+      // 취소 알림 시간도 특수수업 customTimes 우선 적용
+      const _cancelSpecial = specialSchedules?.find(s=>s.date===cancelled.date);
+      const _cancelTime = _cancelSpecial?.customTimes?.[cancelled.timeSlot] || _slotObj2?.time || "";
+      onBookingNotif?.({
+        event: "cancel",
+        memberId: member.id,
+        memberName: member.name,
+        slotKey: cancelled.timeSlot,
+        slotIcon:  _slotObj2?.icon  || "📍",
+        slotLabel: _slotObj2?.label || cancelled.timeSlot,
+        slotTime:  _cancelTime,
+        date: cancelled.date,
+      });
+      if(firstWaiter){
+        // 공지: 날짜 줄바꿈 후 메시지 (팝업 2줄 표시용)
+        setNotices(prev=>[{id:Date.now(),title:`✅예약확정✅`,content:`${fmtWithDow(cancelled.date)}\n수업 예약이 확정되었습니다.`,pinned:false,createdAt:TODAY_STR,targetMemberId:firstWaiter.memberId},...(prev||[])]);
+      }
+      setConfirmCancel(null);
+    } finally {
+      bookingBusyRef.current = false;
+      setBookingBusy(false);
     }
-    setConfirmCancel(null);
   }
 
   // ── resumeHolding: 복귀일 확정 후 홀딩 종료 처리 ──────────────────────────
@@ -394,6 +405,11 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
   return (
     // ─── 페이지 최외곽 컨테이너 ───
     <div style={{maxWidth:520,margin:"0 auto",width:"100%",fontFamily:FONT,paddingBottom:80}}>
+
+      {/* 저장 응답을 기다리는 동안 날짜 변경·중복 클릭을 막고 완료로 오인하지 않게 안내 */}
+      {bookingBusy && <div role="status" aria-live="polite" style={{...S.overlay,zIndex:10000,alignItems:"center"}}>
+        <div style={{...S.modal,maxWidth:300,textAlign:"center"}}>예약 변경을 저장하고 있어요.<br/>완료될 때까지 잠시 기다려 주세요.</div>
+      </div>}
 
       {/* ─── 투표 배너 (공지 스타일 접기/펼치기) ───────────── */}
       {activePoll && (pollClosed || myVote !== undefined) && (

@@ -13,6 +13,7 @@ import {
   fromSnakeNotice, fromSnakeBooking, fromSnakeMember, dbSavePushSubscription,
   dbInsertNotifLog, dbCountNotifLogSince, dbInsertBooking,
 } from "./db.js";
+import { saveBookingChanges } from "./bookingSave.js";
 import MemberLoginPage from "./components/MemberLoginPage.jsx";
 import AdminLoginPage from "./components/AdminLoginPage.jsx";
 import MemberView from "./components/MemberView.jsx";
@@ -22,13 +23,23 @@ export default function App(){
   const [screen,setScreen]=useState("memberLogin");
   const [loggedMember,setLoggedMember]=useState(null);
   const [members,setMembersState]=useState([]);
-  const [bookings,setBookingsState]=useState([]);
+  const [bookings,rawSetBookingsState]=useState([]);
+  const bookingsRef = useRef([]);
+  // 저장·로드·Realtime 모두 같은 최신 목록을 사용한다. DB 작업은 React updater 밖에서 실행.
+  const setBookingsState = useCallback(updater => {
+    const next = typeof updater === "function" ? updater(bookingsRef.current) : updater;
+    bookingsRef.current = next;
+    rawSetBookingsState(next);
+  }, []);
   const [notices,setNoticesState]=useState([]);
   const [specialSchedules,setSpecialSchedulesState]=useState([]);
   const [closures,setClosuresState]=useState([]);
   const [scheduleTemplate,setScheduleTemplateState]=useState({});
   const [sales,setSalesState]=useState([]);
   const [saving,setSaving]=useState(false);
+  const [bookingSaveError,setBookingSaveError]=useState("");
+  const pendingBookingSaves = useRef(0);
+  const bookingSaveVersion = useRef(0);
   const [loading,setLoading]=useState(true);
   const loadedRef = useRef(false);
   const membersRef = useRef([]); // stale closure 방지용 — realtime 리스너에서 회원명 조회에 사용
@@ -206,39 +217,32 @@ export default function App(){
       .catch(() => {});
   }, []); // eslint-disable-line
 
-  const setBookings = useCallback((updater) => {
-    setBookingsState(prev => {
-      const next = typeof updater==="function" ? updater(prev) : updater;
-      if(!loadedRef.current) return next;
-      setSaving(true);
-      savingRef.current = true; // refresh 시 덮어쓰기 방지
-      const prevMap = new Map(prev.map(b=>[b.id, b]));
-      const nextMap = new Map(next.map(b=>[b.id, b]));
-      // 음수 임시 ID = 신규 booking (DB INSERT 후 실제 ID로 교체)
-      // prev에 없는 것만 INSERT — 이미 있는 temp ID는 다른 조작(취소 등) 중에 재INSERT 방지
-      const newBookings = next.filter(b => b.id < 0 && !prevMap.has(b.id));
-      const toUpsert = next.filter(b => {
-        if(b.id < 0) return false;
-        const old = prevMap.get(b.id);
-        return !old || JSON.stringify(old) !== JSON.stringify(b);
+  const setBookings = useCallback(async (updater) => {
+    const prev = bookingsRef.current;
+    const next = typeof updater === "function" ? updater(prev) : updater;
+    if (next === prev) return true;
+    if (!loadedRef.current) return false;
+    setBookingsState(next);
+    if (pendingBookingSaves.current === 0) setBookingSaveError("");
+    pendingBookingSaves.current++;
+    bookingSaveVersion.current++;
+    setSaving(true);
+    savingRef.current = true;
+    try {
+      return await saveBookingChanges(prev, next, {
+        insert: dbInsertBooking, upsert: dbUpsertBooking, remove: dbDeleteBooking,
+        update: setBookingsState,
+        onError: error => {
+          console.error("예약 저장 확인 실패:", error);
+          setBookingSaveError("예약 변경의 저장을 확인하지 못했습니다. 인터넷 연결을 확인하고 새로고침하여 예약 내역을 확인해 주세요. 내역에 없으면 다시 예약해 주세요.");
+        },
       });
-      const toDelete = prev.filter(b => !nextMap.has(b.id) && b.id > 0);
-      Promise.all([
-        ...toUpsert.map(b => dbUpsertBooking(b)),
-        ...toDelete.map(b => dbDeleteBooking(b.id)),
-        // 신규: INSERT → DB 실제 ID로 state 교체 (renewalPending 등 프론트 전용 필드 보존)
-        ...newBookings.map(b => dbInsertBooking(b).then(real => {
-          if(!real) return;
-          // 실제 ID로 교체 시 realtime이 먼저 추가한 중복 항목도 제거 (레이스 컨디션 방지)
-          setBookingsState(prev2 => {
-            const filtered = prev2.filter(b2 => b2.id !== real.id);
-            return filtered.map(b2 => b2.id===b.id ? {...real, renewalPending:b.renewalPending} : b2);
-          });
-        })),
-      ]).finally(()=>{ setSaving(false); savingRef.current = false; });
-      return next;
-    });
-  }, []);
+    } finally {
+      pendingBookingSaves.current--;
+      savingRef.current = pendingBookingSaves.current > 0;
+      setSaving(savingRef.current);
+    }
+  }, [setBookingsState]);
 
   const setNotices = useCallback((updater) => {
     setNoticesState(prev => {
@@ -375,6 +379,7 @@ export default function App(){
   // handleRefreshRef에 할당하여 브로드캐스트 수신/30초 폴링 시에도 사용
   const handleRefresh = useCallback(async () => {
     if (savingRef.current) return; // 저장 진행 중이면 덮어쓰기 건너뜀
+    const refreshVersion = bookingSaveVersion.current;
     try {
       const all = await dbLoadAll();
       if(all.bookings.length){
@@ -385,7 +390,7 @@ export default function App(){
         });
 
         // DB 로드 완료 후 다시 한 번 확인 — 로드 중 저장이 시작됐으면 덮어쓰기 건너뜀
-        if(!savingRef.current) setBookingsState(processed);
+        if(!savingRef.current && refreshVersion === bookingSaveVersion.current) setBookingsState(processed);
       }
       if(all.members.length)          setMembersState(all.members);
       if(all.specialSchedules.length) setSpecialSchedulesState(all.specialSchedules);
@@ -442,6 +447,13 @@ export default function App(){
     return()=>clearTimeout(t);
   },[]);
 
+  const BookingSaveError = () => bookingSaveError && (
+    <div role="alert" style={{position:"fixed",bottom:55,left:14,right:14,zIndex:10001,background:"#fff0ed",border:"1px solid #c97474",borderRadius:10,padding:14,color:"#8e3030",fontSize:14,lineHeight:1.6}}>
+      {bookingSaveError}
+      <button onClick={()=>setBookingSaveError("")} style={{marginLeft:10}}>닫기</button>
+    </div>
+  );
+
   const SaveBadge = ()=>(
     <div style={{position:"fixed",bottom:16,right:16,zIndex:999,display:"flex",alignItems:"center",gap:5,
       background:saving?"#fdf3e3":"#eef5ee",
@@ -450,7 +462,7 @@ export default function App(){
       color:saving?"#9a5a10":"#2e6e44",fontFamily:FONT,
       boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}>
       <span style={{width:6,height:6,borderRadius:"50%",background:saving?"#e8a44a":"#5a9e6a",display:"inline-block"}}/>
-      {saving?"저장 중…":"저장됨 ✓"}
+      {saving?"저장 중…":bookingSaveError?"저장 확인 필요":"저장됨 ✓"}
     </div>
   );
 
@@ -472,6 +484,7 @@ export default function App(){
     <ClosuresContext.Provider value={closures}>
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72;transform:scale(.97)}@media(max-width:390px){html{font-size:14px}}.member-header{flex-wrap:wrap;gap:8px!important}`}</style>
+      <BookingSaveError/>
       <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} scheduleTemplate={scheduleTemplate} onBookingNotif={onBookingNotif} onRefresh={handleRefresh} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");saveAutoLogin(null);}}/>
     </div>
     </ClosuresContext.Provider>
@@ -489,6 +502,7 @@ export default function App(){
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input,select,textarea{font-family:${FONT};outline:none;-webkit-appearance:none}.card{transition:box-shadow .2s,transform .15s}@media(hover:hover){.card:hover{box-shadow:0 6px 24px rgba(60,50,30,.14);transform:translateY(-2px)}}.pill:hover{opacity:.78}button:active{opacity:.72}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c8c0b0;border-radius:4px}.pillRow::-webkit-scrollbar{display:none}@media(max-width:600px){html{font-size:14px}.admin-grid{grid-template-columns:1fr!important}.admin-pillrow{gap:5px!important}.admin-toolbar{flex-direction:column!important}}`}</style>
       <SaveBadge/>
+      <BookingSaveError/>
       {/* onRefresh: 🔄 버튼으로 DB 최신 데이터 즉시 재로드 */}
       <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} adminNotifUnread={adminNotifUnread} onMarkNotifRead={()=>{const now=new Date().toISOString();localStorage.setItem("yogapian_notif_read_at",now);adminNotifReadAtRef.current=now;setAdminNotifUnread(0);}} onRefresh={handleRefresh} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
       {process.env.NODE_ENV === "development" && <Agentation />}

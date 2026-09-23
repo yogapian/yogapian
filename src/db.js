@@ -245,24 +245,25 @@ export async function dbUpsertMember(m) {
 }
 export async function dbUpsertBooking(b) {
   const { error } = await _supabase.from("bookings").upsert(bookingToSnake(b));
-  if (error) console.error("booking upsert:", error);
+  if (error) throw error;
 }
 // 신규 booking INSERT — id를 DB sequence가 자동 생성, 생성된 row 반환
 // INSERT 전 DB에서 중복 확인 — 다른 세션·기기에서 동시 예약 시에도 방지
 export async function dbInsertBooking(b) {
   if (b.memberId) {
-    const { data: existing } = await _supabase.from("bookings")
-      .select("id").eq("member_id", b.memberId).eq("date", b.date).eq("time_slot", b.timeSlot)
+    const { data: existing, error: lookupError } = await _supabase.from("bookings")
+      .select("*").eq("member_id", b.memberId).eq("date", b.date).eq("time_slot", b.timeSlot)
       .in("status", ["reserved","waiting","attended"]).limit(1);
+    if (lookupError) throw lookupError; // 중복 확인 실패 시 INSERT로 진행하지 않음
     if (existing?.length > 0) {
-      console.warn("중복 예약 DB 차단:", existing[0].id);
-      return null;
+      // 이전 요청의 응답만 유실됐거나 다른 기기에서 예약했으면 실제 예약으로 동기화
+      return fromSnakeBooking(existing[0]);
     }
   }
   const snake = bookingToSnake(b);
   delete snake.id; // DB sequence가 할당
   const { data, error } = await _supabase.from("bookings").insert(snake).select().single();
-  if (error) { console.error("booking insert:", error); return null; }
+  if (error) throw error;
   return fromSnakeBooking(data);
 }
 export async function dbUpsertNotice(n) {
@@ -284,7 +285,7 @@ export async function dbDeleteMember(id) {
 }
 export async function dbDeleteBooking(id) {
   const { error } = await _supabase.from("bookings").delete().eq("id", id);
-  if (error) console.error("booking delete:", error);
+  if (error) throw error;
 }
 export async function dbDeleteNotice(id) {
   const { error } = await _supabase.from("notices").delete().eq("id", id);
