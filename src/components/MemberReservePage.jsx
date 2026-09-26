@@ -318,15 +318,31 @@ export default function MemberReservePage({member,bookings,setBookings,setMember
     bookingBusyRef.current = true;
     setBookingBusy(true);
     try {
+      let created = false;
       const saved = await setBookings(p=>{
         // 같은 회원·날짜·슬롯의 활성 예약이 이미 있으면 중복 생성 차단
         const alreadyExists = p.some(b=>b.memberId===member.id&&b.date===selDate&&b.timeSlot===slotKey&&(b.status==="reserved"||b.status==="waiting"||b.status==="attended"));
         if(alreadyExists) return p;
+        created = true;
         const nid = -Date.now(); // 음수 임시 ID — DB INSERT 후 실제 ID로 교체 (클라이언트 ID 충돌 원천 차단)
         return [...p,{id:nid,date:selDate,memberId:member.id,timeSlot:slotKey,walkIn:false,status:isWaiting?"waiting":"reserved",cancelNote:"",cancelledBy:"",...(renewalPending?{renewalPending:true}:{})}];
       });
       if (!saved) return; // 실패 안내와 임시 예약 제거는 공통 setter에서 처리
-      // 정상 예약·대기는 화면에만 반영한다. 별도 성공 알림 없이 저장 실패 시에만 안내.
+      // 실제 생성·저장에 성공한 예약/대기만 관리자 이력에 기록한다 (중복·실패 제외).
+      if (created) {
+        const slot = slots.find(s=>s.key===slotKey) || TIME_SLOTS.find(s=>s.key===slotKey);
+        onBookingNotif?.({
+          event: isWaiting ? "waiting" : "reserve",
+          memberId: member.id,
+          memberName: member.name,
+          slotKey,
+          slotIcon: TIME_SLOTS.find(s=>s.key===slotKey)?.icon || "📍",
+          slotLabel: TIME_SLOTS.find(s=>s.key===slotKey)?.label || slotKey,
+          slotTime: slot?.time || "",
+          date: selDate,
+        });
+      }
+      // 회원에게 별도 성공 팝업은 표시하지 않는다.
       setPendingSlot(null); setRenewPopup(null);
     } finally {
       bookingBusyRef.current = false;
