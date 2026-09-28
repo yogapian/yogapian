@@ -13,7 +13,6 @@ import { FONT, TODAY_STR, getTodayStr, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, D
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
 import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, calc3MonthEnd, getSlotCapacity, totalHoldingCalendarDays, getActivePeriod, noshowThreshold, noshowCrossings } from "../memberCalc.js";
 import S from "../styles.js";
-import { bookingRemaining } from "../bookingRemaining.js";
 import CalendarPicker from "./CalendarPicker.jsx";
 import AttendCheckModal from "./AttendCheckModal.jsx";
 import AdminCancelModal from "./AdminCancelModal.jsx";
@@ -400,8 +399,8 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     const isWaiting=rec.status==="waiting";
                     const waitRank=isWaiting?waiters.findIndex(w=>w.id===rec.id)+1:0;
                     const waitEmoji=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣"][waitRank-1]||`${waitRank}`;
-                    const remCount=mem?bookingRemaining(mem,rec,bookings,specialSchedules,scheduleTemplate):null;
-                    // 해당 수업까지의 예상 잔여를 예약 순서대로 표시 (잔여2 → 잔여1 → 갱신 아이콘)
+                    const remCount=mem?Math.max(0,activePeriodTotal(mem,date,bookings,members)-usedAsOf(mem.id,date,bookings,members)):null;
+                    // 선택 날짜까지 실제 출석한 수업만 차감 — 예약만으로 잔여 횟수를 줄이지 않음
                     // 오늘 기준 홀딩·휴강 연장이 반영된 종료일이 지나면 사전 예약도 갱신 뱃지 표시
                     const memDl=mem?calcDL(mem,closures):null;
                     const showRenewal=!isOneday&&((memDl!==null&&memDl<0)||rec.renewalPending||mem?.paymentPending||(!isWaiting&&remCount===0));
@@ -426,7 +425,7 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                               style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isWaiting?"#666":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:isOneday?"default":"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
                               {isOneday?rec.onedayName:mem.name}
                             </span>
-                            {/* 기간 만료·결제·갱신 대기 또는 예상 잔여 소진: 기존 💳 아이콘 표시 (저장 상태 변경 없음) */}
+                            {/* 기간 만료·결제·갱신 대기 또는 실제 잔여 소진: 기존 💳 아이콘 표시 (저장 상태 변경 없음) */}
                             {showRenewal&&<span title="결제·갱신 필요" style={{fontSize:13,flexShrink:0}}>💳</span>}
                             {/* 잔여 경고: remCount<=1=빨강#a83030 / remCount=2=주황#9a5a10 */}
                             {showRemWarn&&!isAbsent&&!rec.renewalPending&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
