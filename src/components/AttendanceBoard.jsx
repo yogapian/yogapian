@@ -401,10 +401,11 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                     const waitEmoji=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣"][waitRank-1]||`${waitRank}`;
                     const remCount=mem?Math.max(0,activePeriodTotal(mem,date,bookings,members)-usedAsOf(mem.id,date,bookings,members)):null;
                     // 선택 날짜까지 실제 출석한 수업만 차감 — 예약만으로 잔여 횟수를 줄이지 않음
-                    // 오늘 기준 홀딩·휴강 연장이 반영된 종료일이 지나면 사전 예약도 갱신 뱃지 표시
+                    // 결제 대기는 기존 카드 표시 유지. 만료·소진은 예약/대기에만 표시 (일반 출석 완료는 잔여0)
                     const memDl=mem?calcDL(mem,closures):null;
-                    const showRenewal=!isOneday&&((memDl!==null&&memDl<0)||rec.renewalPending||mem?.paymentPending||(!isWaiting&&remCount===0));
-                    const showRemWarn=!isOneday&&!isWaiting&&remCount!==null&&remCount>0&&remCount<=2&&(memDl===null||memDl>=0);
+                    const isPendingReservation=rec.status==="reserved"||isWaiting;
+                    const showRenewal=!!mem&&(mem.paymentPending||(isPendingReservation&&((memDl!==null&&memDl<0)||remCount===0||rec.renewalPending)));
+                    const showRemWarn=!isOneday&&!isWaiting&&!showRenewal&&remCount!==null&&remCount<=2;
                     const remColor=showRemWarn?(remCount<=1?"#a83030":"#9a5a10"):undefined;
                     const cardColor=mem?.cardColor||"";
                     const isAttended=rec.confirmedAttend===true;  // 출석 확정
@@ -425,10 +426,10 @@ export default function AttendanceBoard({members,bookings,setBookings,setMembers
                               style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isWaiting?"#666":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:isOneday?"default":"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
                               {isOneday?rec.onedayName:mem.name}
                             </span>
-                            {/* 기간 만료·결제·갱신 대기 또는 실제 잔여 소진: 기존 💳 아이콘 표시 (저장 상태 변경 없음) */}
+                            {/* 결제 대기 또는 만료·소진 상태의 예약에 💳 표시 */}
                             {showRenewal&&<span title="결제·갱신 필요" style={{fontSize:13,flexShrink:0}}>💳</span>}
                             {/* 잔여 경고: remCount<=1=빨강#a83030 / remCount=2=주황#9a5a10 */}
-                            {showRemWarn&&!isAbsent&&!rec.renewalPending&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
+                            {showRemWarn&&!isAbsent&&<span style={{fontSize:10,color:remColor,fontWeight:700,flexShrink:0}}>잔여{remCount}</span>}
                           </div>
                           {/* 오른쪽 아이콘: 대기=순서이모지(클릭→waitPopup) / 원데이·회원=출석아이콘(클릭→AttendCheckModal) */}
                           {/* 출석아이콘: 워크인=☑️ / 정상출석=✅ / 결석=❌ / 미처리=🕉 */}
