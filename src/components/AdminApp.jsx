@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { FONT, TODAY_STR, SC, GE, TYPE_CFG, lookupPrice, DOW_KO } from "../constants.js";
 import { fmt, fmtWithDow, parseLocal, addDays, endOfMonth, useClock } from "../utils.js";
-import { getDisplayStatus, calc3MonthEnd, calcInitial1MonthEnd } from "../memberCalc.js";
+import { getDisplayStatus, calc3MonthEnd, calcInitial1MonthEnd, calcDL, activePeriodTotal, usedAsOf } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import { dbLoadNotifLog } from "../db.js";
 import PollTab from "./PollTab.jsx";
@@ -34,11 +34,16 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   const [notifHistory,setNotifHistory]=useState(null); // null=미로드, []=로드완료
   const [notifHistoryLoading,setNotifHistoryLoading]=useState(false);
 
-  // 결제 대기 팝업: 오늘 예약(취소 제외)이 있는 회원 중 renewalPending이거나 paymentPending인 경우만
-  // paymentPending 단독으로는 포함하지 않음 — 오늘 예약 없으면 팝업에 안 뜸
-  const renewPendingMembers=useMemo(()=>members.filter(m=>
-    bookings.some(b=>b.memberId===m.id&&b.date===TODAY_STR&&b.status!=="cancelled"&&(b.renewalPending||m.paymentPending))
-  ),[members,bookings]);
+  // 오늘 예약의 결제·갱신 대기 + 사전 예약 후 기간 만료·횟수 소진된 회원 포함.
+  // 만료·소진은 미출석 예약/대기만 확인 — 마지막 출석으로 잔여0이 된 기록만으로는 알리지 않음.
+  const renewPendingMembers=useMemo(()=>members.filter(m=>{
+    const todayBookings=bookings.filter(b=>b.memberId===m.id&&b.date===TODAY_STR&&b.status!=="cancelled");
+    if(!todayBookings.length)return false;
+    if(todayBookings.some(b=>b.renewalPending||m.paymentPending))return true;
+    if(!todayBookings.some(b=>b.status==="reserved"||b.status==="waiting"))return false;
+    const remaining=activePeriodTotal(m,TODAY_STR,bookings,members)-usedAsOf(m.id,TODAY_STR,bookings,members);
+    return remaining<=0||calcDL(m,closures)<0;
+  }),[members,bookings,closures]);
   const gds=(m)=>getDisplayStatus(m,closures,bookings);
   // RENEW 카운트에 pay(등록필요) 포함 — 결제대기도 갱신 그룹으로 통합
   const counts={total:members.length,on:members.filter(m=>gds(m)==="on").length,renew:members.filter(m=>gds(m)==="renew"||gds(m)==="pay").length,hold:members.filter(m=>gds(m)==="hold").length,off:members.filter(m=>gds(m)==="off").length};
@@ -224,7 +229,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
       {showPendingPopup&&renewPendingMembers.length>0&&(
         <div style={S.overlay} onClick={()=>setShowPendingPopup(false)}>
           <div style={{...S.modal,maxWidth:360}} onClick={e=>e.stopPropagation()}>
-            <div style={S.modalHead}><span>🔔</span><div><div style={S.modalTitle}>결제 대기 회원</div><div style={{fontSize:12,color:"#9a8e80"}}>임시 예약 처리된 회원입니다</div></div></div>
+            <div style={S.modalHead}><span>🔔</span><div><div style={S.modalTitle}>결제·갱신 필요 회원</div><div style={{fontSize:12,color:"#9a8e80"}}>오늘 예약 중 결제·갱신 확인이 필요한 회원입니다</div></div></div>
             <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:16}}>
               {renewPendingMembers.map(m=>{
                 const isPayment=m.paymentPending;
