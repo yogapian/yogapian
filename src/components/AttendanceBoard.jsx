@@ -3,7 +3,7 @@
 // 역할: 날짜별 수업 슬롯 목록 + 예약자 행 + 출석체크 / 휴강·수업설정 / 워크인 추가
 //
 // 슬롯 카드 구조: [슬롯 헤더(배경색)] → [예약자 행 목록]
-// 예약자 행: 이름 클릭 → quickDetailM 미니카드 / 아이콘 클릭 → AttendCheckModal
+// 예약자 행: 이름 클릭 → 회원 미니카드 또는 원데이 방문 정보 / 아이콘 클릭 → 출석·불참
 // 모달 목록: addModal(출석추가) / cancelModal(취소) / attendCheckModal(출석처리)
 //           showClosureMgr(휴강설정) / showSpecialMgr(수업설정) / quickDetailM(미니상세)
 //           waitPopup(대기자 수락/거절) / showTemplateMgr(시간표 관리)
@@ -13,8 +13,7 @@ import { FONT, TODAY_STR, getTodayStr, TIME_SLOTS, SCHEDULE, GE, SC, TYPE_CFG, D
 import { parseLocal, fmt, fmtWithDow, addDays } from "../utils.js";
 import { getStatus, getDisplayStatus, calcDL, effEnd, getClosureExtDays, usedAsOf, activePeriodTotal, calc3MonthEnd, getSlotCapacity, totalHoldingCalendarDays, getActivePeriod, noshowThreshold, noshowCrossings } from "../memberCalc.js";
 import S from "../styles.js";
-import { newOnedayForm, onedayFields, onedayLabel, validateOnedayForm } from '../onedaySales.js';
-import OnedayFields from './OnedayFields.jsx';
+import OnedayDetailModal from './OnedayDetailModal.jsx';
 import CalendarPicker from "./CalendarPicker.jsx";
 import AttendCheckModal from "./AttendCheckModal.jsx";
 import AdminCancelModal from "./AdminCancelModal.jsx";
@@ -27,7 +26,7 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
   const todayStr=getTodayStr(); // 렌더 시마다 현재 KST 날짜 — 비교용 (TODAY_STR stale 방지)
   const [showCal,setShowCal]=useState(false);        // 달력 피커 열림 여부
   const [addModal,setAddModal]=useState(null);        // 출석 추가 모달: null 또는 slotKey
-  const [addForm,setAddForm]=useState({type:"member",memberId:"",onedayName:"",walkIn:false,...newOnedayForm()});
+  const [addForm,setAddForm]=useState({type:"member",memberId:"",onedayName:"",walkIn:false});
   const [adding,setAdding]=useState(false);
   const [addError,setAddError]=useState("");           // 중복 예약 등 에러 메시지
   // addForm.type: "member"=기존 회원 / "oneday"=원데이 참여자
@@ -40,6 +39,7 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
   const closeSpecialMgr=()=>{setShowSpecialMgr(false);setOriginalType(null);setNewSp(INIT_SP);};
   const [cancelModal,setCancelModal]=useState(null);  // 예약 취소 모달: null 또는 booking 객체
   const [penaltyConfirm,setPenaltyConfirm]=useState(null); // 노쇼 패널티 확인: {memberId,memberName,newCount,expectedCrossings}
+  const [onedayDetail,setOnedayDetail]=useState(null);
   const [attendCheckModal,setAttendCheckModal]=useState(null); // 출석처리 모달: null 또는 booking 객체
   const [showClosureMgr,setShowClosureMgr]=useState(false); // 휴강설정 모달
   const [closureForm,setClosureForm]=useState({date:TODAY_STR,timeSlot:"",reason:"",closureType:"regular",extensionOverride:0});
@@ -156,10 +156,8 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
     const nid=-Date.now(); // 음수 임시 ID — DB INSERT 후 실제 ID로 교체 (클라이언트 ID 충돌 원천 차단)
     if(addForm.type==="oneday"){
       if(!addForm.onedayName.trim())return;
-      const error=validateOnedayForm(addForm);
-      if(!onedayReady||error){setAddError(error||'원데이 매출 연결 DB 준비가 필요합니다.');return;}
       setAdding(true);
-      const ok=await setBookings(p=>[...p,{id:nid,date,memberId:null,onedayName:addForm.onedayName.trim(),timeSlot:addModal,walkIn:true,status:"reserved",cancelNote:"",cancelledBy:"",...onedayFields(addForm)}]);
+      const ok=await setBookings(p=>[...p,{id:nid,date,memberId:null,onedayName:addForm.onedayName.trim(),timeSlot:addModal,walkIn:true,status:"reserved",cancelNote:"",cancelledBy:""}]);
       setAdding(false);
       if(!ok){setAddError('저장하지 못했습니다. 상단 오류를 확인해주세요.');return;}
     } else {
@@ -173,10 +171,10 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
         if(alreadyExists)return p;
         return[...p,{id:nid,date,memberId:+addForm.memberId,timeSlot:addModal,walkIn:addForm.walkIn,status:"reserved",cancelNote:"",cancelledBy:""}];
       });
-      setAddModal(null);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false,...newOnedayForm()});setAddError("");
+      setAddModal(null);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});setAddError("");
       return;
     }
-    setAddModal(null);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false,...newOnedayForm()});
+    setAddModal(null);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});
   }
 
   // slotMids: 특정 슬롯에 이미 예약된 memberId 배열 (중복 방지용)
@@ -326,7 +324,7 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
                 <div key={rec.id} style={{padding:"8px 12px",background:"#fafaf8",borderRadius:8,marginBottom:4,border:"1px solid #e8e4dc",display:"flex",alignItems:"center",gap:8}}>
                   <span style={{fontSize:11,color:"#9a8e80",flexShrink:0,background:"#f0ede8",borderRadius:4,padding:"1px 5px"}}>{slotLabel}</span>
                   <span style={{fontSize:14,flexShrink:0}}>{isOneday?"👤":GE[mem?.gender]||"🧘🏿"}</span>
-                  <span style={{fontSize:13,fontWeight:500,color:isOneday?"#9a6020":"#1e2e1e",flex:1}}>{isOneday?rec.onedayName:mem?.name}{(isOneday||rec.onedaySource)&&<small style={{marginLeft:6,color:"#9a6020"}}>{onedayLabel(rec)}</small>}</span>
+                  <button onClick={()=>isOneday?setOnedayDetail(rec):mem&&setQuickDetailM(mem)} style={{fontFamily:FONT,fontSize:13,fontWeight:500,color:isOneday?"#9a6020":"#1e2e1e",flex:1,minWidth:0,textAlign:"left",border:0,background:"none",padding:0,textDecoration:"underline",cursor:"pointer"}}>{isOneday?rec.onedayName:mem?.name}</button>
                   <button onClick={()=>setAttendCheckModal(rec)} style={{fontSize:16,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1,flexShrink:0}}>
                     {rec.confirmedAttend===true?(rec.walkIn?"☑️":"✅"):rec.confirmedAttend===false?"❌":"🕉"}
                   </button>
@@ -381,7 +379,7 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
                     {/* 현재 인원 수: fontSize:12 / 색=slot.color */}
                     <span style={{fontSize:12,color:slot.color,fontWeight:700}}>{recs.filter(r=>r.status!=="waiting").length}명</span>
                     {/* + 추가 버튼: bg=slot.color / 글씨 흰색 / fontSize:11 / borderRadius:6 */}
-                    {!slotCl&&<button onClick={()=>{onRefresh?.();setAddModal(slot.key);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false,...newOnedayForm()});setAddError("");}} style={{fontSize:11,background:slot.color,color:"#fff",border:"none",borderRadius:6,padding:"3px 9px",cursor:"pointer",fontFamily:FONT,fontWeight:700,minHeight:26}}>+ 추가</button>}
+                    {!slotCl&&<button onClick={()=>{onRefresh?.();setAddModal(slot.key);setAddForm({type:"member",memberId:"",onedayName:"",walkIn:false});setAddError("");}} style={{fontSize:11,background:slot.color,color:"#fff",border:"none",borderRadius:6,padding:"3px 9px",cursor:"pointer",fontFamily:FONT,fontWeight:700,minHeight:26}}>+ 추가</button>}
                   </div>
                 </div>
 
@@ -430,12 +428,11 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
                           <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
                             {/* 이름: fontSize:13 */}
                             {/* 결석=#c97474(빨강취소선) / 대기=#666(회색) / 원데이=#9a6020(갈색) / 정상=#1e2e1e */}
-                            {/* 클릭 시 quickDetailM 미니카드 오픈 (원데이는 클릭 불가) */}
-                            <span onClick={()=>!isOneday&&mem&&setQuickDetailM(mem)}
-                              style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isWaiting?"#666":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:isOneday?"default":"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
+                            {/* 이름: 회원 상세 / 원데이 방문 구분. 출석 처리는 오른쪽 아이콘에서만. */}
+                            <button onClick={()=>isOneday?setOnedayDetail(rec):mem&&setQuickDetailM(mem)}
+                              style={{fontSize:13,fontWeight:500,color:isAbsent?"#c97474":isWaiting?"#666":isOneday?"#9a6020":"#1e2e1e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontFamily:FONT,border:0,background:"none",padding:0,textAlign:"left",cursor:"pointer",textDecoration:isAbsent?"line-through":"underline",textDecorationColor:isOneday?"#e8a44a":"#c8c0b0",textUnderlineOffset:2,flexShrink:1,minWidth:0}}>
                               {isOneday?rec.onedayName:mem.name}
-                              {(isOneday||rec.onedaySource)&&<span style={{fontSize:10,marginLeft:5,color:rec.onedaySource==='obut'?'#745590':'#9a6020',background:rec.onedaySource==='obut'?'#f3edf8':'#fff5e8',padding:'2px 5px',borderRadius:4}}>{onedayLabel(rec)}</span>}
-                            </span>
+                            </button>
                             {/* 결제 대기 또는 만료·소진 상태의 예약에 💳 표시 */}
                             {showRenewal&&<span title="결제·갱신 필요" style={{fontSize:13,flexShrink:0}}>💳</span>}
                             {/* 잔여 경고: remCount<=1=빨강#a83030 / remCount=2=주황#9a5a10 */}
@@ -475,7 +472,7 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
                       <div key={rec.id} onClick={()=>setAttendCheckModal(rec)}
                         style={{padding:"6px 12px",borderBottom:"0.5px solid #f8f4ef",display:"flex",alignItems:"center",gap:8,opacity:0.5,cursor:"pointer",background:"#faf8f6"}}>
                         <span style={{fontSize:12,flexShrink:0}}>{rec.cancelledBy==="noshow"?"🚫":"📞"}</span>
-                        <span style={{fontSize:12,color:"#9a8e80",textDecoration:"line-through",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cName}</span>
+                        <button onClick={e=>{e.stopPropagation();rec.memberId?cMem&&setQuickDetailM(cMem):setOnedayDetail(rec);}} style={{fontFamily:FONT,border:0,background:'none',padding:0,textAlign:'left',fontSize:12,color:"#9a8e80",textDecoration:"line-through",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cName}</button>
                         <span style={{fontSize:10,color:"#c8c0b0",flexShrink:0}}>↩ 되돌리기</span>
                       </div>
                     );
@@ -514,7 +511,6 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
               <div style={S.fg}>
                 <label style={S.lbl}>참여자 이름</label>
                 <input style={S.inp} value={addForm.onedayName} onChange={e=>setAddForm(f=>({...f,onedayName:e.target.value}))} placeholder="원데이 참여자 이름" autoFocus/>
-                {onedayReady?<OnedayFields form={addForm} setForm={setAddForm} sales={sales} date={date} name={addForm.onedayName.trim()}/>:<div style={{fontSize:12,color:'#9a6020',marginTop:10}}>원데이 매출 연결 DB 준비가 필요합니다.</div>}
                 {/* 입력한 이름이 기존 회원과 일치하면 경고 + 회원 탭 전환 버튼 */}
                 {(()=>{const matched=members.find(m=>m.name===addForm.onedayName.trim());return matched?(
                   <div style={{marginTop:6,background:"#fff8e8",border:"1.5px solid #f0c040",borderRadius:9,padding:"8px 12px",fontSize:12,color:"#7a5a00",display:"flex",alignItems:"center",gap:8}}>
@@ -529,7 +525,7 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
               <button style={S.cancelBtn} onClick={()=>{setAddModal(null);setAddError("");}}>취소</button>
               <button style={{...S.saveBtn,opacity:(addForm.type==="member"?addForm.memberId:addForm.onedayName.trim())?1:0.5}}
                 onClick={addRecord}
-                disabled={adding||!(addForm.type==="member"?addForm.memberId:addForm.onedayName.trim()&&onedayReady)}>
+                disabled={adding||!(addForm.type==="member"?addForm.memberId:addForm.onedayName.trim())}>
                 {adding?'저장 중…':'출석 추가'}
               </button>
             </div>
@@ -896,8 +892,9 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
         </div>
       )}
 
+      {onedayDetail&&<OnedayDetailModal key={onedayDetail.id} rec={onedayDetail} bookings={bookings} members={members} sales={sales} onedayReady={onedayReady} setBookings={setBookings} onClose={()=>setOnedayDetail(null)}/>}
       {/* AttendCheckModal: 🕉 아이콘 클릭 시 출석/결석/워크인 처리 */}
-      {attendCheckModal&&<AttendCheckModal sales={sales} onedayReady={onedayReady} rec={attendCheckModal} members={members} isOpen={isOpen} bookings={bookings} setBookings={setBookings} setMembers={setMembers} notices={notices} setNotices={setNotices} onClose={()=>setAttendCheckModal(null)}/>}
+      {attendCheckModal&&<AttendCheckModal rec={attendCheckModal} members={members} isOpen={isOpen} bookings={bookings} setBookings={setBookings} setMembers={setMembers} notices={notices} setNotices={setNotices} onClose={()=>setAttendCheckModal(null)}/>}
       {/* AdminCancelModal: 예약 취소 사유 입력 후 adminCancel 호출 */}
       {cancelModal&&<AdminCancelModal booking={cancelModal} member={members.find(m=>m.id===cancelModal.memberId)} onClose={()=>setCancelModal(null)} onConfirm={(note,sendNotice,cancelType)=>adminCancel(cancelModal.id,note,sendNotice,cancelType)}/>}
 

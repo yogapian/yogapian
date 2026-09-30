@@ -2,29 +2,15 @@ import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS } from "../constants.js";
 import { fmtWithDow, endOfMonth } from "../utils.js";
 import { getActivePeriod, calc3MonthEnd, noshowThreshold, noshowCrossings } from "../memberCalc.js";
-import { newOnedayForm, onedayFields, validateOnedayForm } from '../onedaySales.js';
-import OnedayFields from './OnedayFields.jsx';
 import S from "../styles.js";
 
-export default function AttendCheckModal({sales=[],onedayReady=false,rec,members,isOpen,bookings,setBookings,setMembers,notices,setNotices,onClose}){
+export default function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,notices,setNotices,onClose}){
   const [note,setNote]=useState("");
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
-  const [editOneday,setEditOneday]=useState(false);
-  const [onedayForm,setOnedayForm]=useState(()=>({...newOnedayForm(),...rec,onedaySource:rec.onedaySource||'',onedayMode:rec.memberId?'membership':rec.onedayMode||'standalone',saleAction:rec.onedaySaleId?'existing':'new'}));
-  async function saveOneday(){
-    const issue=validateOnedayForm(onedayForm);
-    if(issue){setError(issue);return;}
-    setBusy(true);setError('');
-    const ok=await setBookings(p=>p.map(b=>b.id===rec.id?{...b,...onedayFields(onedayForm)}:b));
-    setBusy(false);
-    if(ok){setEditOneday(false);}else setError('저장에 실패했습니다. 상단 오류를 확인해주세요.');
-  }
   const [cancelPanel,setCancelPanel]=useState(false); // 불참 클릭 후 노쇼/대리취소 패널
   const [cancelType,setCancelType]=useState("noshow"); // "noshow" | "proxy"
   const [penaltyStep,setPenaltyStep]=useState(null); // {newCount, expectedCrossings} — 노쇼 패널티 확인 단계
-  const [linkMode,setLinkMode]=useState(false);
-  const [linkSearch,setLinkSearch]=useState("");
 
   const mem=rec.memberId?members.find(m=>m.id===rec.memberId):null;
   const slotLabel=TIME_SLOTS.find(t=>t.key===rec.timeSlot)?.label||"";
@@ -135,18 +121,6 @@ export default function AttendCheckModal({sales=[],onedayReady=false,rec,members
     if(ok)onClose();else setError('되돌리기 저장에 실패했습니다.');
   }
 
-  async function doLink(targetMem){
-    if(busy)return;
-    setBusy(true);
-    const ok=await setBookings(p=>p.map(b=>b.id===rec.id?{...b,memberId:targetMem.id,onedayName:null,...(b.onedaySource==='general'?{onedayMode:'membership'}:{})}:b));
-    setBusy(false);
-    if(ok)onClose();else setError('회원 연결에 실패했습니다.');
-  }
-
-  const filteredMembers=linkSearch
-    ?members.filter(m=>m.name.includes(linkSearch)||(m.phone&&m.phone.includes(linkSearch)))
-    :members.slice(0,20);
-
   const btn=(extra={})=>({borderRadius:10,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT,border:"none",...extra});
 
   return(
@@ -162,25 +136,20 @@ export default function AttendCheckModal({sales=[],onedayReady=false,rec,members
 
         {error&&<div role="alert" style={{color:'#c97474',fontSize:12,marginBottom:10}}>{error}</div>}
         {busy&&<div role="status" style={{fontSize:12,marginBottom:10}}>저장 중…</div>}
-        {onedayReady&&(!mem||live.onedaySource)&&<div style={{marginBottom:14}}>
-          <button disabled={busy||rec.id<0} style={{...S.editBtn,width:'100%'}} onClick={()=>{setOnedayForm({...newOnedayForm(),...live,onedaySource:live.onedaySource||'',onedayMode:live.memberId?'membership':live.onedayMode||'standalone',saleAction:live.onedaySaleId?'existing':'new'});setEditOneday(!editOneday);}}>일반·오붓 / 매출 연결 수정</button>
-          {editOneday&&<><OnedayFields form={onedayForm} setForm={setOnedayForm} sales={sales} bookingId={live.id} name={live.onedayName||mem?.name} date={live.date} lockedSaleId={live.onedaySaleId} memberLinked={!!live.memberId}/><button disabled={busy} onClick={saveOneday} style={{...S.saveBtn,width:'100%'}}>구분·매출 연결 저장</button></>}
-          {live.onedaySource==='general'&&live.onedayMode==='membership'&&!live.onedayMembershipSaleId&&<div style={{fontSize:12,color:'#9a6020',marginTop:6}}>월회원권 매출 연결 필요</div>}
-        </div>}
         {/* ── 출석 확인됨 ── */}
         {live.confirmedAttend===true&&(
           <div style={{textAlign:"center",marginBottom:12}}>
             <div style={{fontSize:32,marginBottom:6}}>{live.walkIn?"☑️":"✅"}</div>
             <div style={{fontSize:13,color:"#9a8e80"}}>출석 확인됨 {live.walkIn?"(워크인)":""}</div>
-            <button onClick={doReset} style={{marginTop:10,background:"none",border:"none",fontSize:12,color:"#9a8e80",cursor:"pointer",fontFamily:FONT}}>↩ 되돌리기</button>
+            <button disabled={busy} onClick={doReset} style={{marginTop:10,background:"none",border:"none",fontSize:12,color:"#9a8e80",cursor:"pointer",fontFamily:FONT}}>↩ 되돌리기</button>
           </div>
         )}
 
         {/* ── 초기 상태: 출석 | 불참 ── */}
         {live.confirmedAttend==null&&!cancelPanel&&(
           <div style={{display:"flex",gap:8,marginBottom:12}}>
-            <button disabled={busy||rec.id<0||editOneday} onClick={doAttend} style={btn({flex:1,background:"#eef5ee",color:"#2e6e44",border:"1.5px solid #7aaa7a",padding:"14px 0",fontSize:14})}>✅ 출석</button>
-            <button onClick={()=>setCancelPanel(true)} style={btn({flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",padding:"14px 0",fontSize:14})}>❌ 불참</button>
+            <button disabled={busy||rec.id<0} onClick={doAttend} style={btn({flex:1,background:"#eef5ee",color:"#2e6e44",border:"1.5px solid #7aaa7a",padding:"14px 0",fontSize:14})}>✅ 출석</button>
+            <button disabled={busy||rec.id<0} onClick={()=>mem?setCancelPanel(true):_execDelete(false)} style={btn({flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",padding:"14px 0",fontSize:14})}>❌ 불참</button>
           </div>
         )}
 
@@ -190,8 +159,8 @@ export default function AttendCheckModal({sales=[],onedayReady=false,rec,members
             <div style={{fontSize:32,marginBottom:6}}>❌</div>
             <div style={{fontSize:13,color:"#9a8e80",marginBottom:10}}>불참 처리됨</div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={doReset} style={btn({flex:1,background:"#f5f5f5",color:"#9a8e80"})}>↩ 되돌리기</button>
-              <button onClick={()=>setCancelPanel(true)} style={btn({flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0"})}>🗑️ 취소처리</button>
+              <button disabled={busy} onClick={doReset} style={btn({flex:1,background:"#f5f5f5",color:"#9a8e80"})}>↩ 되돌리기</button>
+              <button disabled={busy||rec.id<0} onClick={()=>mem?setCancelPanel(true):_execDelete(false)} style={btn({flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0"})}>🗑️ 취소처리</button>
             </div>
           </div>
         )}
@@ -249,28 +218,6 @@ export default function AttendCheckModal({sales=[],onedayReady=false,rec,members
               </button>
             </div>
           </>
-        )}
-
-        {/* ── 미연결 워크인: 회원 연결 ── */}
-        {!mem&&!linkMode&&!cancelPanel&&(
-          <button onClick={()=>setLinkMode(true)} style={{width:"100%",marginBottom:8,background:"#edf3ff",color:"#3d5494",border:"1px solid #b0c4e8",borderRadius:10,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>
-            🔗 회원으로 연결
-          </button>
-        )}
-        {linkMode&&(
-          <div style={{marginBottom:8}}>
-            <input style={{...S.inp,fontSize:12,marginBottom:6}} value={linkSearch} onChange={e=>setLinkSearch(e.target.value)} placeholder="이름·전화번호 검색" autoFocus/>
-            <div style={{maxHeight:160,overflowY:"auto",border:"1px solid #e0d8cc",borderRadius:8}}>
-              {filteredMembers.map(m=>(
-                <button key={m.id} onClick={()=>doLink(m)} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 12px",fontSize:13,background:"none",border:"none",borderBottom:"1px solid #f0ece4",cursor:"pointer",fontFamily:FONT}}>
-                  {m.name}
-                  {m.phone&&<span style={{fontSize:11,color:"#9a8e80",marginLeft:8}}>{m.phone}</span>}
-                </button>
-              ))}
-              {filteredMembers.length===0&&<div style={{padding:"10px 12px",fontSize:12,color:"#9a8e80"}}>검색 결과 없음</div>}
-            </div>
-            <button onClick={()=>{setLinkMode(false);setLinkSearch("");}} style={{...S.cancelBtn,width:"100%",marginTop:6}}>취소</button>
-          </div>
         )}
 
         {/* 패널/패널티 단계 닫혀있을 때만 하단 닫기 버튼 표시 */}

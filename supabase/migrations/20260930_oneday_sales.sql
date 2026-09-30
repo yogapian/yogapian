@@ -94,9 +94,11 @@ BEGIN
   IF NEW.oneday_sale_id IS NOT NULL THEN
     next_state := CASE WHEN NEW.oneday_mode = 'membership' THEN 'included'
       WHEN linked.oneday_auto AND NEW.status <> 'attended' THEN 'cancelled' ELSE 'active' END;
+    -- sales.date의 실제 타입으로 먼저 변환한다 (운영 text / 예약 date 호환).
+    IF linked.oneday_auto THEN linked.date := NEW.date; END IF;
     UPDATE public.sales SET oneday_booking_id = NEW.id, oneday_status = next_state,
       payment = CASE WHEN oneday_auto THEN COALESCE(NEW.oneday_payment,'네이버') ELSE payment END,
-      date = CASE WHEN oneday_auto THEN NEW.date ELSE date END,
+      date = linked.date,
       updated_at = now()
     WHERE id = NEW.oneday_sale_id;
   END IF;
