@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR } from "../constants.js";
 import { parseLocal } from "../utils.js";
+import { isIncludedSale } from '../onedaySales.js';
 import S from "../styles.js";
 
 const TYPE_LABEL    = {new_member:"신규", renewal:"갱신", oneday:"원데이", meditation:"명상", other:"기타"};
@@ -16,7 +17,10 @@ const MT_LABEL = {"1month":"1개월", "3month":"3개월"};
 
 const won = n => (n ?? 0).toLocaleString("ko-KR") + "원";
 
-export default function SalesTab({sales, setSales}){
+export default function SalesTab({sales, setSales, bookings=[]}){
+  const [busy,setBusy]=useState(false);
+  const [saveError,setSaveError]=useState('');
+  const linkedSale = id => sales.find(s=>s.id===id)?.onedayBookingId || bookings.some(b=>b.onedayMembershipSaleId===id);
   const now = parseLocal(TODAY_STR);
   const [year,  setYear]  = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
@@ -34,44 +38,60 @@ export default function SalesTab({sales, setSales}){
     .filter(s => s.date.startsWith(ym))
     .sort((a,b) => a.date.localeCompare(b.date) || a.id - b.id);
 
-  const total = monthSales.reduce((acc, s) => acc + (s.amount || 0), 0);
+  const countedSales = monthSales.filter(s=>!isIncludedSale(s));
+  const total = countedSales.reduce((acc, s) => acc + (s.amount || 0), 0);
   const byType = {};
-  monthSales.forEach(s => { byType[s.type] = (byType[s.type] || 0) + (s.amount || 0); });
+  countedSales.forEach(s => { byType[s.type] = (byType[s.type] || 0) + (s.amount || 0); });
 
   function prevMonth(){ if(month===1){setYear(y=>y-1);setMonth(12);}else setMonth(m=>m-1); }
   function nextMonth(){ if(month===12){setYear(y=>y+1);setMonth(1);}else setMonth(m=>m+1); }
 
-  function doAdd(){
+  async function doAdd(){
+    if(busy)return;
     if(!addForm.amount || !+addForm.amount) return;
     // Date.now() → Math.max 방식으로 변경: sales.id INTEGER 오버플로우 방지
-    setSales(p => [...p, {
+    setBusy(true);setSaveError('');
+    const ok=await setSales(p => [...p, {
       id: Math.max(...p.map(s=>s.id), 0) + 1, date: addForm.date, type: addForm.type,
       memberId: null, memberName: addForm.memberName,
       memberType: null, total: null,
       amount: +addForm.amount, payment: addForm.payment,
       memo: addForm.memo,
     }]);
+    setBusy(false);
+    if(!ok){setSaveError('저장에 실패했습니다. 상단 오류를 확인해주세요.');return;}
     const [y, m] = addForm.date.split("-").map(Number);
     setYear(y); setMonth(m);
     setShowAdd(false);
     setAddForm({date:TODAY_STR, type:"oneday", memberName:"", amount:"", payment:"네이버", memo:""});
   }
 
-  function doDelete(id){ setSales(p => p.filter(s => s.id !== id)); setDeleteId(null); }
+  async function doDelete(id){
+    if(busy||linkedSale(id))return;
+    setBusy(true);
+    if(await setSales(p=>p.filter(s=>s.id!==id)))setDeleteId(null);
+    else setSaveError('삭제 저장에 실패했습니다.');
+    setBusy(false);
+  }
 
   function openEdit(s){
     setEditId(s.id);
     setEditForm({ date: s.date, type: s.type, memberName: s.memberName||"", amount: String(s.amount||""), payment: s.payment||"현금", memo: s.memo||"" });
   }
-  function doEdit(){
+  async function doEdit(){
+    if(busy||linkedSale(editId))return;
     if(!editForm.amount || !+editForm.amount) return;
-    setSales(p => p.map(s => s.id === editId ? {...s, date:editForm.date, type:editForm.type, memberName:editForm.memberName, amount:+editForm.amount, payment:editForm.payment, memo:editForm.memo} : s));
+    setBusy(true);setSaveError('');
+    const ok=await setSales(p => p.map(s => s.id === editId ? {...s, date:editForm.date, type:editForm.type, memberName:editForm.memberName, amount:+editForm.amount, payment:editForm.payment, memo:editForm.memo} : s));
+    setBusy(false);
+    if(!ok){setSaveError('저장에 실패했습니다. 상단 오류를 확인해주세요.');return;}
     setEditId(null); setEditForm(null);
   }
 
   return (
     <div style={{paddingBottom:60}}>
 
+      {saveError&&<div role="alert" style={{color:'#c97474',marginBottom:10}}>{saveError}</div>}
       {/* 월 네비 */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,background:"#fff",borderRadius:12,padding:"10px 16px",border:"1px solid #e4e0d8"}}>
         <button onClick={prevMonth} style={{...S.navBtn,padding:"6px 14px",fontSize:17}}>‹</button>
@@ -85,7 +105,7 @@ export default function SalesTab({sales, setSales}){
         <div style={{fontSize:28,fontWeight:700,color:"#1e2e1e",marginBottom:12,letterSpacing:"-0.5px"}}>{won(total)}</div>
         <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
           {["new_member","renewal","oneday","meditation","other"].map(k => {
-            const cnt = monthSales.filter(s=>s.type===k).length;
+            const cnt = countedSales.filter(s=>s.type===k).length;
             return cnt > 0 ? (
               <div key={k} style={{background:TYPE_COLOR[k].bg,color:TYPE_COLOR[k].color,borderRadius:8,padding:"5px 11px",fontSize:12,fontWeight:600}}>
                 {TYPE_LABEL[k]} <span style={{opacity:.7,fontWeight:400}}>({cnt}건)</span> {won(byType[k])}
@@ -115,7 +135,7 @@ export default function SalesTab({sales, setSales}){
               <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                 <span style={{fontSize:10,fontWeight:700,borderRadius:6,padding:"2px 7px",background:tc.bg,color:tc.color}}>{TYPE_LABEL[s.type]||"기타"}</span>
                 {s.payment && (()=>{const pc=PAYMENT_COLOR[s.payment];return <span style={{fontSize:10,fontWeight:600,borderRadius:6,padding:"2px 7px",background:pc?pc.bg:"#f5f2ec",color:pc?pc.color:"#9a8e80"}}>{s.payment}</span>;})()}
-                <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e",minWidth:52,textAlign:"right"}}>{(s.amount||0).toLocaleString("ko-KR")}</span>
+                <span style={{fontSize:14,fontWeight:700,color:"#1e2e1e",minWidth:52,textAlign:"right"}}>{isIncludedSale(s)?(s.onedayStatus==='included'?'월회비 포함':'출석 취소'):(s.amount||0).toLocaleString('ko-KR')}</span>
               </div>
             </div>
           );
@@ -154,7 +174,7 @@ export default function SalesTab({sales, setSales}){
             <div style={S.fg}><label style={S.lbl}>메모 (선택)</label><input style={S.inp} value={addForm.memo} onChange={e=>setAddForm(f=>({...f,memo:e.target.value}))} placeholder=""/></div>
             <div style={S.modalBtns}>
               <button style={S.cancelBtn} onClick={()=>setShowAdd(false)}>취소</button>
-              <button style={S.saveBtn} onClick={doAdd}>저장</button>
+              <button style={S.saveBtn} disabled={busy} onClick={doAdd}>저장</button>
             </div>
           </div>
         </div>
@@ -165,6 +185,7 @@ export default function SalesTab({sales, setSales}){
         <div style={S.overlay} onClick={()=>setEditId(null)}>
           <div style={{...S.modal,maxWidth:360}} onClick={e=>e.stopPropagation()}>
             <div style={{...S.modalHead,marginBottom:10}}><span>✏️</span><span style={S.modalTitle}>매출 수정</span></div>
+            {linkedSale(editId)&&<div style={{fontSize:12,color:'#9a6020',marginBottom:12}}>출석과 연결된 매출입니다. 구분·월회비 포함 처리는 출석보드에서 변경해주세요. 이 기록은 직접 수정·삭제할 수 없습니다.</div>}
             <div style={S.fg}>
               <label style={S.lbl}>종류</label>
               <div style={{display:"flex",gap:7}}>
@@ -187,8 +208,8 @@ export default function SalesTab({sales, setSales}){
             <div style={S.fg}><label style={S.lbl}>메모 (선택)</label><input style={S.inp} value={editForm.memo} onChange={e=>setEditForm(f=>({...f,memo:e.target.value}))} placeholder=""/></div>
             <div style={{display:"flex",gap:8,marginTop:16}}>
               <button style={{...S.cancelBtn,flex:1}} onClick={()=>setEditId(null)}>취소</button>
-              <button style={{...S.saveBtn,background:"#c97474",flex:"0 0 auto",padding:"10px 16px"}} onClick={()=>{setDeleteId(editId);setEditId(null);}}>삭제</button>
-              <button style={{...S.saveBtn,flex:1}} onClick={doEdit}>저장</button>
+              <button style={{...S.saveBtn,background:"#c97474",flex:"0 0 auto",padding:"10px 16px"}} disabled={busy||!!linkedSale(editId)} onClick={()=>{setDeleteId(editId);setEditId(null);}}>삭제</button>
+              <button style={{...S.saveBtn,flex:1}} disabled={busy||!!linkedSale(editId)} onClick={doEdit}>저장</button>
             </div>
           </div>
         </div>
@@ -203,7 +224,7 @@ export default function SalesTab({sales, setSales}){
             <div style={{color:"#9a8e80",fontSize:13,marginBottom:18}}>삭제 후 복구가 어렵습니다.</div>
             <div style={S.modalBtns}>
               <button style={S.cancelBtn} onClick={()=>setDeleteId(null)}>취소</button>
-              <button style={{...S.saveBtn,background:"#c97474"}} onClick={()=>doDelete(deleteId)}>삭제</button>
+              <button style={{...S.saveBtn,background:"#c97474"}} disabled={busy} onClick={()=>doDelete(deleteId)}>삭제</button>
             </div>
           </div>
         </div>

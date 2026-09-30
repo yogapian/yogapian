@@ -15,11 +15,12 @@ import NoticeManager from "./NoticeManager.jsx";
 import SalesTab from "./SalesTab.jsx";
 
 // onRefresh: 관리자가 수동으로 DB 데이터를 즉시 다시 불러올 수 있도록 App.jsx에서 주입
-export default function AdminApp({members,setMembers,bookings,setBookings,notices,setNotices,specialSchedules,setSpecialSchedules,closures,setClosures,scheduleTemplate,setScheduleTemplate,sales,setSales,adminNotifUnread=0,onMarkNotifRead,onRefresh,onLogout}){
+export default function AdminApp({onedayReady,members,setMembers,bookings,setBookings,notices,setNotices,specialSchedules,setSpecialSchedules,closures,setClosures,scheduleTemplate,setScheduleTemplate,sales,setSales,adminNotifUnread=0,onMarkNotifRead,onRefresh,onLogout}){
   const [tab,setTab]=useState("attendance");
   const [filter,setFilter]=useState("on");
   const [search,setSearch]=useState("");
   const [showForm,setShowForm]=useState(false);
+  const [savingMember,setSavingMember]=useState(false);
   const [editId,setEditId]=useState(null);
   const [refreshing,setRefreshing]=useState(false); // 새로고침 버튼 로딩 상태
   const [form,setForm]=useState({});
@@ -30,6 +31,8 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
   const [showNotices,setShowNotices]=useState(false);
   const [showPolls,setShowPolls]=useState(false);
   const [showPendingPopup,setShowPendingPopup]=useState(true);
+  const [linkingOneday,setLinkingOneday]=useState(false);
+  const [onedayLinkError,setOnedayLinkError]=useState("");
   const [onedayConfirm,setOnedayConfirm]=useState(null); // 원데이→정규 연동 확인 팝업
   const [notifHistory,setNotifHistory]=useState(null); // null=미로드, []=로드완료
   const [notifHistoryLoading,setNotifHistoryLoading]=useState(false);
@@ -61,7 +64,10 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     setForm({...m,phone:m.phone||"",phone4:m.phone4||"",manualStatus:m.manualStatus||null});
     setShowForm(true);
   }
-  function saveForm(){
+  async function saveForm(){
+    if(savingMember)return;
+    setSavingMember(true);
+    try {
     if(!form.name)return;
     if(!editId&&!form.startDate)return;
     let autoEnd = form.endDate;
@@ -70,21 +76,22 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     const phone4=(phone.replace(/\D/g,"")).slice(-4)||form.phone4||"";
     const e={...form,phone,phone4,endDate:autoEnd||form.endDate,total:+form.total,extensionDays:+(form.extensionDays||0),holdingDays:+(form.holdingDays||0),isNew:!!form.isNew,manualStatus:form.manualStatus||null};
     if(editId){
-      setMembers(p=>p.map(m=>{
+      const saved=await setMembers(p=>p.map(m=>{
         if(m.id!==editId)return m;
         // 편집 시 renewalHistory 마지막 항목도 동기화 (total/날짜 불일치 버그 방지)
         const rh=m.renewalHistory||[];
         const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1?{...r,total:e.total,startDate:e.startDate,endDate:e.endDate,memberType:e.memberType}:r):rh;
         return{...m,...e,renewalHistory:updRH};
       }));
-      // 편집 시에도 미연결 원데이 예약 자동 연결 (신규 등록 전 출석 처리한 경우 대비)
+      if(!saved)return;
+      // 이름만으로 연결하지 않고 관리자가 방문 기록을 확인한다.
       // TODAY_STR은 모듈 로드 시 고정 → 앱 장기 실행 시 날짜 오류 방지를 위해 실행 시점 KST 날짜 계산
       const _kst2=new Date(Date.now()+9*3600*1000);
       const todayStr2=`${_kst2.getUTCFullYear()}-${String(_kst2.getUTCMonth()+1).padStart(2,"0")}-${String(_kst2.getUTCDate()).padStart(2,"0")}`;
       const refDate2=new Date(_kst2.getUTCFullYear(),_kst2.getUTCMonth(),_kst2.getUTCDate()-7);
       const sevenDaysAgo2=`${refDate2.getFullYear()}-${String(refDate2.getMonth()+1).padStart(2,"0")}-${String(refDate2.getDate()).padStart(2,"0")}`;
       const orphaned=bookings.filter(b=>b.onedayName===form.name&&!b.memberId&&b.date>=sevenDaysAgo2&&b.date<=todayStr2&&(b.status==="attended"||b.status==="reserved"));
-      if(orphaned.length>0) setBookings(p=>p.map(b=>orphaned.some(o=>o.id===b.id)?{...b,memberId:editId,onedayName:null}:b));
+      if(orphaned.length>0){setOnedayLinkError('');setOnedayConfirm({newMember:{...e,id:editId},matchedBooking:orphaned[0],candidates:orphaned,existing:true});setShowForm(false);return;}
     } else{
       const id=Math.max(...members.map(m=>m.id),0)+1;
       const newMember={id,...e,renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]};
@@ -95,40 +102,60 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
       const refDate=new Date(_kst.getUTCFullYear(),_kst.getUTCMonth(),_kst.getUTCDate()-7);
       const sevenDaysAgo=`${refDate.getFullYear()}-${String(refDate.getMonth()+1).padStart(2,"0")}-${String(refDate.getDate()).padStart(2,"0")}`;
       // attended: 출석완료 / reserved+오늘이하: 당일 원데이(아직 출석 전)도 연동 대상 포함
-      const matchedOneday=bookings.find(b=>b.onedayName===form.name&&b.date>=sevenDaysAgo&&b.date<=todayStr&&(b.status==="attended"||b.status==="reserved"));
-      if(matchedOneday){setOnedayConfirm({newMember,matchedBooking:matchedOneday});setShowForm(false);return;}
-      setMembers(p=>[...p,newMember]);
+      const candidates=bookings.filter(b=>!b.memberId&&b.onedayName===form.name&&b.date>=sevenDaysAgo&&b.date<=todayStr&&(b.status==="attended"||b.status==="reserved"));
+      if(candidates.length){setOnedayLinkError('');setOnedayConfirm({newMember,matchedBooking:candidates[0],candidates});setShowForm(false);return;}
+      if(!await setMembers(p=>[...p,newMember]))return;
       // 신규 회원 매출 자동 등록
       _addMemberSale(newMember, "new_member");
     }
     setShowForm(false);
+    } finally { setSavingMember(false); }
   }
 
   // 매출 자동 생성 헬퍼 — 테스트 계정(요가피안)은 매출 제외
-  function _addMemberSale(member, type){
+  async function _addMemberSale(member, type){
     if(member.name==="요가피안") return;
     const price=lookupPrice(member.memberType, member.total);
     if(!price) return;
     // 매출 날짜: 최초등록일(firstDate) 기준 — startDate는 수업 시작일로 결제일과 다를 수 있음
-    setSales(p=>[...p,{id:Date.now(),date:member.firstDate||TODAY_STR,type,memberId:member.id,memberName:member.name,memberType:member.memberType,total:member.total,amount:price,payment:member.payment||"",memo:""}]);
+    let saleId;
+    const ok=await setSales(p=>{saleId=Math.max(0,...p.map(s=>s.id))+1;return [...p,{id:saleId,date:member.firstDate||TODAY_STR,type,memberId:member.id,memberName:member.name,memberType:member.memberType,total:member.total,amount:price,payment:member.payment||"",memo:""}];});
+    return ok?saleId:null;
   }
 
   // 원데이 방문 기록을 정규 회원 1회로 인정하고 연동
-  function doLinkOneday(){
-    const {newMember,matchedBooking}=onedayConfirm;
-    // startDate를 원데이 방문일로 소급 → usedAsOf가 자동으로 1회 카운트
-    const linked={...newMember,startDate:matchedBooking.date,renewalHistory:[{...newMember.renewalHistory[0],startDate:matchedBooking.date}]};
-    setMembers(p=>[...p,linked]);
-    // id가 음수 임시값에서 실제 DB id로 교체된 경우에도 매핑 성공하도록 onedayName+date+timeSlot으로 이중 매핑
-    setBookings(p=>p.map(b=>(b.id===matchedBooking.id||(b.onedayName&&b.onedayName===matchedBooking.onedayName&&b.date===matchedBooking.date&&b.timeSlot===matchedBooking.timeSlot))?{...b,memberId:newMember.id,onedayName:null}:b));
-    _addMemberSale(linked, "new_member");
-    setOnedayConfirm(null);
+  async function doLinkOneday(){
+    if(linkingOneday)return;
+    setLinkingOneday(true);setOnedayLinkError('');
+    const {newMember,matchedBooking,existing}=onedayConfirm;
+    // 기존 회원은 기간을 변경하지 않는다. 신규 회원의 1회 인정 동작은 유지한다.
+    const linked=existing?newMember:{...newMember,startDate:matchedBooking.date,renewalHistory:[{...newMember.renewalHistory[0],startDate:matchedBooking.date}]};
+    if(!existing&&!onedayConfirm.memberSaved){
+      if(!await setMembers(p=>p.some(m=>m.id===linked.id)?p:[...p,linked])){setOnedayLinkError('회원 저장 실패');setLinkingOneday(false);return;}
+      setOnedayConfirm(p=>({...p,memberSaved:true}));
+    }
+    let saleId=onedayConfirm.saleId||matchedBooking.onedayMembershipSaleId;
+    if(!existing&&!saleId){
+      saleId=await _addMemberSale(linked,'new_member');
+      if(saleId===null){setOnedayLinkError('회원은 저장됐지만 월회원권 매출을 저장하지 못했습니다. 금액·연결 상태를 확인해주세요.');setLinkingOneday(false);return;}
+      setOnedayConfirm(p=>({...p,saleId}));
+    }
+    const ok=await setBookings(p=>p.map(b=>b.id===matchedBooking.id?{...b,memberId:newMember.id,onedayName:null,...(b.onedaySource==='general'?{onedayMode:'membership',onedayMembershipSaleId:saleId||null}:{})}:b));
+    setLinkingOneday(false);
+    if(ok)setOnedayConfirm(null);else setOnedayLinkError('출석 연결 실패. 다시 누르면 저장된 회원·매출을 재사용합니다.');
   }
-  // 원데이 기록 무시하고 정규 회원만 등록
-  function doSkipOneday(){
-    setMembers(p=>[...p,onedayConfirm.newMember]);
-    _addMemberSale(onedayConfirm.newMember, "new_member");
-    setOnedayConfirm(null);
+  // 원데이 기록을 연결하지 않고 회원만 등록. 저장된 회원·매출은 재생성하지 않는다.
+  async function doSkipOneday(){
+    if(linkingOneday)return;
+    setLinkingOneday(true);
+    const {newMember,existing,memberSaved,saleId}=onedayConfirm;
+    if(!existing&&!memberSaved&&!await setMembers(p=>[...p,newMember])){setLinkingOneday(false);return;}
+    if(!existing&&!saleId){
+      setOnedayConfirm(p=>({...p,memberSaved:true}));
+      const savedId=await _addMemberSale(newMember,'new_member');
+      if(savedId===null){setOnedayLinkError('월회원권 매출 저장 실패. 다시 시도해주세요.');setLinkingOneday(false);return;}
+    }
+    setLinkingOneday(false);setOnedayConfirm(null);
   }
 
   function applyRenewal(mid,rf){
@@ -166,7 +193,7 @@ export default function AdminApp({members,setMembers,bookings,setBookings,notice
     }));
     // 갱신 매출 자동 등록 — 테스트 계정(요가피안)은 제외
     const mem=members.find(m=>m.id===mid);
-    if(mem&&mem.name!=="요가피안"){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Date.now(),date:TODAY_STR,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
+    if(mem&&mem.name!=="요가피안"){const price=lookupPrice(rf.memberType,rf.total);if(price){setSales(p=>[...p,{id:Math.max(0,...p.map(s=>s.id))+1,date:TODAY_STR,type:"renewal",memberId:mid,memberName:mem.name,memberType:rf.memberType,total:rf.total,amount:price,payment:rf.payment||"",memo:""}]);}}
     setRenewT(null);setDetailM(null);
   }
   // 미래 기수의 startDate/endDate를 null로 전환 (미정) — member 날짜·횟수는 이전 기수 기준으로 복원
@@ -319,8 +346,8 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
           })}
         </div>
       )}
-      {tab==="attendance"&&<AttendanceBoard members={members} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} notices={notices} setNotices={setNotices} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} onMemberClick={(m)=>setDetailM(m)} onRefresh={onRefresh}/>}
-      {tab==="sales"&&<SalesTab sales={sales} setSales={setSales}/>}
+      {tab==="attendance"&&<AttendanceBoard sales={sales} onedayReady={onedayReady} members={members} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} notices={notices} setNotices={setNotices} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} onMemberClick={(m)=>setDetailM(m)} onRefresh={onRefresh}/>}
+      {tab==="sales"&&<SalesTab sales={sales} setSales={setSales} bookings={bookings}/>}
 
       {tab==="members"&&(<>
         {/* ─── 상태 필터 pill ─── */}
@@ -456,7 +483,7 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
               </div>
             </>)}
 
-            <div style={S.modalBtns}><button style={S.cancelBtn} onClick={()=>setShowForm(false)}>취소</button><button style={S.saveBtn} onClick={saveForm}>저장</button></div>
+            <div style={S.modalBtns}><button style={S.cancelBtn} onClick={()=>setShowForm(false)}>취소</button><button style={S.saveBtn} disabled={savingMember} onClick={saveForm}>저장</button></div>
           </div>
         </div>
       )}
@@ -483,10 +510,15 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
               <b style={{color:"#4a6a4a"}}>{fmtWithDow(onedayConfirm.matchedBooking.date)}</b>에<br/>
               원데이 수업을 방문한 기록이 있습니다.<br/>
               <span style={{fontSize:12,color:"#9a8e80"}}>이 방문을 1회로 인정할까요?</span>
+              {onedayConfirm.matchedBooking.onedaySource==='general'&&<div style={{fontSize:12,color:'#4a6a4a'}}>일반 원데이 비용은 월회비에 포함됩니다. 연결된 3만원 매출은 합계에서 제외됩니다.</div>}
+              {!onedayConfirm.matchedBooking.onedaySource&&<div style={{fontSize:12,color:'#9a6020'}}>미분류 원데이입니다. 출석보드에서 일반·오붓 및 기존 매출을 확인해주세요.</div>}
+              {onedayConfirm.matchedBooking.onedaySource==='obut'&&<div style={{fontSize:12,color:'#745590'}}>오붓 수기 매출은 변경하지 않습니다.</div>}
+              {onedayConfirm.candidates?.length>1&&<select aria-label="연결할 원데이 방문" disabled={linkingOneday||onedayConfirm.memberSaved} style={S.inp} value={onedayConfirm.matchedBooking.id} onChange={e=>setOnedayConfirm(p=>({...p,matchedBooking:p.candidates.find(b=>b.id===+e.target.value)}))}>{onedayConfirm.candidates.map(b=><option key={b.id} value={b.id}>{b.date} · {b.timeSlot} · #{b.id}</option>)}</select>}
+              {onedayLinkError&&<div role="alert" style={{color:'#c97474'}}>{onedayLinkError}</div>}
             </div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={doSkipOneday} style={{flex:1,background:"#f0ece4",color:"#9a8e80",border:"none",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>인정 안 함</button>
-              <button onClick={doLinkOneday} style={{flex:1,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>1회 인정</button>
+              <button disabled={linkingOneday} onClick={doSkipOneday} style={{flex:1,background:"#f0ece4",color:"#9a8e80",border:"none",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>인정 안 함</button>
+              <button disabled={linkingOneday||onedayConfirm.matchedBooking.id<0} onClick={doLinkOneday} style={{flex:1,background:"#4a6a4a",color:"#fff",border:"none",borderRadius:9,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FONT}}>1회 인정</button>
             </div>
           </div>
         </div>

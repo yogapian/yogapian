@@ -17,7 +17,8 @@ export async function saveBookingChanges(prev, next, { insert, upsert, remove, u
             .concat(received || real);
         });
       } else {
-        await upsert(b);
+        const saved = await upsert(b);
+        if (saved) update(current => current.map(row => row.id === b.id && same(row, b) ? saved : row));
       }
     } catch (error) {
       update(current => b.id < 0

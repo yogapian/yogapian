@@ -81,6 +81,14 @@ export function bookingToSnake(b) {
     cancel_note:      b.cancelNote ?? "",
     cancelled_by:     b.cancelledBy ?? "",
     renewal_pending:  b.renewalPending ?? false,
+    // 미분류 기존 예약에는 새 필드를 보내지 않는다 (단계적 DB 적용 지원).
+    ...(b.onedaySource !== undefined ? {
+      oneday_source: b.onedaySource,
+      oneday_mode: b.onedayMode ?? null,
+      oneday_payment: b.onedayPayment ?? null,
+      oneday_sale_id: b.onedaySaleId ?? null,
+      oneday_membership_sale_id: b.onedayMembershipSaleId ?? null,
+    } : {}),
     updated_at:       new Date().toISOString(),
   };
 }
@@ -97,6 +105,13 @@ export function fromSnakeBooking(r) {
     cancelNote:      r.cancel_note ?? "",
     cancelledBy:     r.cancelled_by ?? "",
     renewalPending:  r.renewal_pending ?? false,
+    ...(Object.hasOwn(r, 'oneday_source') ? {
+      onedaySource: r.oneday_source,
+      onedayMode: r.oneday_mode,
+      onedayPayment: r.oneday_payment,
+      onedaySaleId: r.oneday_sale_id,
+      onedayMembershipSaleId: r.oneday_membership_sale_id,
+    } : {}),
   };
 }
 export function noticeToSnake(n) {
@@ -180,6 +195,9 @@ export function fromSnakeSale(r) {
     amount:     r.amount ?? 0,
     payment:    r.payment ?? "",
     memo:       r.memo ?? "",
+    onedayBookingId: r.oneday_booking_id ?? null,
+    onedayAuto: r.oneday_auto ?? false,
+    onedayStatus: r.oneday_status ?? null,
   };
 }
 export function closureToSnake(c) {
@@ -219,6 +237,11 @@ export async function dbLoadAll() {
     _supabase.from("sales").select("*").order("date").limit(5000),
   ]);
   if (bRes.data?.length >= 10000) console.warn("bookings 10000개 초과 — limit 상향 필요");
+  let onedayReady = !!bRes.data?.some(b=>Object.hasOwn(b,'oneday_source')) && !!slRes.data?.some(s=>Object.hasOwn(s,'oneday_status'));
+  if(!onedayReady && !bRes.error && !slRes.error && (!bRes.data?.length || !slRes.data?.length)) {
+    const [bc,sc] = await Promise.all([_supabase.from('bookings').select('oneday_source').limit(0),_supabase.from('sales').select('oneday_status').limit(0)]);
+    onedayReady = !bc.error && !sc.error;
+  }
   let scheduleTemplate = {};
   try {
     const tmplRes = await _supabase.from("appdata").select("value").eq("key", "schedule_template").maybeSingle();
@@ -234,18 +257,20 @@ export async function dbLoadAll() {
     notices:          (nRes.data || []).map(fromSnakeNotice),
     specialSchedules: (sRes.data || []).map(fromSnakeSpecial),
     closures:         (cRes.data || []).map(fromSnakeClosure),
-    sales:            (slRes.data || []).map(fromSnakeSale),
+    sales:            slRes.error ? null : (slRes.data || []).map(fromSnakeSale),
     scheduleTemplate,
+    onedayReady,
   };
 }
 
 export async function dbUpsertMember(m) {
   const { error } = await _supabase.from("members").upsert(toSnake(m));
-  if (error) console.error("member upsert:", error);
+  if (error) throw error;
 }
 export async function dbUpsertBooking(b) {
-  const { error } = await _supabase.from("bookings").upsert(bookingToSnake(b));
+  const { data, error } = await _supabase.from("bookings").upsert(bookingToSnake(b)).select().single();
   if (error) throw error;
+  return fromSnakeBooking(data); // 트리거가 연결한 매출 ID까지 수신
 }
 // 신규 booking INSERT — id를 DB sequence가 자동 생성, 생성된 row 반환
 // INSERT 전 DB에서 중복 확인 — 다른 세션·기기에서 동시 예약 시에도 방지
@@ -281,7 +306,7 @@ export async function dbUpsertClosure(c) {
 
 export async function dbDeleteMember(id) {
   const { error } = await _supabase.from("members").delete().eq("id", id);
-  if (error) console.error("member delete:", error);
+  if (error) throw error;
 }
 export async function dbDeleteBooking(id) {
   const { error } = await _supabase.from("bookings").delete().eq("id", id);
@@ -299,13 +324,24 @@ export async function dbDeleteClosure(id) {
   const { error } = await _supabase.from("closures").delete().eq("id", id);
   if (error) console.error("closure delete:", error);
 }
-export async function dbUpsertSale(s) {
-  const { error } = await _supabase.from("sales").upsert(saleToSnake(s));
-  if (error) console.error("sale upsert:", error);
+
+// 예약 트리거가 변경한 매출을 저장 직후 반영한다. 빈 목록도 정상 결과로 반환한다.
+export async function dbLoadSales() {
+  const { data, error } = await _supabase.from("sales").select("*").order("date").limit(5000);
+  if (error) throw error;
+  return (data || []).map(fromSnakeSale);
+}
+
+export async function dbUpsertSale(s, insertOnly=false) {
+  // 신규 매출 ID 충돌은 다른 매출을 덮어쓰지 않고 실패로 알린다.
+  const { error } = insertOnly
+    ? await _supabase.from("sales").insert(saleToSnake(s))
+    : await _supabase.from("sales").upsert(saleToSnake(s));
+  if (error) throw error;
 }
 export async function dbDeleteSale(id) {
   const { error } = await _supabase.from("sales").delete().eq("id", id);
-  if (error) console.error("sale delete:", error);
+  if (error) throw error;
 }
 
 // 알림 로그 — 회원 예약/취소 시 DB에 누적 기록 (기기 무관하게 영구 보관)

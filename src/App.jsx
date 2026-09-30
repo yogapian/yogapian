@@ -8,7 +8,7 @@ import {
   dbLoadAll,
   dbUpsertMember, dbUpsertBooking, dbUpsertNotice, dbUpsertSpecial, dbUpsertClosure,
   dbDeleteMember, dbDeleteBooking, dbDeleteNotice, dbDeleteSpecial, dbDeleteClosure,
-  dbUpsertSale, dbDeleteSale,
+  dbUpsertSale, dbDeleteSale, dbLoadSales, fromSnakeSale,
   saveAutoLogin, loadAutoLogin, saveScheduleTemplate,
   fromSnakeNotice, fromSnakeBooking, fromSnakeMember, dbSavePushSubscription,
   dbInsertNotifLog, dbCountNotifLogSince, dbInsertBooking,
@@ -22,7 +22,14 @@ import AdminApp from "./components/AdminApp.jsx";
 export default function App(){
   const [screen,setScreen]=useState("memberLogin");
   const [loggedMember,setLoggedMember]=useState(null);
-  const [members,setMembersState]=useState([]);
+  const [members,rawSetMembersState]=useState([]);
+  const membersRef = useRef([]);
+  const membersQueue = useRef(Promise.resolve());
+  const setMembersState = useCallback(updater => {
+    const next = typeof updater === 'function' ? updater(membersRef.current) : updater;
+    membersRef.current = next;
+    rawSetMembersState(next);
+  }, []);
   const [bookings,rawSetBookingsState]=useState([]);
   const bookingsRef = useRef([]);
   // 저장·로드·Realtime 모두 같은 최신 목록을 사용한다. DB 작업은 React updater 밖에서 실행.
@@ -35,14 +42,21 @@ export default function App(){
   const [specialSchedules,setSpecialSchedulesState]=useState([]);
   const [closures,setClosuresState]=useState([]);
   const [scheduleTemplate,setScheduleTemplateState]=useState({});
-  const [sales,setSalesState]=useState([]);
+  const [sales,rawSetSalesState]=useState([]);
+  const salesRef = useRef([]);
+  const salesQueue = useRef(Promise.resolve());
+  const setSalesState = useCallback(updater => {
+    const next = typeof updater === 'function' ? updater(salesRef.current) : updater;
+    salesRef.current = next;
+    rawSetSalesState(next);
+  }, []);
+  const [onedayReady,setOnedayReady]=useState(false);
   const [saving,setSaving]=useState(false);
   const [bookingSaveError,setBookingSaveError]=useState("");
   const pendingBookingSaves = useRef(0);
   const bookingSaveVersion = useRef(0);
   const [loading,setLoading]=useState(true);
   const loadedRef = useRef(false);
-  const membersRef = useRef([]); // stale closure 방지용 — realtime 리스너에서 회원명 조회에 사용
   const specialSchedulesRef = useRef([]); // 폴링 알람에서 특수수업 커스텀 시간 조회용
   const scheduleTemplateRef = useRef([]); // 폴링 알람에서 시간표 커스텀 시간 조회용
   const adminNotifChRef = useRef(null); // 관리자 알림 브로드캐스트 채널 (앱 전체 단일 인스턴스)
@@ -81,7 +95,8 @@ export default function App(){
         if(all.specialSchedules.length) setSpecialSchedulesState(all.specialSchedules);
         if(all.closures.length)         setClosuresState(all.closures);
         if(all.scheduleTemplate && Object.keys(all.scheduleTemplate).length) setScheduleTemplateState(all.scheduleTemplate);
-        if(all.sales?.length) setSalesState(all.sales);
+        if(all.sales) setSalesState(all.sales);
+        setOnedayReady(all.onedayReady);
 
         try {
           // 관리자 자동로그인
@@ -102,25 +117,44 @@ export default function App(){
   }, []);
 
   const setMembers = useCallback((updater) => {
-    setMembersState(prev => {
-      const next = typeof updater==="function" ? updater(prev) : updater;
-      if(!loadedRef.current) return next;
-      const prevMap = new Map(prev.map(m=>[m.id, m]));
-      const nextMap = new Map(next.map(m=>[m.id, m]));
-      const changed = next.filter(m => {
-        const old = prevMap.get(m.id);
-        return !old || JSON.stringify(old) !== JSON.stringify(m);
-      });
-      // 삭제된 회원 DB에서도 제거 (기존에 누락되어 새로고침 시 복구되는 버그)
-      const toDelete = prev.filter(m => !nextMap.has(m.id));
-      changed.forEach(m => dbUpsertMember(m));
-      toDelete.forEach(m => dbDeleteMember(m.id));
-      return next;
-    });
-  }, []);
+    const job = async () => {
+      const prev = membersRef.current;
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (!loadedRef.current) return false;
+      const prevMap = new Map(prev.map(m=>[m.id,m]));
+      const nextMap = new Map(next.map(m=>[m.id,m]));
+      const changed = next.filter(m=>JSON.stringify(prevMap.get(m.id))!==JSON.stringify(m));
+      const removed = prev.filter(m=>!nextMap.has(m.id));
+      pendingBookingSaves.current++; bookingSaveVersion.current++;
+      savingRef.current = true; setSaving(true);
+      try {
+        // 원데이 회원 전환은 회원 저장 성공을 확인한 후 예약의 FK를 연결한다.
+        // 부분 성공은 즉시 반영하여 뒤 작업 실패 때문에 성공한 저장이 사라지지 않게 한다.
+        for (const member of changed) {
+          await dbUpsertMember(member);
+          setMembersState(current => [...current.filter(m=>m.id!==member.id),member]);
+        }
+        for (const member of removed) {
+          await dbDeleteMember(member.id);
+          setMembersState(current=>current.filter(m=>m.id!==member.id));
+        }
+        return true;
+      } catch(error) {
+        console.error('회원 저장 실패:',error);
+        setBookingSaveError('회원 저장에 실패했습니다. 새로고침 후 다시 확인해주세요.');
+        return false;
+      } finally {
+        pendingBookingSaves.current--;
+        savingRef.current = pendingBookingSaves.current > 0;
+        setSaving(savingRef.current);
+      }
+    };
+    const result = membersQueue.current.then(job,job);
+    membersQueue.current = result;
+    return result;
+  }, [setMembersState]);
 
   // ref를 항상 최신 상태로 유지 (realtime 리스너의 stale closure 방지)
-  membersRef.current = members;
   screenRef.current = screen;
   specialSchedulesRef.current = specialSchedules;
   scheduleTemplateRef.current = scheduleTemplate;
@@ -229,14 +263,19 @@ export default function App(){
     setSaving(true);
     savingRef.current = true;
     try {
-      return await saveBookingChanges(prev, next, {
+      const ok = await saveBookingChanges(prev, next, {
         insert: dbInsertBooking, upsert: dbUpsertBooking, remove: dbDeleteBooking,
         update: setBookingsState,
         onError: error => {
           console.error("예약 저장 확인 실패:", error);
-          setBookingSaveError("예약 변경의 저장을 확인하지 못했습니다. 인터넷 연결을 확인하고 새로고침하여 예약 내역을 확인해 주세요. 내역에 없으면 다시 예약해 주세요.");
+          setBookingSaveError(`예약 변경 저장 실패: ${error.message || "인터넷 연결과 예약 내역을 확인해주세요."}`);
         },
       });
+      if (next.some(b=>b.onedaySource) || prev.some(b=>b.onedaySource)) {
+        try { setSalesState(await dbLoadSales()); }
+        catch(error) { console.error(error); setBookingSaveError('출석은 저장됐지만 매출을 새로 불러오지 못했습니다. 새로고침해주세요.'); }
+      }
+      return ok;
     } finally {
       pendingBookingSaves.current--;
       savingRef.current = pendingBookingSaves.current > 0;
@@ -341,6 +380,10 @@ export default function App(){
           setBookingsState(prev => prev.filter(b=>b.id!==payload.old.id));
         }
       })
+      .on("postgres_changes", {event:"*", schema:"public", table:"sales"}, payload => {
+        setSalesState(prev => payload.eventType === 'DELETE' ? prev.filter(s=>s.id!==payload.old.id)
+          : [...prev.filter(s=>s.id!==payload.new.id),fromSnakeSale(payload.new)]);
+      })
       .on("postgres_changes", {event:"*", schema:"public", table:"members"}, payload => {
         if(payload.eventType === "INSERT"){
           setMembersState(prev => prev.some(m=>m.id===payload.new.id) ? prev : [...prev, fromSnakeMember(payload.new)]);
@@ -392,10 +435,11 @@ export default function App(){
         // DB 로드 완료 후 다시 한 번 확인 — 로드 중 저장이 시작됐으면 덮어쓰기 건너뜀
         if(!savingRef.current && refreshVersion === bookingSaveVersion.current) setBookingsState(processed);
       }
-      if(all.members.length)          setMembersState(all.members);
+      if(all.members.length && !savingRef.current && refreshVersion === bookingSaveVersion.current) setMembersState(all.members);
       if(all.specialSchedules.length) setSpecialSchedulesState(all.specialSchedules);
       if(all.closures.length)         setClosuresState(all.closures);
-      if(all.sales?.length)           setSalesState(all.sales);
+      if(all.sales && !savingRef.current && refreshVersion === bookingSaveVersion.current) setSalesState(all.sales);
+      setOnedayReady(all.onedayReady);
       if(all.notices.length)          setNoticesState(all.notices);
       // 미읽음 배지 — DB count로 SET (더블카운트 없이 항상 정확한 값 유지)
       const unread = await dbCountNotifLogSince(adminNotifReadAtRef.current);
@@ -413,16 +457,39 @@ export default function App(){
   }, []);
 
   const setSales = useCallback((updater) => {
-    setSalesState(prev => {
-      const next = typeof updater==="function" ? updater(prev) : updater;
-      if(!loadedRef.current) return next;
-      const prevMap = new Map(prev.map(s=>[s.id, s]));
-      const nextMap = new Map(next.map(s=>[s.id, s]));
-      next.filter(s => { const old=prevMap.get(s.id); return !old||JSON.stringify(old)!==JSON.stringify(s); }).forEach(s=>dbUpsertSale(s));
-      prev.filter(s => !nextMap.has(s.id)).forEach(s=>dbDeleteSale(s.id));
-      return next;
-    });
-  }, []);
+    // 연속 클릭 시 최신 매출 목록으로 ID를 배정한다. 실패를 호출 화면에 반환한다.
+    const job = async () => {
+      if (!loadedRef.current) return false;
+      const prev = salesRef.current;
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      const prevMap = new Map(prev.map(s=>[s.id,s]));
+      const nextMap = new Map(next.map(s=>[s.id,s]));
+      pendingBookingSaves.current++; bookingSaveVersion.current++;
+      savingRef.current = true; setSaving(true);
+      try {
+        for (const sale of next.filter(s=>JSON.stringify(prevMap.get(s.id))!==JSON.stringify(s))) await dbUpsertSale(sale,!prevMap.has(sale.id));
+        for (const sale of prev.filter(s=>!nextMap.has(s.id))) await dbDeleteSale(sale.id);
+        const changes = new Map(next.filter(s=>JSON.stringify(prevMap.get(s.id))!==JSON.stringify(s)).map(s=>[s.id,s]));
+        setSalesState(current => {
+          const kept = current.filter(s=>!prevMap.has(s.id)||nextMap.has(s.id)).map(s=>changes.get(s.id)||s);
+          return [...kept,...[...changes.values()].filter(s=>!kept.some(row=>row.id===s.id))];
+        });
+        return true;
+      } catch(error) {
+        console.error('매출 저장 실패:',error);
+        setBookingSaveError(`매출 저장 실패: ${error.message || '새로고침 후 확인해주세요.'}`);
+        try { setSalesState(await dbLoadSales()); } catch {}
+        return false;
+      } finally {
+        pendingBookingSaves.current--;
+        savingRef.current = pendingBookingSaves.current > 0;
+        setSaving(savingRef.current);
+      }
+    };
+    const result = salesQueue.current.then(job,job);
+    salesQueue.current = result;
+    return result;
+  }, [setSalesState]);
 
   // 관리자 화면에서 30초마다 자동 새로고침 — Broadcast 미수신 시 데이터 최신화 보장
   // (Supabase Disk IO 예산 초과 경고로 10초→30초 완화, 2026-09-04)
@@ -504,7 +571,7 @@ export default function App(){
       <SaveBadge/>
       <BookingSaveError/>
       {/* onRefresh: 🔄 버튼으로 DB 최신 데이터 즉시 재로드 */}
-      <AdminApp members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} adminNotifUnread={adminNotifUnread} onMarkNotifRead={()=>{const now=new Date().toISOString();localStorage.setItem("yogapian_notif_read_at",now);adminNotifReadAtRef.current=now;setAdminNotifUnread(0);}} onRefresh={handleRefresh} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
+      <AdminApp onedayReady={onedayReady} members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} adminNotifUnread={adminNotifUnread} onMarkNotifRead={()=>{const now=new Date().toISOString();localStorage.setItem("yogapian_notif_read_at",now);adminNotifReadAtRef.current=now;setAdminNotifUnread(0);}} onRefresh={handleRefresh} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
       {process.env.NODE_ENV === "development" && <Agentation />}
     </div>
     </ClosuresContext.Provider>

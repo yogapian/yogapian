@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { FONT, TODAY_STR } from "../constants.js";
-import { usedAsOf, calc3MonthEnd } from "../memberCalc.js";
+import { usedAsOf, calc3MonthEnd, calcInitial1MonthEnd } from "../memberCalc.js";
 import S from "../styles.js";
 import MemberDetailContent from "./MemberDetailContent.jsx";
 
@@ -20,7 +20,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
   const [adjStart,setAdjStart]=useState(_rhStart);
   const [adjEnd,setAdjEnd]=useState(_rhEnd);
   const [adjBonusDays,setAdjBonusDays]=useState(member.bonusDays||0); // 보너스 연장일
-  const _adjMemberType=_lastRH?.memberType||member.memberType; // 3개월 재계산 버튼 표시 기준
+  const _adjMemberType=_lastRH?.memberType||member.memberType; // 마지막 기수의 종료일 자동 계산·재계산 버튼 기준
 
   // 마지막 기수 기준 잔여 — null startDate(미정) 기수는 used=0 으로 계산
   const _lastRHUsed=_lastRH?.startDate ? usedAsOf(member.id, TODAY_STR, bookings, [member]) : 0;
@@ -58,7 +58,7 @@ export default function AdminDetailModal({member,bookings,onClose,onRenew,onHold
           <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap"}}>
             <div style={{flex:1,minWidth:120}}>
               <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>시작일</div>
-              <input type="date" value={adjStart} onChange={e=>{const s=e.target.value;setAdjStart(s);if(member.memberType==="3month")setAdjEnd(calc3MonthEnd(s));}} style={{...S.inp,fontSize:13,padding:"7px 9px"}}/>
+              <input type="date" value={adjStart} onChange={e=>{const s=e.target.value;setAdjStart(s);setAdjEnd(s?(_adjMemberType==="3month"?calc3MonthEnd(s):calcInitial1MonthEnd(s)):"");}} style={{...S.inp,fontSize:13,padding:"7px 9px"}}/>
             </div>
             <div style={{flex:1,minWidth:120}}>
               <div style={{fontSize:11,color:"#9a8e80",marginBottom:4}}>

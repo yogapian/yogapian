@@ -2,10 +2,24 @@ import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS } from "../constants.js";
 import { fmtWithDow, endOfMonth } from "../utils.js";
 import { getActivePeriod, calc3MonthEnd, noshowThreshold, noshowCrossings } from "../memberCalc.js";
+import { newOnedayForm, onedayFields, validateOnedayForm } from '../onedaySales.js';
+import OnedayFields from './OnedayFields.jsx';
 import S from "../styles.js";
 
-export default function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,notices,setNotices,onClose}){
+export default function AttendCheckModal({sales=[],onedayReady=false,rec,members,isOpen,bookings,setBookings,setMembers,notices,setNotices,onClose}){
   const [note,setNote]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const [editOneday,setEditOneday]=useState(false);
+  const [onedayForm,setOnedayForm]=useState(()=>({...newOnedayForm(),...rec,onedaySource:rec.onedaySource||'',onedayMode:rec.memberId?'membership':rec.onedayMode||'standalone',saleAction:rec.onedaySaleId?'existing':'new'}));
+  async function saveOneday(){
+    const issue=validateOnedayForm(onedayForm);
+    if(issue){setError(issue);return;}
+    setBusy(true);setError('');
+    const ok=await setBookings(p=>p.map(b=>b.id===rec.id?{...b,...onedayFields(onedayForm)}:b));
+    setBusy(false);
+    if(ok){setEditOneday(false);}else setError('저장에 실패했습니다. 상단 오류를 확인해주세요.');
+  }
   const [cancelPanel,setCancelPanel]=useState(false); // 불참 클릭 후 노쇼/대리취소 패널
   const [cancelType,setCancelType]=useState("noshow"); // "noshow" | "proxy"
   const [penaltyStep,setPenaltyStep]=useState(null); // {newCount, expectedCrossings} — 노쇼 패널티 확인 단계
@@ -30,8 +44,12 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
     return {nextBookings:updatedBookings};
   };
 
-  function doAttend(){
-    setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"attended",confirmedAttend:true}:b));
+  async function doAttend(){
+    if(busy||rec.id<0)return;
+    setBusy(true);
+    const ok=await setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"attended",confirmedAttend:true}:b));
+    setBusy(false);
+    if(!ok){setError('출석 저장에 실패했습니다. 상단 오류를 확인해주세요.');return;}
     const newBookings=bookings.map(b=>b.id===rec.id?{...b,status:"attended",confirmedAttend:true}:b);
     // 미정 기수 자동 시작 체크 (오늘 이하 날짜에만 적용)
     if(rec.date<=TODAY_STR&&mem&&(mem.renewalHistory||[]).some(r=>r.startDate===null)){
@@ -55,16 +73,19 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
     onClose();
   }
 
-  function _execDelete(sendNotice){
+  async function _execDelete(sendNotice){
+    if(busy)return;
     const isReserved=rec.status==="attended"||rec.status==="reserved";
-    // 원데이(비회원)는 취소 시 기록을 남길 필요가 없어 목록에서 완전히 삭제
+    // 분류된 원데이는 취소 상태로 보존해 연결 매출 이력을 유지한다. 기존 미분류 기록은 기존 동작 유지.
     if(!mem){
-      setBookings(p=>{
-        let next=p.filter(b=>b.id!==rec.id);
+      setBusy(true);
+      const ok=await setBookings(p=>{
+        let next=p.flatMap(b=>b.id!==rec.id?[b]:b.onedaySource?[{...b,status:'cancelled',confirmedAttend:false,cancelledBy:cancelType,cancelNote:note}]:[]);
         if(isReserved){const res=promoteWaiterLogic(next);next=res.nextBookings;}
         return next;
       });
-      onClose();
+      setBusy(false);
+      if(ok)onClose();else setError('취소 저장에 실패했습니다. 상단 오류를 확인해주세요.');
       return;
     }
     setBookings(p=>{
@@ -98,7 +119,8 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
     onClose();
   }
 
-  function doReset(){
+  async function doReset(){
+    if(busy)return;
     // 취소(노쇼/대리취소) 되돌리기면 해당 취소로 생성된 회원 알림도 함께 삭제 — 알림이 이미 나간 상태로 남는 것 방지
     if(live.status==="cancelled"&&mem){
       const dateLabel=fmtWithDow(rec.date);
@@ -107,13 +129,18 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
         return match?prev.filter(n=>n.id!==match.id):prev;
       });
     }
-    setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"reserved",confirmedAttend:null}:b));
-    onClose();
+    setBusy(true);
+    const ok=await setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"reserved",confirmedAttend:null}:b));
+    setBusy(false);
+    if(ok)onClose();else setError('되돌리기 저장에 실패했습니다.');
   }
 
-  function doLink(targetMem){
-    setBookings(p=>p.map(b=>b.id===rec.id?{...b,memberId:targetMem.id,onedayName:null}:b));
-    onClose();
+  async function doLink(targetMem){
+    if(busy)return;
+    setBusy(true);
+    const ok=await setBookings(p=>p.map(b=>b.id===rec.id?{...b,memberId:targetMem.id,onedayName:null,...(b.onedaySource==='general'?{onedayMode:'membership'}:{})}:b));
+    setBusy(false);
+    if(ok)onClose();else setError('회원 연결에 실패했습니다.');
   }
 
   const filteredMembers=linkSearch
@@ -124,7 +151,7 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
 
   return(
     <div style={S.overlay} onClick={onClose}>
-      <div style={{...S.modal,maxWidth:300}} onClick={e=>e.stopPropagation()}>
+      <div style={{...S.modal,maxWidth:380}} onClick={e=>e.stopPropagation()}>
         <div style={S.modalHead}>
           <span style={{fontSize:20}}>📋</span>
           <div>
@@ -133,6 +160,13 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
           </div>
         </div>
 
+        {error&&<div role="alert" style={{color:'#c97474',fontSize:12,marginBottom:10}}>{error}</div>}
+        {busy&&<div role="status" style={{fontSize:12,marginBottom:10}}>저장 중…</div>}
+        {onedayReady&&(!mem||live.onedaySource)&&<div style={{marginBottom:14}}>
+          <button disabled={busy||rec.id<0} style={{...S.editBtn,width:'100%'}} onClick={()=>{setOnedayForm({...newOnedayForm(),...live,onedaySource:live.onedaySource||'',onedayMode:live.memberId?'membership':live.onedayMode||'standalone',saleAction:live.onedaySaleId?'existing':'new'});setEditOneday(!editOneday);}}>일반·오붓 / 매출 연결 수정</button>
+          {editOneday&&<><OnedayFields form={onedayForm} setForm={setOnedayForm} sales={sales} bookingId={live.id} name={live.onedayName||mem?.name} date={live.date} lockedSaleId={live.onedaySaleId} memberLinked={!!live.memberId}/><button disabled={busy} onClick={saveOneday} style={{...S.saveBtn,width:'100%'}}>구분·매출 연결 저장</button></>}
+          {live.onedaySource==='general'&&live.onedayMode==='membership'&&!live.onedayMembershipSaleId&&<div style={{fontSize:12,color:'#9a6020',marginTop:6}}>월회원권 매출 연결 필요</div>}
+        </div>}
         {/* ── 출석 확인됨 ── */}
         {live.confirmedAttend===true&&(
           <div style={{textAlign:"center",marginBottom:12}}>
@@ -145,7 +179,7 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
         {/* ── 초기 상태: 출석 | 불참 ── */}
         {live.confirmedAttend==null&&!cancelPanel&&(
           <div style={{display:"flex",gap:8,marginBottom:12}}>
-            <button onClick={doAttend} style={btn({flex:1,background:"#eef5ee",color:"#2e6e44",border:"1.5px solid #7aaa7a",padding:"14px 0",fontSize:14})}>✅ 출석</button>
+            <button disabled={busy||rec.id<0||editOneday} onClick={doAttend} style={btn({flex:1,background:"#eef5ee",color:"#2e6e44",border:"1.5px solid #7aaa7a",padding:"14px 0",fontSize:14})}>✅ 출석</button>
             <button onClick={()=>setCancelPanel(true)} style={btn({flex:1,background:"#fff0f0",color:"#c97474",border:"1.5px solid #f0b0b0",padding:"14px 0",fontSize:14})}>❌ 불참</button>
           </div>
         )}

@@ -78,7 +78,7 @@ test("DB 오류와 기존 예약을 구분하고 중복 조회 실패 시 INSERT
     limit() { return Promise.resolve(response); },
     insert() { inserts++; return this; },
     single() { return Promise.resolve(insertResponse || response); },
-    upsert() { return Promise.resolve(response); },
+    upsert() { return this; },
     delete() { return { eq: async () => response }; },
   };
   t.mock.method(_supabase, "from", () => query);
