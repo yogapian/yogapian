@@ -33,9 +33,11 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
   async function doAttend(){
     if(busy||rec.id<0)return;
     setBusy(true);
-    const ok=await setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"attended",confirmedAttend:true}:b));
-    setBusy(false);
-    if(!ok){setError('출석 저장에 실패했습니다. 상단 오류를 확인해주세요.');return;}
+    const saving=setBookings(p=>p.map(b=>b.id===rec.id?{...b,status:"attended",confirmedAttend:true}:b));
+    // 창은 즉시 닫고 저장은 계속한다. 실패 복구·알림은 App의 공통 저장 흐름에서 처리한다.
+    onClose();
+    const ok=await saving;
+    if(!ok)return;
     const newBookings=bookings.map(b=>b.id===rec.id?{...b,status:"attended",confirmedAttend:true}:b);
     // 미정 기수 자동 시작 체크 (오늘 이하 날짜에만 적용)
     if(rec.date<=TODAY_STR&&mem&&(mem.renewalHistory||[]).some(r=>r.startDate===null)){
@@ -56,7 +58,6 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
         }));
       }
     }
-    onClose();
   }
 
   async function _execDelete(sendNotice){
