@@ -122,6 +122,12 @@ BEGIN
     END IF;
     RETURN NEW;
   END IF;
+  -- 월회원 매출의 결제일은 직접 정정 가능. 금액·연결·삭제 보호는 유지한다.
+  IF TG_OP = 'UPDATE' AND OLD.oneday_booking_id IS NULL
+    AND EXISTS (SELECT 1 FROM public.bookings WHERE oneday_membership_sale_id = OLD.id)
+    AND (to_jsonb(NEW) - 'date' - 'updated_at') = (to_jsonb(OLD) - 'date' - 'updated_at') THEN
+    RETURN NEW;
+  END IF;
   IF OLD.oneday_booking_id IS NOT NULL OR EXISTS (SELECT 1 FROM public.bookings WHERE oneday_membership_sale_id = OLD.id) THEN
     RAISE EXCEPTION '출석과 연결된 매출입니다. 출석보드에서 확인해주세요.';
   END IF;

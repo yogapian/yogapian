@@ -12,7 +12,7 @@ INSERT INTO sales VALUES(1,'2026-09-01','oneday',null,'기존방문',null,null,3
 INSERT INTO bookings(date,time_slot,oneday_name,status) VALUES('2026-09-01','morning','과거미분류','attended');`);
 const migration=readFileSync(new URL('../supabase/migrations/20260930_oneday_sales.sql',import.meta.url),'utf8');
 // 이전 SQL을 같은 스키마에서 재현한 뒤 짧은 수정 SQL로 복구한다.
-const oldMigration=migration.replace('    IF linked.oneday_auto THEN linked.date := NEW.date; END IF;\n','').replace('date = linked.date,','date = CASE WHEN oneday_auto THEN NEW.date ELSE date END,');
+const oldMigration=migration.replace(/  -- 월회원 매출의 결제일[\s\S]*?  END IF;\n/, '').replace('    IF linked.oneday_auto THEN linked.date := NEW.date; END IF;\n','').replace('date = linked.date,','date = CASE WHEN oneday_auto THEN NEW.date ELSE date END,');
 await db.exec(oldMigration);
 const fix=readFileSync(new URL('../supabase/migrations/20260930_fix_oneday_date_type.sql',import.meta.url),'utf8');
 const q=async sql=>(await db.query(sql)).rows;
@@ -40,6 +40,23 @@ await db.exec("UPDATE bookings SET member_id=1,oneday_membership_sale_id=2 WHERE
 assert.equal((await q('select oneday_mode from bookings where id=10'))[0].oneday_mode,'membership');
 assert.equal((await q('select oneday_status from sales where id=-10'))[0].oneday_status,'included');
 assert.equal((await q("select sum(amount)::int as amount from sales where oneday_status is null or oneday_status='active'"))[0].amount,180000);
+// 월 경계를 넘은 전환: 월회원 매출 날짜만 옮기며 3만원은 포함 상태 유지.
+const dateEditFix=readFileSync(new URL('../supabase/migrations/20261002_allow_membership_sale_date.sql',import.meta.url),'utf8');
+await assert.rejects(db.exec("UPDATE sales SET date='2026-10-02' WHERE id=2"),/연결된 매출/);
+await db.exec(dateEditFix);
+await db.exec(dateEditFix);
+await db.exec("UPDATE sales SET date='2026-09-30' WHERE id=2");
+// 브라우저 저장과 같은 INSERT ... ON CONFLICT UPDATE 경로 검증.
+await db.exec(`INSERT INTO sales(id,date,type,member_id,member_name,member_type,total,amount,payment,memo,updated_at)
+ VALUES(2,'2026-10-02','new_member',1,'월회원','1month',6,150000,'카드','',now())
+ ON CONFLICT(id) DO UPDATE SET date=excluded.date,updated_at=excluded.updated_at`);
+await db.exec("UPDATE bookings SET status='attended' WHERE id=10");
+assert.equal((await q("select date::text as date from sales where id=2"))[0].date,'2026-10-02','출석 재저장 후에도 결제일 보존');
+assert.equal((await q("select sum(amount)::int as amount from sales where date::text like '2026-10-%' and (oneday_status is null or oneday_status='active')"))[0].amount,150000);
+assert.equal((await q("select oneday_status from sales where id=-10"))[0].oneday_status,'included');
+await assert.rejects(db.exec("UPDATE sales SET amount=1 WHERE id=2"),/연결된 매출/);
+await assert.rejects(db.exec("DELETE FROM sales WHERE id=2"),/연결된 매출/);
+await assert.rejects(db.exec("UPDATE sales SET date='2026-10-02' WHERE id=-10"),/연결된 매출/);
 await db.exec(`INSERT INTO bookings(id,date,time_slot,oneday_name,status,oneday_source) VALUES(11,'2026-09-30','morning','오붓','attended','obut');`);
 assert.equal(await count(),3,'오붓 자동 매출 없음');
 await db.exec(`INSERT INTO bookings(id,date,time_slot,oneday_name,status,oneday_source,oneday_mode,oneday_sale_id) VALUES(12,'2026-09-01','morning','기존방문','attended','general','standalone',1);`);

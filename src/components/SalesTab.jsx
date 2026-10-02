@@ -21,6 +21,8 @@ export default function SalesTab({sales, setSales, bookings=[]}){
   const [busy,setBusy]=useState(false);
   const [saveError,setSaveError]=useState('');
   const linkedSale = id => sales.find(s=>s.id===id)?.onedayBookingId || bookings.some(b=>b.onedayMembershipSaleId===id);
+  // 연결된 월회원 매출은 결제일만 수정한다. 원데이 포함 상태·금액은 보존한다.
+  const dateOnlySale = id => !sales.find(s=>s.id===id)?.onedayBookingId && bookings.some(b=>b.onedayMembershipSaleId===id);
   const now = parseLocal(TODAY_STR);
   const [year,  setYear]  = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
@@ -75,16 +77,19 @@ export default function SalesTab({sales, setSales, bookings=[]}){
   }
 
   function openEdit(s){
+    setSaveError('');
     setEditId(s.id);
     setEditForm({ date: s.date, type: s.type, memberName: s.memberName||"", amount: String(s.amount||""), payment: s.payment||"현금", memo: s.memo||"" });
   }
   async function doEdit(){
-    if(busy||linkedSale(editId))return;
+    if(busy||(linkedSale(editId)&&!dateOnlySale(editId))||!editForm.date)return;
     if(!editForm.amount || !+editForm.amount) return;
     setBusy(true);setSaveError('');
-    const ok=await setSales(p => p.map(s => s.id === editId ? {...s, date:editForm.date, type:editForm.type, memberName:editForm.memberName, amount:+editForm.amount, payment:editForm.payment, memo:editForm.memo} : s));
+    const ok=await setSales(p => p.map(s => s.id === editId ? dateOnlySale(editId) ? {...s,date:editForm.date} : {...s, date:editForm.date, type:editForm.type, memberName:editForm.memberName, amount:+editForm.amount, payment:editForm.payment, memo:editForm.memo} : s));
     setBusy(false);
     if(!ok){setSaveError('저장에 실패했습니다. 상단 오류를 확인해주세요.');return;}
+    const [y,m]=editForm.date.split("-").map(Number);
+    setYear(y);setMonth(m);
     setEditId(null); setEditForm(null);
   }
 
@@ -185,31 +190,32 @@ export default function SalesTab({sales, setSales, bookings=[]}){
         <div style={S.overlay} onClick={()=>setEditId(null)}>
           <div style={{...S.modal,maxWidth:360}} onClick={e=>e.stopPropagation()}>
             <div style={{...S.modalHead,marginBottom:10}}><span>✏️</span><span style={S.modalTitle}>매출 수정</span></div>
-            {linkedSale(editId)&&<div style={{fontSize:12,color:'#9a6020',marginBottom:12}}>출석과 연결된 매출입니다. 구분·월회비 포함 처리는 출석보드에서 변경해주세요. 이 기록은 직접 수정·삭제할 수 없습니다.</div>}
+            {linkedSale(editId)&&<div style={{fontSize:12,color:'#9a6020',marginBottom:12}}>{dateOnlySale(editId)?'원데이 비용이 포함된 월회원 매출입니다. 실제 결제일로 날짜를 수정할 수 있습니다.':'원데이 내역입니다. 월회비 포함 처리는 출석보드에서, 월회원 매출 날짜는 신규·갱신 매출에서 변경해주세요.'}</div>}
             <div style={S.fg}>
               <label style={S.lbl}>종류</label>
-              <div style={{display:"flex",gap:7}}>
+              {linkedSale(editId)?<div>{TYPE_LABEL[editForm.type]}</div>:<div style={{display:"flex",gap:7}}>
                 {[["oneday","원데이"],["meditation","명상수업"],["other","기타"]].map(([v,l])=>{const tc=TYPE_COLOR[v];return(
-                  <button key={v} onClick={()=>setEditForm(f=>({...f,type:v}))} style={{flex:1,padding:"9px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:editForm.type===v?tc.color:"#e0d8cc",background:editForm.type===v?tc.bg:"#faf8f5",color:editForm.type===v?tc.color:"#9a8e80",fontWeight:editForm.type===v?700:400}}>{l}</button>
+                  <button disabled={!!linkedSale(editId)} key={v} onClick={()=>setEditForm(f=>({...f,type:v}))} style={{flex:1,padding:"9px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:editForm.type===v?tc.color:"#e0d8cc",background:editForm.type===v?tc.bg:"#faf8f5",color:editForm.type===v?tc.color:"#9a8e80",fontWeight:editForm.type===v?700:400}}>{l}</button>
                 );})}
-              </div>
+              </div>}
             </div>
-            <div style={S.fg}><label style={S.lbl}>날짜</label><input style={S.inp} type="date" value={editForm.date} onChange={e=>setEditForm(f=>({...f,date:e.target.value}))}/></div>
-            <div style={S.fg}><label style={S.lbl}>이름 / 내용</label><input style={S.inp} value={editForm.memberName} onChange={e=>setEditForm(f=>({...f,memberName:e.target.value}))} placeholder="홍길동 / 명상수업 단체 등"/></div>
-            <div style={S.fg}><label style={S.lbl}>금액 (원)</label><input style={S.inp} type="text" inputMode="numeric" value={editForm.amount ? Number(editForm.amount.replace(/,/g,"")).toLocaleString("ko-KR") : ""} onChange={e=>setEditForm(f=>({...f,amount:e.target.value.replace(/,/g,"")}))} placeholder="50,000"/></div>
+            <div style={S.fg}><label style={S.lbl}>날짜</label><input style={S.inp} type="date" disabled={!!linkedSale(editId)&&!dateOnlySale(editId)} value={editForm.date} onChange={e=>setEditForm(f=>({...f,date:e.target.value}))}/></div>
+            <div style={S.fg}><label style={S.lbl}>이름 / 내용</label><input style={S.inp} disabled={!!linkedSale(editId)} value={editForm.memberName} onChange={e=>setEditForm(f=>({...f,memberName:e.target.value}))} placeholder="홍길동 / 명상수업 단체 등"/></div>
+            <div style={S.fg}><label style={S.lbl}>금액 (원)</label><input style={S.inp} type="text" inputMode="numeric" disabled={!!linkedSale(editId)} value={editForm.amount ? Number(editForm.amount.replace(/,/g,"")).toLocaleString("ko-KR") : ""} onChange={e=>setEditForm(f=>({...f,amount:e.target.value.replace(/,/g,"")}))} placeholder="50,000"/></div>
             <div style={S.fg}>
               <label style={S.lbl}>결제 방법</label>
               <div style={{display:"flex",gap:7}}>
                 {["카드","현금","네이버"].map(v=>{const pc=PAYMENT_COLOR[v];return(
-                  <button key={v} onClick={()=>setEditForm(f=>({...f,payment:v}))} style={{flex:1,padding:"9px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:editForm.payment===v?pc.color:"#e0d8cc",background:editForm.payment===v?pc.bg:"#faf8f5",color:editForm.payment===v?pc.color:"#9a8e80",fontWeight:editForm.payment===v?700:400}}>{v}</button>
+                  <button disabled={!!linkedSale(editId)} key={v} onClick={()=>setEditForm(f=>({...f,payment:v}))} style={{flex:1,padding:"9px 0",borderRadius:9,border:"1.5px solid",cursor:"pointer",fontSize:13,fontFamily:FONT,borderColor:editForm.payment===v?pc.color:"#e0d8cc",background:editForm.payment===v?pc.bg:"#faf8f5",color:editForm.payment===v?pc.color:"#9a8e80",fontWeight:editForm.payment===v?700:400}}>{v}</button>
                 );})}
               </div>
             </div>
-            <div style={S.fg}><label style={S.lbl}>메모 (선택)</label><input style={S.inp} value={editForm.memo} onChange={e=>setEditForm(f=>({...f,memo:e.target.value}))} placeholder=""/></div>
+            <div style={S.fg}><label style={S.lbl}>메모 (선택)</label><input style={S.inp} disabled={!!linkedSale(editId)} value={editForm.memo} onChange={e=>setEditForm(f=>({...f,memo:e.target.value}))} placeholder=""/></div>
+            {saveError&&<div role="alert" style={{color:"#c97474"}}>{saveError}</div>}
             <div style={{display:"flex",gap:8,marginTop:16}}>
               <button style={{...S.cancelBtn,flex:1}} onClick={()=>setEditId(null)}>취소</button>
               <button style={{...S.saveBtn,background:"#c97474",flex:"0 0 auto",padding:"10px 16px"}} disabled={busy||!!linkedSale(editId)} onClick={()=>{setDeleteId(editId);setEditId(null);}}>삭제</button>
-              <button style={{...S.saveBtn,flex:1}} disabled={busy||!!linkedSale(editId)} onClick={doEdit}>저장</button>
+              <button style={{...S.saveBtn,flex:1}} disabled={busy||!editForm.date||(!!linkedSale(editId)&&!dateOnlySale(editId))} onClick={doEdit}>저장</button>
             </div>
           </div>
         </div>
