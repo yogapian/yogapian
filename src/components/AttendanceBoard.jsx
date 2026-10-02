@@ -18,6 +18,7 @@ import CalendarPicker from "./CalendarPicker.jsx";
 import AttendCheckModal from "./AttendCheckModal.jsx";
 import AdminCancelModal from "./AdminCancelModal.jsx";
 import ScheduleTemplateManager from "./ScheduleTemplateManager.jsx";
+import { applySpecialSchedule } from "../specialSchedule.js";
 
 export default function AttendanceBoard({sales,onedayReady,members,bookings,setBookings,setMembers,specialSchedules,setSpecialSchedules,closures,setClosures,notices,setNotices,scheduleTemplate,setScheduleTemplate,onMemberClick,onRefresh}){
   // ── State ──────────────────────────────────────────────────────────────────
@@ -184,10 +185,8 @@ export default function AttendanceBoard({sales,onedayReady,members,bookings,setB
 
   function addSpecial(){
     if(!newSp.date)return;
-    const nid=Math.max(...specialSchedules.map(s=>s.id),0)+1;
-    // label 미입력 시 타입별 기본값 — label 없다고 저장 차단하면 에러 없이 조용히 실패하는 버그
-    const label=newSp.label||(newSp.type==="regular"?"정규수업":newSp.type==="special"?"집중수련":"오픈클래스");
-    setSpecialSchedules(p=>[...p.filter(s=>s.date!==newSp.date),{...newSp,label,id:nid}]);
+    // 공지·시간 편집은 기존 ID로 갱신한다. 새 ID로 교체하면 날짜 UNIQUE 충돌 후 기존 행이 삭제된다.
+    setSpecialSchedules(p=>applySpecialSchedule(p,newSp));
     closeSpecialMgr();
   }
   const toggleSp=sl=>setNewSp(f=>({...f,activeSlots:f.activeSlots.includes(sl)?f.activeSlots.filter(s=>s!==sl):[...f.activeSlots,sl]}));
