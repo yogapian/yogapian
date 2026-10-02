@@ -50,7 +50,13 @@ await db.exec("UPDATE sales SET date='2026-09-30' WHERE id=2");
 await db.exec(`INSERT INTO sales(id,date,type,member_id,member_name,member_type,total,amount,payment,memo,updated_at)
  VALUES(2,'2026-10-02','new_member',1,'월회원','1month',6,150000,'카드','',now())
  ON CONFLICT(id) DO UPDATE SET date=excluded.date,updated_at=excluded.updated_at`);
+await assert.rejects(db.exec("UPDATE sales SET payment='현금' WHERE id=2"),/연결된 매출/);
+const paymentFix=readFileSync(new URL('../supabase/migrations/20261002_allow_membership_sale_payment.sql',import.meta.url),'utf8');
+await db.exec(paymentFix); await db.exec(paymentFix);
+await db.exec(`INSERT INTO sales(id,date,payment) VALUES(2,'2026-10-02','현금')
+ ON CONFLICT(id) DO UPDATE SET payment=excluded.payment,updated_at=now()`);
 await db.exec("UPDATE bookings SET status='attended' WHERE id=10");
+assert.equal((await q("select payment from sales where id=2"))[0].payment,'현금','출석 재저장 후에도 결제수단 보존');
 assert.equal((await q("select date::text as date from sales where id=2"))[0].date,'2026-10-02','출석 재저장 후에도 결제일 보존');
 assert.equal((await q("select sum(amount)::int as amount from sales where date::text like '2026-10-%' and (oneday_status is null or oneday_status='active')"))[0].amount,150000);
 assert.equal((await q("select oneday_status from sales where id=-10"))[0].oneday_status,'included');
