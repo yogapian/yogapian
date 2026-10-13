@@ -63,7 +63,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   // 로그인 직후 갱신·만료·등록 대기 상태를 한 번 안내한다.
   // 미리 예약한 수업은 예약 시 잔여 횟수가 있어 임시예약 경고가 생략될 수 있다.
   const [registrationPopup, setRegistrationPopup] = useState(
-    () => !!m.paymentPending || status === "renew" || expired || (!isPendingPeriod && rem === 0)
+    () => !!m.paymentPending || status === "renew" || status === "off" || expired || (!isPendingPeriod && rem === 0)
   );
 
   // 개인 공지 팝업 (targetMemberId — 확인 시 DB에서 삭제)
