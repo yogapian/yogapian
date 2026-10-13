@@ -60,6 +60,12 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   const [showHoldDetail, setShowHoldDetail] = useState(false); // 홀딩 상세 펼침 여부
   const [refreshing, setRefreshing] = useState(false); // 새로고침 버튼 로딩 상태
 
+  // 로그인 직후 갱신·만료·등록 대기 상태를 한 번 안내한다.
+  // 미리 예약한 수업은 예약 시 잔여 횟수가 있어 임시예약 경고가 생략될 수 있다.
+  const [registrationPopup, setRegistrationPopup] = useState(
+    () => !!m.paymentPending || status === "renew" || expired || (!isPendingPeriod && rem === 0)
+  );
+
   // 개인 공지 팝업 (targetMemberId — 확인 시 DB에서 삭제)
   const [popupNotice, setPopupNotice] = useState(null);
   useEffect(() => {
@@ -110,10 +116,22 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
   const {dateTimeStr} = useClock();
 
   return (
-    <div style={{minHeight:"100vh", background:"#f5f3ef", fontFamily:FONT}}>
+      <div style={{minHeight:"100vh", background:"#f5f3ef", fontFamily:FONT}}>
+
+      {/* 로그인 시 갱신·종료·등록 필요 상태를 한 번 안내 */}
+      {registrationPopup && (
+        <div style={{...S.overlay,zIndex:310}}>
+          <div style={{...S.modal,maxWidth:340,textAlign:"center",borderRadius:16}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:34,marginBottom:10}}>🔄</div>
+            <div style={{fontSize:16,fontWeight:700,color:"#1e2e1e",marginBottom:8}}>회원권 등록이 필요합니다</div>
+            <div style={{fontSize:13,color:"#7a6e60",lineHeight:1.8,marginBottom:20}}>이후 예약은 임시 예약으로 접수됩니다.</div>
+            <button style={{...S.saveBtn,width:"100%"}} onClick={()=>setRegistrationPopup(false)}>확인했어요</button>
+          </div>
+        </div>
+      )}
 
       {/* 브로드캐스트 팝업 (isPopup=true 공지 — localStorage 읽음 처리) */}
-      {broadcastPopup && !popupNotice && (
+      {broadcastPopup && !popupNotice && !registrationPopup && (
         <div style={{...S.overlay,zIndex:300}}>
           <div style={{...S.modal,maxWidth:360,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:22,marginBottom:8}}>📢</div>
@@ -131,7 +149,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
       )}
 
       {/* 개인 공지 팝업 */}
-      {popupNotice && (
+      {popupNotice && !registrationPopup && (
         <div style={{...S.overlay,zIndex:300}}>
           <div style={{...S.modal,maxWidth:360,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:15,fontWeight:700,color:"#1e2e1e",marginBottom:12,textAlign:"center"}}>{popupNotice.title}</div>
@@ -147,7 +165,7 @@ export default function MemberView({member,bookings,setBookings,setMembers,speci
       )}
 
       {/* 노쇼 누적 안내 팝업 — 개인공지/브로드캐스트 팝업 다음 우선순위 */}
-      {noshowPopup && !popupNotice && !broadcastPopup && (
+      {noshowPopup && !popupNotice && !broadcastPopup && !registrationPopup && (
         <div style={{...S.overlay,zIndex:300}} onClick={ackNoshowPopup}>
           <div style={{...S.modal,maxWidth:340,textAlign:"center",borderRadius:16}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:34,marginBottom:10}}>🚫</div>
