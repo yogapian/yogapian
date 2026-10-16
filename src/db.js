@@ -236,6 +236,10 @@ export async function dbLoadAll() {
     _supabase.from("closures").select("*").order("date").limit(2000),
     _supabase.from("sales").select("*").order("date").limit(5000),
   ]);
+  // 필수 데이터 조회 실패를 빈 목록으로 숨기면 회원이 로그인/예약 상태를 오인한다.
+  // 매출은 기존처럼 별도 실패 처리한다(원데이 스키마의 단계적 적용 유지).
+  const loadError = [mRes,bRes,nRes,sRes,cRes].find(result=>result.error)?.error;
+  if(loadError) throw loadError;
   if (bRes.data?.length >= 10000) console.warn("bookings 10000개 초과 — limit 상향 필요");
   let onedayReady = !!bRes.data?.some(b=>Object.hasOwn(b,'oneday_source')) && !!slRes.data?.some(s=>Object.hasOwn(s,'oneday_status'));
   if(!onedayReady && !bRes.error && !slRes.error && (!bRes.data?.length || !slRes.data?.length)) {

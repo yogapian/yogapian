@@ -1,0 +1,40 @@
+name: Yoga app health and recovery
+on:
+  schedule:
+    - cron: '2-57/5 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: yogapian-production-recovery
+  cancel-in-progress: false
+jobs:
+  monitor:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      RECOVERY_SECRET: ${{ secrets.RECOVERY_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check DB and app continuously before deciding
+        id: decision
+        run: node scripts/recovery-monitor.mjs prepare
+      - name: Persist cooldown before any restart
+        if: always() && hashFiles('recovery-state.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-state
+          path: recovery-state.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: Restart once and verify recovery
+        if: success() && steps.decision.outputs.restart == 'true'
+        run: node scripts/recovery-monitor.mjs restart

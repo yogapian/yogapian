@@ -18,6 +18,7 @@ import MemberLoginPage from "./components/MemberLoginPage.jsx";
 import AdminLoginPage from "./components/AdminLoginPage.jsx";
 import MemberView from "./components/MemberView.jsx";
 import AdminApp from "./components/AdminApp.jsx";
+import ConnectionNotice from "./components/ConnectionNotice.jsx";
 
 export default function App(){
   const [screen,setScreen]=useState("memberLogin");
@@ -56,6 +57,8 @@ export default function App(){
   const pendingBookingSaves = useRef(0);
   const bookingSaveVersion = useRef(0);
   const [loading,setLoading]=useState(true);
+  const [startupError,setStartupError]=useState(false);
+  const [connectionUnavailable,setConnectionUnavailable]=useState(false);
   const loadedRef = useRef(false);
   const specialSchedulesRef = useRef([]); // 폴링 알람에서 특수수업 커스텀 시간 조회용
   const scheduleTemplateRef = useRef([]); // 폴링 알람에서 시간표 커스텀 시간 조회용
@@ -72,12 +75,16 @@ export default function App(){
   );
 
   useEffect(()=>{
+    let alive = true;
+    // 무한 로딩 대신 재연결을 안내한다. 지연만으로 서버를 재시작하지 않는다.
+    const loadingTimer = setTimeout(()=>{ if(alive) setStartupError(true); }, 20_000);
     (async()=>{
       // PIN 로그인 복구 후 이전 Supabase Auth 세션이 남아 있으면 authenticated 역할로
       // 조회되어 anon 정책의 회원/예약 데이터가 비어 보일 수 있으므로 이 기기 세션만 정리
       try { await _supabase.auth.signOut({ scope: "local" }); } catch(e) {}
       try {
         const all = await dbLoadAll();
+        if(!alive) return;
         if(all.members.length)   setMembersState(all.members);
         if(all.bookings.length){
           const processed = all.bookings.map(b=>{
@@ -110,11 +117,47 @@ export default function App(){
             }
           }
         } catch(e){}
-      } catch(e){ console.warn("DB 로드 실패:", e); }
+      } catch(e){
+        console.warn("DB 로드 실패:", e);
+        clearTimeout(loadingTimer);
+        if(alive) setStartupError(true);
+        return; // 로드 실패를 빈 회원 목록으로 취급해 로그인 화면을 열지 않는다.
+      }
+      clearTimeout(loadingTimer);
+      if(!alive) return;
+      setStartupError(false);
       loadedRef.current = true;
       setLoading(false);
     })();
+    return()=>{ alive=false; clearTimeout(loadingTimer); };
   }, []);
+
+  // 예약·취소 Realtime 및 기존 30초 갱신은 유지한다. 이 요청은 0행 상태 조회뿐이다.
+  useEffect(()=>{
+    if(import.meta.env.DEV) return; // Vite 개발 서버에는 Vercel API 경로가 없다.
+    let disposed=false, timer, controller;
+    async function check(){
+      if(disposed) return;
+      if(document.visibilityState==='hidden') { timer=setTimeout(check,60_000); return; }
+      controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),15_000);
+      try {
+        const response=await fetch('/api/health',{cache:'no-store',signal:controller.signal});
+        const body=await response.json();
+        if(!disposed) setConnectionUnavailable(!response.ok || body.status!=='ok');
+      } catch {
+        if(!disposed) setConnectionUnavailable(true);
+      } finally {
+        clearTimeout(timeout);
+        if(!disposed) timer=setTimeout(check,60_000);
+      }
+    }
+    function onOffline(){ setConnectionUnavailable(true); }
+    // 초기 로드와 상태 점검이 동시에 DB를 조회하지 않도록 간격을 둔다.
+    timer=setTimeout(check,20_000);
+    window.addEventListener('offline',onOffline);
+    return()=>{ disposed=true; clearTimeout(timer); controller?.abort(); window.removeEventListener('offline',onOffline); };
+  },[]);
 
   const setMembers = useCallback((updater) => {
     const job = async () => {
@@ -533,6 +576,8 @@ export default function App(){
     </div>
   );
 
+  if(loading && (startupError || connectionUnavailable)) return <ConnectionNotice initial offline={!navigator.onLine}/>;
+  const connectionNotice = connectionUnavailable ? <ConnectionNotice saving={saving} offline={!navigator.onLine}/> : null;
   if(loading) return(
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f5f3ef",fontFamily:FONT,color:"#9a8e80",fontSize:14}}>
       불러오는 중…
@@ -544,6 +589,7 @@ export default function App(){
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72}@media(max-width:390px){html{font-size:14px}}`}</style>
       <MemberLoginPage members={members} onLogin={m=>{setLoggedMember(m);setScreen("memberView");}} onGoAdmin={()=>setScreen("adminLogin")}/>
+      {connectionNotice}
     </div>
     </ClosuresContext.Provider>
   );
@@ -552,6 +598,7 @@ export default function App(){
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72;transform:scale(.97)}@media(max-width:390px){html{font-size:14px}}.member-header{flex-wrap:wrap;gap:8px!important}`}</style>
       <BookingSaveError/>
+      {connectionNotice}
       <MemberView member={members.find(m=>m.id===loggedMember.id)||loggedMember} bookings={bookings} setBookings={setBookings} setMembers={setMembers} specialSchedules={specialSchedules} closures={closures} notices={notices} setNotices={setNotices} scheduleTemplate={scheduleTemplate} onBookingNotif={onBookingNotif} onRefresh={handleRefresh} onLogout={()=>{setLoggedMember(null);setScreen("memberLogin");saveAutoLogin(null);}}/>
     </div>
     </ClosuresContext.Provider>
@@ -561,6 +608,7 @@ export default function App(){
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}body{background:#2e3a2e}button,input{font-family:${FONT};outline:none;-webkit-appearance:none}button:active{opacity:.72}`}</style>
       <AdminLoginPage onLogin={()=>{localStorage.setItem("yogapian_admin_autologin","1");setScreen("admin");}} onGoMember={()=>setScreen("memberLogin")}/>
+      {connectionNotice}
     </div>
     </ClosuresContext.Provider>
   );
@@ -569,6 +617,7 @@ export default function App(){
     <div style={{fontFamily:FONT}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}html,body{background:#f5f3ef;font-family:${FONT}}button,input,select,textarea{font-family:${FONT};outline:none;-webkit-appearance:none}.card{transition:box-shadow .2s,transform .15s}@media(hover:hover){.card:hover{box-shadow:0 6px 24px rgba(60,50,30,.14);transform:translateY(-2px)}}.pill:hover{opacity:.78}button:active{opacity:.72}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c8c0b0;border-radius:4px}.pillRow::-webkit-scrollbar{display:none}@media(max-width:600px){html{font-size:14px}.admin-grid{grid-template-columns:1fr!important}.admin-pillrow{gap:5px!important}.admin-toolbar{flex-direction:column!important}}`}</style>
       <SaveBadge/>
+      {connectionNotice}
       <BookingSaveError/>
       {/* onRefresh: 🔄 버튼으로 DB 최신 데이터 즉시 재로드 */}
       <AdminApp onedayReady={onedayReady} members={members} setMembers={setMembers} bookings={bookings} setBookings={setBookings} notices={notices} setNotices={setNotices} specialSchedules={specialSchedules} setSpecialSchedules={setSpecialSchedules} closures={closures} setClosures={setClosures} scheduleTemplate={scheduleTemplate} setScheduleTemplate={setScheduleTemplate} sales={sales} setSales={setSales} adminNotifUnread={adminNotifUnread} onMarkNotifRead={()=>{const now=new Date().toISOString();localStorage.setItem("yogapian_notif_read_at",now);adminNotifReadAtRef.current=now;setAdminNotifUnread(0);}} onRefresh={handleRefresh} onLogout={()=>{localStorage.removeItem("yogapian_admin_autologin");setScreen("memberLogin");}}/>
