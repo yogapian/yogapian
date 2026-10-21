@@ -32,7 +32,7 @@ export function toSnake(m) {
     holding:          m.holding ?? null,
     renewal_history:  m.renewalHistory ?? [],
     holding_history:  m.holdingHistory ?? [],  // 완료된 홀딩 이력 [{startDate,endDate,workdays}]
-    bonus_days:       m.bonusDays ?? 0,        // 관리자 수동 보너스 연장일
+    bonus_days:       m.bonusDays ?? 0,        // 60회권 기본 보너스 및 관리자 보너스 연장일
     payment_pending:  m.paymentPending ?? false, // 현장결제 대기
     card_color:       m.cardColor ?? "",       // 회원카드 배경색 (hex, 비어있으면 기본)
     noshow_penalties:      m.noshowPenalties ?? 0,      // 관리자가 "적용" 확정한 노쇼 차감 횟수
@@ -61,7 +61,7 @@ export function fromSnakeMember(r) {
     holding:        r.holding ?? null,
     renewalHistory: r.renewal_history ?? [],
     holdingHistory: r.holding_history ?? [],  // 완료된 홀딩 이력
-    bonusDays:      r.bonus_days ?? 0,        // 관리자 수동 보너스 연장일
+    bonusDays:      r.bonus_days ?? 0,        // 60회권 기본 보너스 및 관리자 보너스 연장일
     paymentPending: r.payment_pending ?? false, // 현장결제 대기
     cardColor:      r.card_color ?? "",        // 회원카드 배경색
     noshowPenalties:     r.noshow_penalties ?? 0,

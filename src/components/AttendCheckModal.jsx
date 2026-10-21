@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FONT, TODAY_STR, TIME_SLOTS } from "../constants.js";
 import { fmtWithDow, endOfMonth } from "../utils.js";
-import { getActivePeriod, calc3MonthEnd, noshowThreshold, noshowCrossings } from "../memberCalc.js";
+import { getActivePeriod, registrationBonusDays, calc3MonthEnd, noshowThreshold, noshowCrossings } from "../memberCalc.js";
 import S from "../styles.js";
 
 export default function AttendCheckModal({rec,members,isOpen,bookings,setBookings,setMembers,notices,setNotices,onClose}){
@@ -54,7 +54,7 @@ export default function AttendCheckModal({rec,members,isOpen,bookings,setBooking
         setMembers(p=>p.map(m=>{
           if(m.id!==mem.id) return m;
           const updRH=(m.renewalHistory||[]).map(r=>r.startDate===null?{...r,startDate:newStart,endDate:newEnd}:r);
-          return{...m,startDate:newStart,endDate:newEnd,total:pendingPeriod?.total??m.total,memberType:mType,extensionDays:0,holdingDays:0,bonusDays:0,holding:null,renewalHistory:updRH};
+          return{...m,startDate:newStart,endDate:newEnd,total:pendingPeriod?.total??m.total,memberType:mType,extensionDays:0,holdingDays:0,bonusDays:registrationBonusDays(mType,pendingPeriod?.total??m.total),holding:null,renewalHistory:updRH};
         }));
       }
     }

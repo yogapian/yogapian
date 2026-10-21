@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { FONT, TODAY_STR, SC, GE, TYPE_CFG, lookupPrice, DOW_KO } from "../constants.js";
 import { fmt, fmtWithDow, parseLocal, addDays, endOfMonth, useClock } from "../utils.js";
-import { getDisplayStatus, calc3MonthEnd, calcInitial1MonthEnd, calcDL, activePeriodTotal, usedAsOf } from "../memberCalc.js";
+import { getDisplayStatus, registrationBonusDays, calc3MonthEnd, calcInitial1MonthEnd, calcDL, activePeriodTotal, usedAsOf } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import { dbLoadNotifLog } from "../db.js";
 import PollTab from "./PollTab.jsx";
@@ -94,7 +94,7 @@ export default function AdminApp({onedayReady,members,setMembers,bookings,setBoo
       if(orphaned.length>0){setOnedayLinkError('');setOnedayConfirm({newMember:{...e,id:editId},matchedBooking:orphaned[0],candidates:orphaned,existing:true});setShowForm(false);return;}
     } else{
       const id=Math.max(...members.map(m=>m.id),0)+1;
-      const newMember={id,...e,renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]};
+      const newMember={id,...e,bonusDays:registrationBonusDays(e.memberType,e.total),renewalHistory:[{id:1,startDate:e.startDate,endDate:autoEnd,total:e.total,memberType:e.memberType,payment:e.payment||""}]};
       // 원데이→정규 연동: 7일 이내 같은 이름의 방문 완료된 원데이 기록 탐색
       // TODAY_STR 대신 실행 시점 KST 날짜 사용 — 앱을 전날 열고 다음날 등록하면 오늘 예약이 누락되는 버그 수정
       const _kst=new Date(Date.now()+9*3600*1000);
@@ -173,7 +173,7 @@ export default function AdminApp({onedayReady,members,setMembers,bookings,setBoo
           if(i===confirmIdx-1&&r.endDate&&r.endDate>=rf.startDate) return{...r,endDate:prevEnd};
           return r;
         });
-        return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,bonusDays:0,holding:null,manualStatus:null,isNew:false,noshowPenalties:0,renewalHistory:updRH};
+        return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,bonusDays:registrationBonusDays(rf.memberType,rf.total),holding:null,manualStatus:null,isNew:false,noshowPenalties:0,renewalHistory:updRH};
       }
       if(isPending){
         // 미정 갱신: member 날짜·횟수 필드 유지, renewalHistory에만 추가
@@ -183,8 +183,8 @@ export default function AdminApp({onedayReady,members,setMembers,bookings,setBoo
       const lastRH=rh.length>0?rh[rh.length-1]:null;
       const prevEnd=addDays(rf.startDate,-1);
       const updRH=rh.length>0?rh.map((r,i)=>i===rh.length-1&&lastRH?.endDate&&lastRH.endDate>=rf.startDate?{...r,endDate:prevEnd}:r):rh;
-      // 갱신 시 노쇼 패널티 초기화 (새 기수 시작)
-      return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,bonusDays:0,holding:null,manualStatus:null,isNew:false,noshowPenalties:0,renewalHistory:[...updRH,{id:(rh.length||0)+1,...rf}]};}));
+      // 새 기수 보너스 지급 및 노쇼 패널티 초기화 (이전 보너스는 이월하지 않음)
+      return{...m,startDate:rf.startDate,endDate:rf.endDate,total:rf.total,memberType:rf.memberType,extensionDays:0,holdingDays:0,bonusDays:registrationBonusDays(rf.memberType,rf.total),holding:null,manualStatus:null,isNew:false,noshowPenalties:0,renewalHistory:[...updRH,{id:(rh.length||0)+1,...rf}]};}));
     // 갱신 완료 시 이 회원의 renewalPending 플래그 항상 해제
     // includePending=true: 예약 유지(정상 예약으로 전환) / false: 예약 취소
     setBookings(p=>p.map(b=>{
@@ -473,8 +473,8 @@ function applyHolding(mid,hd){setMembers(p=>p.map(m=>{if(m.id!==mid)return m;if(
                   <label style={S.lbl}>종료일{form.memberType==="3month"&&<span style={{fontSize:10,color:"#7a9a7a",marginLeft:3}}>자동</span>}</label>
                   {form.memberType==="3month"?(
                     <div style={{...S.inp,background:"#f0f8f0",color:"#3a4a3a",cursor:"default",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                      <span>{form.endDate?fmt(form.endDate):"-"}</span>
-                      <span style={{fontSize:10,color:"#7a9a7a"}}>60평일</span>
+                      <span>{form.endDate?fmt(addDays(form.endDate,registrationBonusDays(form.memberType,form.total))):"-"}</span>
+                      <span style={{fontSize:10,color:"#7a9a7a"}}>{registrationBonusDays(form.memberType,form.total)?"3개월 + 보너스 7일":"3개월"}</span>
                     </div>
                   ):(
                     <input style={S.inp} type="date" value={form.endDate||""} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/>

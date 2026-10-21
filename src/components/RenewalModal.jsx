@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FONT } from "../constants.js";
 import { endOfMonth } from "../utils.js";
-import { calc3MonthEnd } from "../memberCalc.js";
+import { calc3MonthEnd, registrationBonusDays } from "../memberCalc.js";
 import { useClosures } from "../context.js";
 import S from "../styles.js";
 import { TODAY_STR } from "../constants.js";
@@ -57,6 +57,7 @@ export default function RenewalModal({member,onClose,onSave,pendingPeriod=null})
         </div>
         {/* 미정 시 날짜 입력 숨김 */}
         {!pending&&<div style={{display:"flex",gap:12}}><div style={{...S.fg,flex:1}}><label style={S.lbl}>시작일</label><input style={S.inp} type="date" value={form.startDate||""} onChange={e=>{const s=e.target.value;const autoEnd=form.memberType==="3month"?calc3MonthEnd(s,closures):endOfMonth(s);setForm(f=>({...f,startDate:s,endDate:autoEnd}));}}/></div><div style={{...S.fg,flex:1}}><label style={S.lbl}>종료일</label><input style={S.inp} type="date" value={form.endDate||""} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/></div></div>}
+        {registrationBonusDays(form.memberType,form.total)>0&&<div style={{fontSize:12,color:"#7a5a10",marginBottom:10}}>60회권 보너스 7일이 {pending?"시작일 확정 시":"입력한 종료일에"} 자동 추가됩니다.</div>}
         {/* 빈 문자열 허용 후 유효 숫자일 때만 저장 — if(v>0)만 쓰면 backspace로 못 지우는 버그 */}
         <div style={S.fg}><label style={S.lbl}>총 회차</label><input style={S.inp} type="number" min="1" value={form.total||""} onChange={e=>{const raw=e.target.value;if(raw===""){setForm(f=>({...f,total:""}));return;}const v=parseInt(raw,10);if(!isNaN(v)&&v>0)setForm(f=>({...f,total:v}));}}/></div>
         <div style={{...S.fg,background:"#fffaeb",borderRadius:9,padding:"10px 12px",border:"1px solid #e8c44a"}}>

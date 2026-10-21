@@ -1,6 +1,11 @@
 import { TODAY, TODAY_STR } from "./constants.js";
 import { parseLocal, addDays, addWeekdays, countWorkdays, wdInMonth, endOfMonth } from "./utils.js";
 
+// 새 기수 기본 보너스: 3개월 60회권은 캘린더 7일. 기존 보너스에 누적하지 않는다.
+export function registrationBonusDays(memberType, total) {
+  return memberType === "3month" && Number(total) === 60 ? 7 : 0;
+}
+
 // 최초 1개월권: 시작일이 속한 당월 말 종료 (익월 사용 정책 폐지).
 // 이미 저장된 종료일은 재계산하지 않고 등록·날짜 변경 시 자동 계산에만 사용한다.
 export function calcInitial1MonthEnd(startStr) {
